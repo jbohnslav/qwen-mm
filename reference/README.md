@@ -14,14 +14,15 @@ From the repository root, generate or verify the committed baseline images in
 the shared locked uv workspace:
 
 ```bash
-uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.fixtures generate
-uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
+uv sync --locked --inexact --package qwen-mm-reference
+uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures generate
+uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
 ```
 
 Run the small baseline on both processor configurations:
 
 ```bash
-uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.bench \
+uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.bench \
   --models qwen3-vl-8b,qwen3.5-9b \
   --cases image1,image24 \
   --output results/local.json

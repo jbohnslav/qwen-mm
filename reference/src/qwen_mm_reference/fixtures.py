@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageDraw, __version__ as pillow_version
-
+from PIL import Image, ImageDraw
+from PIL import __version__ as pillow_version
 
 FIXTURE_COUNT = 24
 FIXTURE_WIDTH = 1023

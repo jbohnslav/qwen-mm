@@ -15,6 +15,8 @@ kernels ahead of their conformance work.
 | Edition | `2024` | Current Rust edition; the toolchain is new enough to support it directly. |
 | PyO3 | `0.29.0` | Current stable release in the live Cargo index when bootstrapped; exact-pinned in `Cargo.lock`, with the Python 3.11 stable ABI. |
 | Maturin | `1.14.1` | Current stable wheel builder when bootstrapped; exact-pinned in `pyproject.toml` and the smoke command. |
+| Ruff | `0.16.1` floor, locked | Python linting, import sorting, modernization checks, and formatting. |
+| pre-commit | `4.6.1` floor, locked | Runs the repository's uv, Ruff, Cargo-format, and lockfile checks before commits. |
 
 `qwen-mm-core` has no third-party dependencies. In particular it builds without
 Python, Torch, OpenCV, vLLM, or network access. `qwen-mm-python` is a separate
@@ -28,6 +30,10 @@ From the repository root:
 ```bash
 uv sync --locked --all-packages  # create the shared Python 3.11 development environment
 make sync             # equivalent full-workspace sync
+make hooks            # install the repository's pre-commit hook
+make lint             # non-mutating Ruff lint and format checks
+make format           # apply Ruff fixes/formatting and cargo fmt
+make pre-commit-check # run every configured hook against every tracked file
 make core-check       # build qwen-mm-core locked and offline, with no Python dependency
 make rust-check       # format, Clippy -D warnings, unit tests, doc tests, offline core build
 make reference-smoke  # sync the existing locked reference environment and verify fixtures

@@ -11,7 +11,11 @@ requires-python = ">=3.11,<3.12"
 dependencies = []
 
 [dependency-groups]
-dev = ["maturin==1.14.1"]
+dev = [
+    "maturin==1.14.1",
+    "pre-commit>=4.6.1",
+    "ruff>=0.16.1",
+]
 
 [tool.uv.workspace]
 members = [
@@ -24,3 +28,11 @@ features = ["extension-module"]
 manifest-path = "crates/qwen-mm-python/Cargo.toml"
 module-name = "qwen_mm._native"
 python-source = "crates/qwen-mm-python/python"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["reference/results"]
+
+[tool.ruff.lint]
+select = ["B", "E4", "E7", "E9", "F", "I", "UP"]

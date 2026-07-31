@@ -11,9 +11,10 @@ import platform
 import statistics
 import subprocess
 import time
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 import numpy as np
 import torch
@@ -23,7 +24,6 @@ from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor
 
 from .fixtures import fixture_directory, manifest_path, repository_root, sha256_file, verify
-
 
 PACKAGE_NAMES = (
     "transformers",
@@ -120,9 +120,7 @@ def output_signature(outputs: Mapping[str, Any]) -> dict[str, Any]:
     if "input_ids" in outputs:
         signature["token_count"] = int(np.asarray(outputs["input_ids"]).size)
     if "image_grid_thw" in outputs:
-        signature["image_grid_thw_values"] = np.asarray(
-            outputs["image_grid_thw"]
-        ).tolist()
+        signature["image_grid_thw_values"] = np.asarray(outputs["image_grid_thw"]).tolist()
     return signature
 
 
@@ -133,7 +131,7 @@ def split_video_metadata(videos: Any) -> tuple[Any, Any]:
         return videos, None
     first = videos[0]
     if isinstance(first, tuple) and len(first) == 2:
-        video_values, video_metadata = zip(*videos)
+        video_values, video_metadata = zip(*videos, strict=True)
         return list(video_values), list(video_metadata)
     return videos, None
 
@@ -281,9 +279,7 @@ def environment_metadata() -> dict[str, Any]:
         "threads": {
             "torch_num_threads": torch.get_num_threads(),
             "torch_num_interop_threads": torch.get_num_interop_threads(),
-            "environment": {
-                name: os.environ.get(name) for name in THREAD_ENVIRONMENT_NAMES
-            },
+            "environment": {name: os.environ.get(name) for name in THREAD_ENVIRONMENT_NAMES},
         },
     }
 
@@ -315,13 +311,9 @@ def benchmark_case(
         "input_bytes": sum(len(value) for value in encoded_images),
         "warmups": warmups,
         "iterations": iterations,
-        "timing": {
-            stage: summarize(sample[stage] for sample in samples)
-            for stage in stage_names
-        },
+        "timing": {stage: summarize(sample[stage] for sample in samples) for stage in stage_names},
         "samples_ms": [
-            {name: round(value, 3) for name, value in sample.items()}
-            for sample in samples
+            {name: round(value, 3) for name, value in sample.items()} for sample in samples
         ],
         "output": signature,
     }
@@ -362,7 +354,7 @@ def main() -> None:
     fixture_manifest = verify()
     result: dict[str, Any] = {
         "schema_version": 1,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "boundary": "in-memory encoded JPEG bytes and messages to materialized CPU NumPy arrays",
         "excluded": [
             "network",
@@ -400,9 +392,7 @@ def main() -> None:
             "revision": revision,
             "processor_class": type(processor).__name__,
             "image_processor_class": type(processor.image_processor).__name__,
-            "image_processor_backend": getattr(
-                processor.image_processor, "backend", None
-            ),
+            "image_processor_backend": getattr(processor.image_processor, "backend", None),
             "image_patch_size": processor.image_processor.patch_size,
             "artifacts": artifact_hashes(model_id, revision),
             "cases": {},
@@ -418,8 +408,7 @@ def main() -> None:
             )
             total = model_result["cases"][case]["timing"]["total"]
             print(
-                f"  total median={total['median_ms']:.3f} ms "
-                f"p90={total['p90_ms']:.3f} ms",
+                f"  total median={total['median_ms']:.3f} ms p90={total['p90_ms']:.3f} ms",
                 flush=True,
             )
         result["models"][alias] = model_result
