@@ -9,6 +9,8 @@ kernels ahead of their conformance work.
 
 | Component | Pin | Reason |
 | --- | --- | --- |
+| uv | `0.11.29` in CI | Owns the root Python workspace, Python 3.11 selection, universal lock, and Python build tools. |
+| Python | `3.11` | Matches the pinned reference oracle and the extension's stable ABI floor. |
 | Rust | `1.97.1` | Current stable patch on 2026-07-31; includes Cargo, rustfmt, and Clippy as one reproducible toolchain. |
 | Edition | `2024` | Current Rust edition; the toolchain is new enough to support it directly. |
 | PyO3 | `0.29.0` | Current stable release in the live Cargo index when bootstrapped; exact-pinned in `Cargo.lock`, with the Python 3.11 stable ABI. |
@@ -24,6 +26,8 @@ Maturin so ordinary Rust tests can link against the host Python normally.
 From the repository root:
 
 ```bash
+uv sync --locked --all-packages  # create the shared Python 3.11 development environment
+make sync             # equivalent full-workspace sync
 make core-check       # build qwen-mm-core locked and offline, with no Python dependency
 make rust-check       # format, Clippy -D warnings, unit tests, doc tests, offline core build
 make reference-smoke  # sync the existing locked reference environment and verify fixtures
@@ -31,13 +35,18 @@ make wheel-smoke      # build, install, import, and exercise a fresh development
 make check            # run all of the above
 ```
 
-The first Cargo command installs the exact toolchain declared in
-`rust-toolchain.toml` when rustup is available. Cargo commands use the committed
-lock file; the final core build is explicitly offline. Workspace tests resolve
-Python 3.11 through `uv` and pass that interpreter to PyO3 explicitly, so they
-do not accidentally bind to an older system Python. Set `PYO3_PYTHON` to an
-explicit Python 3.11 executable to override that discovery in managed CI or a
-custom development environment.
+The root `pyproject.toml`, `.python-version`, and `uv.lock` define one Python
+3.11 workspace containing the reference package and PyO3 package. Maturin is a
+locked root development dependency and is invoked through `uv run`; Python
+tools do not depend on a separately installed `pip`, virtualenv, or `uvx` tool.
+
+Cargo remains authoritative for Rust. Its first command installs the exact
+toolchain declared in `rust-toolchain.toml` when rustup is available, and Cargo
+uses the committed `Cargo.lock`; the final core build is explicitly offline.
+Workspace tests resolve the root uv-managed interpreter and pass it to PyO3, so
+they do not accidentally bind to an older system Python. Set `PYO3_PYTHON` to an
+explicit Python 3.11 executable only to override that discovery in a custom
+environment.
 
 ## Ownership and future layout
 

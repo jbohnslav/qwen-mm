@@ -1,8 +1,11 @@
-.PHONY: check core-check rust-check reference-smoke wheel-smoke
+.PHONY: check core-check rust-check sync reference-smoke wheel-smoke
 
-PYO3_PYTHON ?= $(shell uv python find 3.11)
+PYO3_PYTHON ?= $(shell uv python find)
 
 check: rust-check reference-smoke wheel-smoke
+
+sync:
+	uv sync --locked --all-packages
 
 rust-check:
 	cargo fmt --all -- --check
@@ -15,8 +18,8 @@ core-check:
 	cargo build --package qwen-mm-core --locked --offline
 
 reference-smoke:
-	cd reference && uv sync --locked
-	cd reference && uv run --locked python -m qwen_mm_reference.fixtures verify
+	uv sync --locked --package qwen-mm-reference
+	uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh

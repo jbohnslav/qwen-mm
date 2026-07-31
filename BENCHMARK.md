@@ -67,12 +67,12 @@ The result does not measure vLLM admission, event-loop blocking, GIL contention 
 
 ## Reproduce
 
-From `reference/`:
+From the repository root:
 
 ```bash
-uv sync --locked
-uv run python -m qwen_mm_reference.fixtures verify
-uv run python -m qwen_mm_reference.bench \
+uv sync --locked --package qwen-mm-reference
+uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
+uv run --locked --package qwen-mm-reference python -m qwen_mm_reference.bench \
   --models qwen3-vl-8b,qwen3.5-9b \
   --cases image1,image24 \
   --warmups 3 \

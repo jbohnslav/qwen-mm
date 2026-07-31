@@ -4,13 +4,12 @@ set -eu
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 smoke_directory=$(mktemp -d "${TMPDIR:-/tmp}/qwen-mm-wheel-smoke.XXXXXX")
 trap 'rm -rf -- "$smoke_directory"' EXIT HUP INT TERM
-export UV_TOOL_DIR="$smoke_directory/uv-tools"
 
-python_bin=${PYTHON:-$(uv python find 3.11)}
+python_bin=${PYTHON:-$(uv python find)}
 
 (
     cd "$repository_root/crates/qwen-mm-python"
-    uvx --from maturin==1.14.1 maturin build \
+    uv run --project "$repository_root" --locked maturin build \
         --locked \
         --interpreter "$python_bin" \
         --out "$smoke_directory/dist"
