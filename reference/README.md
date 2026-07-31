@@ -31,3 +31,57 @@ uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_referenc
 The timed boundary begins with in-memory encoded JPEG bytes and a structured
 conversation. It ends with materialized CPU NumPy arrays. Network and disk I/O,
 processor initialization, model execution, and output hashing are excluded.
+
+## Golden exporter
+
+Golden cases are versioned JSON request descriptions in `cases/v1/`. The
+exporter binds their repository-relative encoded media, then runs the exact
+composed v1 oracle and records every stage in a canonical, self-hashed manifest.
+It always loads processor artifacts from the local cache with
+`local_files_only=True`.
+
+After the locked environment and model artifacts have been cached once, this
+single command exports a complete smoke case without network access:
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.golden export \
+  --case reference/cases/v1/multimodal-smoke.json \
+  --profile qwen3-vl-8b \
+  --output reference/goldens/v1/qwen3-vl-8b/multimodal-smoke/manifest.json
+```
+
+The manifest contains the exact logical messages and template options, encoded
+media signatures/properties, rendered and expanded UTF-8 prompts, replacement
+ranges, prepared RGB/frame arrays, video kwargs/metadata, every official output
+array, the invocation graph, fixed comparison policy, and full environment,
+source, artifact, model, platform, and codec provenance. Every array records its
+shape, dtype, strides, byte order, C-order SHA-256, and storage mode.
+
+Arrays up to 1 MiB are stored as full nested JSON values by default. Larger
+arrays remain authenticated `signature_only` entries, keeping the 432 MiB
+`image24` tensor out of Git while making regeneration byte-verifiable. Pass
+`--write-arrays` to materialize larger values as `.npy` files beside the
+manifest, or change `--inline-max-bytes` for a different versioned capture
+policy.
+
+Export the large signature-only case on demand:
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.golden export \
+  --case reference/cases/v1/image24.json \
+  --profile qwen3-vl-8b \
+  --output reference/goldens/v1/qwen3-vl-8b/image24/manifest.json
+```
+
+Validate one manifest or a whole golden tree, including schema requirements,
+conditional output keys, inline array data, prompt bytes, provenance, and the
+canonical manifest hash:
+
+```bash
+uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.golden validate reference/goldens/v1
+```

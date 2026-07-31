@@ -1,0 +1,107 @@
+{
+  "schema_id": "qwen-mm-golden-v1",
+  "schema_version": 1,
+  "required_provenance": [
+    "provenance.compatibility.contract_id",
+    "provenance.compatibility.manifest_path",
+    "provenance.compatibility.manifest_sha256",
+    "provenance.compatibility.declared_lock",
+    "provenance.workspace_lock.path",
+    "provenance.workspace_lock.sha256",
+    "provenance.profile.alias",
+    "provenance.profile.model_id",
+    "provenance.profile.revision",
+    "provenance.profile.fingerprint",
+    "provenance.profile.computed_fingerprint",
+    "provenance.packages",
+    "provenance.source_files",
+    "provenance.model_artifacts",
+    "provenance.environment",
+    "provenance.platform",
+    "provenance.codecs",
+    "invocation.nodes"
+  ],
+  "official_outputs": {
+    "always": [
+      "input_ids",
+      "attention_mask",
+      "mm_token_type_ids"
+    ],
+    "images": [
+      "pixel_values",
+      "image_grid_thw"
+    ],
+    "videos": [
+      "pixel_values_videos",
+      "video_grid_thw"
+    ]
+  },
+  "stable_error_categories": [
+    "invalid_request",
+    "unsupported_option",
+    "unsupported_media",
+    "profile_mismatch",
+    "media_decode",
+    "media_geometry",
+    "resource_limit",
+    "arithmetic_overflow",
+    "destination_too_small",
+    "internal_invariant"
+  ],
+  "comparison_policy": {
+    "policy_id": "qwen-mm-compat-v1-comparison",
+    "exact": [
+      "rendered_prompt_utf8",
+      "expanded_prompt_utf8",
+      "input_ids",
+      "attention_mask",
+      "mm_token_type_ids",
+      "image_grid_thw",
+      "video_grid_thw",
+      "occurrence_order",
+      "placeholder_counts",
+      "frame_indices",
+      "replacement_ranges",
+      "array_key_presence",
+      "array_shape",
+      "array_dtype",
+      "array_strides",
+      "caller_owned_rgb",
+      "lossless_prepared_rgb"
+    ],
+    "numeric": {
+      "encoded_jpeg_or_lossy_webp_prepared_rgb": {
+        "absolute_byte_error_max": 1
+      },
+      "pillow_image_resize_rgb": {
+        "absolute_byte_error_max": 1
+      },
+      "torchvision_video_resize_0_255_float32": {
+        "atol": 0.0001,
+        "rtol": 0.0
+      },
+      "raw_frame_fps": {
+        "atol_hz": 1e-09,
+        "rtol": 0.0
+      },
+      "encoded_video_adapter_fps": {
+        "atol_hz": 1e-06,
+        "rtol": 0.0
+      },
+      "normalize_and_patchify": {
+        "atol": 1e-06,
+        "rtol": 0.0
+      },
+      "jpeg_or_lossy_webp_final_tensor": {
+        "atol_expression": "2/255 + 8*float32_epsilon",
+        "atol_value": 0.007844090461730957,
+        "rtol": 0.0
+      },
+      "raw_frame_video_final_tensor": {
+        "atol": 1e-06,
+        "rtol": 0.0
+      }
+    },
+    "invalid_input": "stable_error_category_exact"
+  }
+}

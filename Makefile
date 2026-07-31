@@ -37,6 +37,8 @@ core-check:
 reference-smoke:
 	$(UV_CMD) sync --locked --inexact --package qwen-mm-reference
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m unittest discover -s reference/tests
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.golden validate reference/goldens/v1
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh

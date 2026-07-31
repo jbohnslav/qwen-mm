@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "case_id": "text-smoke",
+  "requests": [
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a concise visual assistant."
+        },
+        {
+          "role": "user",
+          "content": "Reply with exactly: ready"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": true
+      }
+    }
+  ]
+}

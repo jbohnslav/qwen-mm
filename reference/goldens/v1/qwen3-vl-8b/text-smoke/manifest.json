@@ -1,0 +1,614 @@
+{
+  "case_id": "text-smoke",
+  "comparison_policy": {
+    "exact": [
+      "rendered_prompt_utf8",
+      "expanded_prompt_utf8",
+      "input_ids",
+      "attention_mask",
+      "mm_token_type_ids",
+      "image_grid_thw",
+      "video_grid_thw",
+      "occurrence_order",
+      "placeholder_counts",
+      "frame_indices",
+      "replacement_ranges",
+      "array_key_presence",
+      "array_shape",
+      "array_dtype",
+      "array_strides",
+      "caller_owned_rgb",
+      "lossless_prepared_rgb"
+    ],
+    "invalid_input": "stable_error_category_exact",
+    "numeric": {
+      "encoded_jpeg_or_lossy_webp_prepared_rgb": {
+        "absolute_byte_error_max": 1
+      },
+      "encoded_video_adapter_fps": {
+        "atol_hz": 1e-06,
+        "rtol": 0.0
+      },
+      "jpeg_or_lossy_webp_final_tensor": {
+        "atol_expression": "2/255 + 8*float32_epsilon",
+        "atol_value": 0.007844090461730957,
+        "rtol": 0.0
+      },
+      "normalize_and_patchify": {
+        "atol": 1e-06,
+        "rtol": 0.0
+      },
+      "pillow_image_resize_rgb": {
+        "absolute_byte_error_max": 1
+      },
+      "raw_frame_fps": {
+        "atol_hz": 1e-09,
+        "rtol": 0.0
+      },
+      "raw_frame_video_final_tensor": {
+        "atol": 1e-06,
+        "rtol": 0.0
+      },
+      "torchvision_video_resize_0_255_float32": {
+        "atol": 0.0001,
+        "rtol": 0.0
+      }
+    },
+    "policy_id": "qwen-mm-compat-v1-comparison"
+  },
+  "input": {
+    "media": [],
+    "requests": [
+      {
+        "messages": [
+          {
+            "content": "You are a concise visual assistant.",
+            "role": "system"
+          },
+          {
+            "content": "Reply with exactly: ready",
+            "role": "user"
+          }
+        ],
+        "options": {
+          "add_generation_prompt": true
+        }
+      }
+    ]
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "canonical_json_sha256": "7745763d4d559491c4025ce1ff503b47ac71b498a4043ea04af60340e2dfde7d"
+  },
+  "invocation": {
+    "nodes": [
+      {
+        "call": "qwen_mm_reference.golden.bind_requests",
+        "id": "bind_media",
+        "inputs": [
+          "input.requests"
+        ],
+        "outputs": [
+          "bound structured messages",
+          "input.media"
+        ]
+      },
+      {
+        "call": "processor.apply_chat_template",
+        "calls": [
+          {
+            "kwargs": {
+              "add_generation_prompt": true,
+              "tokenize": false
+            },
+            "request_index": 0
+          }
+        ],
+        "depends_on": [
+          "bind_media"
+        ],
+        "id": "render_chat",
+        "outputs": [
+          "stages.rendered_prompts"
+        ]
+      },
+      {
+        "call": "qwen_vl_utils.process_vision_info",
+        "depends_on": [
+          "bind_media"
+        ],
+        "id": "prepare_vision",
+        "kwargs": {
+          "image_patch_size": 16,
+          "return_video_kwargs": true,
+          "return_video_metadata": true
+        },
+        "outputs": [
+          "stages.prepared_media",
+          "stages.video_kwargs"
+        ]
+      },
+      {
+        "call": "qwen_mm_reference.bench.split_video_metadata",
+        "depends_on": [
+          "prepare_vision"
+        ],
+        "id": "split_video_metadata",
+        "outputs": [
+          "video values",
+          "stages.video_metadata"
+        ]
+      },
+      {
+        "call": "transformers.Qwen3VLProcessor.__call__",
+        "depends_on": [
+          "render_chat",
+          "prepare_vision",
+          "split_video_metadata"
+        ],
+        "id": "process",
+        "kwargs": {
+          "do_resize": false,
+          "do_sample_frames": false,
+          "padding": true,
+          "return_tensors": "np",
+          "truncation": false
+        },
+        "outputs": [
+          "output.arrays",
+          "captured multimodal replacements"
+        ]
+      },
+      {
+        "call": "processor.get_text_with_replacements",
+        "depends_on": [
+          "process"
+        ],
+        "id": "record_expanded_prompt",
+        "note": "Replays replacements captured from the real processor call; media is not reprocessed.",
+        "outputs": [
+          "stages.expanded_prompts",
+          "stages.replacement_offsets"
+        ]
+      }
+    ]
+  },
+  "output": {
+    "arrays": {
+      "attention_mask": {
+        "byte_order": "little",
+        "c_contiguous": true,
+        "data": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "dtype": "int64",
+        "hash_encoding": "C-order bytes in the declared dtype and byte order",
+        "nbytes": 200,
+        "sha256": "9060d7baa74e0778cf6c0a534a56f8e914c6e6118c28b9328dfbc42962fa69c5",
+        "shape": [
+          1,
+          25
+        ],
+        "storage": "inline_json",
+        "strides": [
+          200,
+          8
+        ]
+      },
+      "input_ids": {
+        "byte_order": "little",
+        "c_contiguous": true,
+        "data": [
+          [
+            151644,
+            8948,
+            198,
+            2610,
+            525,
+            264,
+            63594,
+            9124,
+            17847,
+            13,
+            151645,
+            198,
+            151644,
+            872,
+            198,
+            20841,
+            448,
+            6896,
+            25,
+            5527,
+            151645,
+            198,
+            151644,
+            77091,
+            198
+          ]
+        ],
+        "dtype": "int64",
+        "hash_encoding": "C-order bytes in the declared dtype and byte order",
+        "nbytes": 200,
+        "sha256": "d9edf5e5408e2eff1ae981be99aed5627e7d56d346892b43ce631b88ffd0919a",
+        "shape": [
+          1,
+          25
+        ],
+        "storage": "inline_json",
+        "strides": [
+          200,
+          8
+        ]
+      },
+      "mm_token_type_ids": {
+        "byte_order": "little",
+        "c_contiguous": true,
+        "data": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "dtype": "int64",
+        "hash_encoding": "C-order bytes in the declared dtype and byte order",
+        "nbytes": 200,
+        "sha256": "6d9c54dee5660c46886f32d80e57e9dd0ffa57ee0cd2a762b036d9c8e0c3a33a",
+        "shape": [
+          1,
+          25
+        ],
+        "storage": "inline_json",
+        "strides": [
+          200,
+          8
+        ]
+      }
+    },
+    "keys": [
+      "input_ids",
+      "attention_mask",
+      "mm_token_type_ids"
+    ]
+  },
+  "profile_alias": "qwen3-vl-8b",
+  "provenance": {
+    "codecs": {
+      "pillow": {
+        "jpg": "6.2",
+        "jpg_2000": "2.5.4",
+        "libtiff": "4.7.1",
+        "zlib": "1.3.1.zlib-ng"
+      },
+      "pyav": {
+        "libavcodec": [
+          62,
+          28,
+          102
+        ],
+        "libavdevice": [
+          62,
+          3,
+          102
+        ],
+        "libavfilter": [
+          11,
+          14,
+          102
+        ],
+        "libavformat": [
+          62,
+          12,
+          102
+        ],
+        "libavutil": [
+          60,
+          26,
+          102
+        ],
+        "libswresample": [
+          6,
+          3,
+          102
+        ],
+        "libswscale": [
+          9,
+          5,
+          102
+        ]
+      }
+    },
+    "compatibility": {
+      "contract_id": "qwen-mm-compat-v1",
+      "declared_lock": {
+        "matches": false,
+        "observed_sha256": null,
+        "path": "reference/uv.lock",
+        "sha256": "30d82d0dfa563005a9ef997f90372d4029e5d1d26c0e20a3f7a03bc0d026acab"
+      },
+      "manifest_path": "reference/compatibility/v1.json",
+      "manifest_sha256": "01c03d10feb34313525f0c4fd08abeaa11151a20b1e87ad57a65ff677ad1cc06",
+      "schema_version": 1
+    },
+    "environment": {
+      "FORCE_QWENVL_VIDEO_READER": null,
+      "MKL_NUM_THREADS": null,
+      "MODEL_SEQ_LEN": null,
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "TOKENIZERS_PARALLELISM": null,
+      "TORCHCODEC_NUM_THREADS": null,
+      "VECLIB_MAXIMUM_THREADS": null
+    },
+    "model_artifacts": {
+      "chat_template.json": {
+        "bytes": 5499,
+        "expected_sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce",
+        "matches": true,
+        "sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce"
+      },
+      "config.json": {
+        "bytes": 1474,
+        "expected_sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661",
+        "matches": true,
+        "sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661"
+      },
+      "merges.txt": {
+        "bytes": 1671839,
+        "expected_sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+        "matches": true,
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      "preprocessor_config.json": {
+        "bytes": 390,
+        "expected_sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+        "matches": true,
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      "tokenizer.json": {
+        "bytes": 7032403,
+        "expected_sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7",
+        "matches": true,
+        "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
+      },
+      "tokenizer_config.json": {
+        "bytes": 10868,
+        "expected_sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399",
+        "matches": true,
+        "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+      },
+      "video_preprocessor_config.json": {
+        "bytes": 385,
+        "expected_sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+        "matches": true,
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      "vocab.json": {
+        "bytes": 2776833,
+        "expected_sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "matches": true,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    },
+    "packages": {
+      "Pillow": {
+        "expected": "12.3.0",
+        "matches": true,
+        "observed": "12.3.0"
+      },
+      "av": {
+        "expected": "18.0.0",
+        "matches": true,
+        "observed": "18.0.0"
+      },
+      "numpy": {
+        "expected": "2.4.6",
+        "matches": true,
+        "observed": "2.4.6"
+      },
+      "qwen-vl-utils": {
+        "expected": "0.0.14",
+        "matches": true,
+        "observed": "0.0.14"
+      },
+      "tokenizers": {
+        "expected": "0.22.2",
+        "matches": true,
+        "observed": "0.22.2"
+      },
+      "torch": {
+        "expected": "2.13.0",
+        "matches": true,
+        "observed": "2.13.0"
+      },
+      "torchvision": {
+        "expected": "0.28.0",
+        "matches": true,
+        "observed": "0.28.0"
+      },
+      "transformers": {
+        "expected": "5.14.1",
+        "matches": true,
+        "observed": "5.14.1"
+      }
+    },
+    "platform": {
+      "byte_order": "little",
+      "implementation": "CPython",
+      "machine": "arm64",
+      "python": "3.11.15",
+      "release": "25.5.0",
+      "system": "Darwin"
+    },
+    "profile": {
+      "alias": "qwen3-vl-8b",
+      "classes": {
+        "image_backend": "torchvision",
+        "image_processor": "Qwen2VLImageProcessor",
+        "processor": "Qwen3VLProcessor",
+        "tokenizer": "Qwen2Tokenizer",
+        "video_backend": "torchvision",
+        "video_processor": "Qwen3VLVideoProcessor"
+      },
+      "computed_fingerprint": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "fingerprint": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "matches": true,
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+      "tokenizer": {
+        "bos_token_id": null,
+        "eos_token_id": 151645,
+        "image_token_id": 151655,
+        "model_max_length": 262144,
+        "pad_token_id": 151643,
+        "padding_side": "right",
+        "truncation_side": "right",
+        "video_token_id": 151656,
+        "vision_end_token_id": 151653,
+        "vision_start_token_id": 151652
+      },
+      "visual": {
+        "composed_image_max_pixels": 16777216,
+        "composed_image_min_pixels": 4096,
+        "image_config_max_pixels": 16777216,
+        "image_config_min_pixels": 65536,
+        "image_mean": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "image_std": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "merge_size": 2,
+        "patch_size": 16,
+        "patch_width": 1536,
+        "temporal_patch_size": 2,
+        "video_config_max_pixels": 25165824,
+        "video_config_min_pixels": 4096
+      }
+    },
+    "source_files": {
+      "qwen_vl_utils/vision_process.py": {
+        "expected_sha256": "f3710ced8ffe735da57d08cf5236cf9d326ff646ed1bdad2e62593a7801adc33",
+        "matches": true,
+        "sha256": "f3710ced8ffe735da57d08cf5236cf9d326ff646ed1bdad2e62593a7801adc33"
+      },
+      "transformers/models/qwen2_vl/image_processing_qwen2_vl.py": {
+        "expected_sha256": "f19497685281402691f0049a0ab5be8085f92fb5c37adfcc680e4ccd17863a77",
+        "matches": true,
+        "sha256": "f19497685281402691f0049a0ab5be8085f92fb5c37adfcc680e4ccd17863a77"
+      },
+      "transformers/models/qwen3_vl/processing_qwen3_vl.py": {
+        "expected_sha256": "add767ca5e9511e1db0a69091d51b1d0b2078c874d59ee3a58c4748b5d9014a4",
+        "matches": true,
+        "sha256": "add767ca5e9511e1db0a69091d51b1d0b2078c874d59ee3a58c4748b5d9014a4"
+      },
+      "transformers/models/qwen3_vl/video_processing_qwen3_vl.py": {
+        "expected_sha256": "36f6aa5a541172e7e97c904c07bcf233b68eb7d4ff5a0ac71072c1f657a8c7cc",
+        "matches": true,
+        "sha256": "36f6aa5a541172e7e97c904c07bcf233b68eb7d4ff5a0ac71072c1f657a8c7cc"
+      },
+      "transformers/processing_utils.py": {
+        "expected_sha256": "d49b92aba8a755e6d93928a5fec94950004a5bc53a48746f9b83dd04cb7edacd",
+        "matches": true,
+        "sha256": "d49b92aba8a755e6d93928a5fec94950004a5bc53a48746f9b83dd04cb7edacd"
+      }
+    },
+    "workspace_lock": {
+      "path": "uv.lock",
+      "sha256": "a674d99301676ce58f86f0cd55910eac12ed8578413efe61a1f19be2614340e4"
+    }
+  },
+  "schema": {
+    "id": "qwen-mm-golden-v1",
+    "path": "reference/goldens/schema-v1.json",
+    "sha256": "03e493ca94b1c75fa1f191aa128997a037ce2ad99a31cda18dc4474a4e397c28"
+  },
+  "schema_version": 1,
+  "stages": {
+    "expanded_prompts": [
+      {
+        "bytes": 140,
+        "sha256": "454f9714a4589464b199d763e267dbed926475699ffbf50793732083ff491d4e",
+        "text": "<|im_start|>system\nYou are a concise visual assistant.<|im_end|>\n<|im_start|>user\nReply with exactly: ready<|im_end|>\n<|im_start|>assistant\n",
+        "utf8_base64": "PHxpbV9zdGFydHw+c3lzdGVtCllvdSBhcmUgYSBjb25jaXNlIHZpc3VhbCBhc3Npc3RhbnQuPHxpbV9lbmR8Pgo8fGltX3N0YXJ0fD51c2VyClJlcGx5IHdpdGggZXhhY3RseTogcmVhZHk8fGltX2VuZHw+Cjx8aW1fc3RhcnR8PmFzc2lzdGFudAo="
+      }
+    ],
+    "prepared_media": {
+      "images": [],
+      "videos": []
+    },
+    "rendered_prompts": [
+      {
+        "bytes": 140,
+        "sha256": "454f9714a4589464b199d763e267dbed926475699ffbf50793732083ff491d4e",
+        "text": "<|im_start|>system\nYou are a concise visual assistant.<|im_end|>\n<|im_start|>user\nReply with exactly: ready<|im_end|>\n<|im_start|>assistant\n",
+        "utf8_base64": "PHxpbV9zdGFydHw+c3lzdGVtCllvdSBhcmUgYSBjb25jaXNlIHZpc3VhbCBhc3Npc3RhbnQuPHxpbV9lbmR8Pgo8fGltX3N0YXJ0fD51c2VyClJlcGx5IHdpdGggZXhhY3RseTogcmVhZHk8fGltX2VuZHw+Cjx8aW1fc3RhcnR8PmFzc2lzdGFudAo="
+      }
+    ],
+    "replacement_offsets": [
+      []
+    ],
+    "video_kwargs": {
+      "do_sample_frames": false
+    },
+    "video_metadata": null
+  },
+  "status": "success",
+  "storage_policy": {
+    "inline_max_bytes": 1048576,
+    "large_array_default": "signature_only"
+  }
+}

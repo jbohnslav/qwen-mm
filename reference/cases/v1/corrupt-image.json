@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "case_id": "corrupt-image",
+  "expected_error": {
+    "category": "media_decode",
+    "stage": "bind_media"
+  },
+  "requests": [
+    {
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "image",
+              "image": {
+                "path": "reference/cases/v1/assets/not-an-image.bin"
+              }
+            },
+            {
+              "type": "text",
+              "text": "Describe this image."
+            }
+          ]
+        }
+      ],
+      "options": {
+        "add_generation_prompt": true
+      }
+    }
+  ]
+}

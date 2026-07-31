@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "case_id": "multimodal-smoke",
+  "requests": [
+    {
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "image",
+              "image": {
+                "path": "fixtures/baseline/image24/image-00.jpg"
+              },
+              "resized_height": 64,
+              "resized_width": 64
+            },
+            {
+              "type": "text",
+              "text": "Compare this image with the following two-frame video."
+            },
+            {
+              "type": "video",
+              "video": {
+                "frames": [
+                  {
+                    "path": "fixtures/baseline/image24/image-01.jpg"
+                  },
+                  {
+                    "path": "fixtures/baseline/image24/image-02.jpg"
+                  }
+                ]
+              },
+              "raw_fps": 30.0,
+              "resized_height": 64,
+              "resized_width": 64,
+              "sample_fps": 2.0
+            }
+          ]
+        }
+      ],
+      "options": {
+        "add_generation_prompt": true,
+        "add_vision_id": true
+      }
+    }
+  ]
+}
