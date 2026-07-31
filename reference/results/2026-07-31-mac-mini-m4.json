@@ -1,0 +1,1029 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-31T17:45:20.950685+00:00",
+  "boundary": "in-memory encoded JPEG bytes and messages to materialized CPU NumPy arrays",
+  "excluded": [
+    "network",
+    "filesystem reads",
+    "imports",
+    "processor initialization",
+    "model weights",
+    "model execution",
+    "GPU transfer",
+    "output hashing"
+  ],
+  "environment": {
+    "machine": {
+      "machine_name": "Mac mini",
+      "machine_model": "Mac16,10",
+      "chip": "Apple M4",
+      "cores": "proc 10:4:6:0",
+      "memory": "24 GB",
+      "os_version": "macOS 26.5.2 (25F84)",
+      "kernel_version": "Darwin 25.5.0",
+      "system": "Darwin",
+      "release": "25.5.0",
+      "architecture": "arm64",
+      "logical_cpu_count": 10
+    },
+    "python": {
+      "version": "3.11.15",
+      "implementation": "CPython"
+    },
+    "packages": {
+      "transformers": "5.14.1",
+      "tokenizers": "0.22.2",
+      "qwen-vl-utils": "0.0.14",
+      "Pillow": "12.3.0",
+      "numpy": "2.4.6",
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "av": "18.0.0"
+    },
+    "threads": {
+      "torch_num_threads": 4,
+      "torch_num_interop_threads": 10,
+      "environment": {
+        "OMP_NUM_THREADS": null,
+        "MKL_NUM_THREADS": null,
+        "OPENBLAS_NUM_THREADS": null,
+        "VECLIB_MAXIMUM_THREADS": null
+      }
+    }
+  },
+  "fixture": {
+    "manifest": "fixtures/baseline/manifest.json",
+    "manifest_sha256": "81cce48b507c0d717c22ec8c26aa88d359e3ddb6245451891fe001709323c316",
+    "count": 24,
+    "width": 1023,
+    "height": 767
+  },
+  "models": {
+    "qwen3-vl-8b": {
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+      "processor_class": "Qwen3VLProcessor",
+      "image_processor_class": "Qwen2VLImageProcessor",
+      "image_processor_backend": "torchvision",
+      "image_patch_size": 16,
+      "artifacts": {
+        "chat_template.json": {
+          "available": true,
+          "bytes": 5499,
+          "sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce"
+        },
+        "chat_template.jinja": {
+          "available": false,
+          "error": "RemoteEntryNotFoundError"
+        },
+        "config.json": {
+          "available": true,
+          "bytes": 1474,
+          "sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661"
+        },
+        "merges.txt": {
+          "available": true,
+          "bytes": 1671839,
+          "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+        },
+        "preprocessor_config.json": {
+          "available": true,
+          "bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        "tokenizer.json": {
+          "available": true,
+          "bytes": 7032403,
+          "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
+        },
+        "tokenizer_config.json": {
+          "available": true,
+          "bytes": 10868,
+          "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+        },
+        "video_preprocessor_config.json": {
+          "available": true,
+          "bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        "vocab.json": {
+          "available": true,
+          "bytes": 2776833,
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+        }
+      },
+      "cases": {
+        "image1": {
+          "image_count": 1,
+          "input_bytes": 266718,
+          "warmups": 3,
+          "iterations": 10,
+          "timing": {
+            "bind": {
+              "min_ms": 0.044,
+              "median_ms": 0.046,
+              "p90_ms": 0.047,
+              "max_ms": 0.049
+            },
+            "chat_template": {
+              "min_ms": 0.048,
+              "median_ms": 0.052,
+              "p90_ms": 0.057,
+              "max_ms": 0.06
+            },
+            "process_vision_info": {
+              "min_ms": 5.826,
+              "median_ms": 5.835,
+              "p90_ms": 5.857,
+              "max_ms": 5.88
+            },
+            "hf_processor": {
+              "min_ms": 3.006,
+              "median_ms": 3.085,
+              "p90_ms": 3.167,
+              "max_ms": 3.308
+            },
+            "total": {
+              "min_ms": 8.948,
+              "median_ms": 9.025,
+              "p90_ms": 9.146,
+              "max_ms": 9.239
+            }
+          },
+          "samples_ms": [
+            {
+              "bind": 0.045,
+              "chat_template": 0.06,
+              "process_vision_info": 5.88,
+              "hf_processor": 3.151,
+              "total": 9.136
+            },
+            {
+              "bind": 0.046,
+              "chat_template": 0.056,
+              "process_vision_info": 5.834,
+              "hf_processor": 3.085,
+              "total": 9.022
+            },
+            {
+              "bind": 0.049,
+              "chat_template": 0.056,
+              "process_vision_info": 5.833,
+              "hf_processor": 3.096,
+              "total": 9.035
+            },
+            {
+              "bind": 0.047,
+              "chat_template": 0.053,
+              "process_vision_info": 5.855,
+              "hf_processor": 3.086,
+              "total": 9.041
+            },
+            {
+              "bind": 0.046,
+              "chat_template": 0.056,
+              "process_vision_info": 5.835,
+              "hf_processor": 3.084,
+              "total": 9.021
+            },
+            {
+              "bind": 0.045,
+              "chat_template": 0.051,
+              "process_vision_info": 5.835,
+              "hf_processor": 3.308,
+              "total": 9.239
+            },
+            {
+              "bind": 0.046,
+              "chat_template": 0.05,
+              "process_vision_info": 5.83,
+              "hf_processor": 3.101,
+              "total": 9.028
+            },
+            {
+              "bind": 0.044,
+              "chat_template": 0.048,
+              "process_vision_info": 5.826,
+              "hf_processor": 3.057,
+              "total": 8.976
+            },
+            {
+              "bind": 0.046,
+              "chat_template": 0.051,
+              "process_vision_info": 5.846,
+              "hf_processor": 3.006,
+              "total": 8.948
+            },
+            {
+              "bind": 0.044,
+              "chat_template": 0.048,
+              "process_vision_info": 5.847,
+              "hf_processor": 3.022,
+              "total": 8.96
+            }
+          ],
+          "output": {
+            "input_ids": {
+              "shape": [
+                1,
+                783
+              ],
+              "dtype": "int64",
+              "nbytes": 6264,
+              "sha256": "53585728feab8057cbffc9edf038a5d9fc59239b3cf48ddbc7ded70905b34bb7"
+            },
+            "attention_mask": {
+              "shape": [
+                1,
+                783
+              ],
+              "dtype": "int64",
+              "nbytes": 6264,
+              "sha256": "c3c115ed29739de6ed8203b0fb546a9d9a6c5747ac26e5fce3b92ca8a2b01511"
+            },
+            "pixel_values": {
+              "shape": [
+                3072,
+                1536
+              ],
+              "dtype": "float32",
+              "nbytes": 18874368,
+              "sha256": "eb9416d4a215de47b0df70868a25658a792b34408c65c92982acfd4658e9d3aa"
+            },
+            "image_grid_thw": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "int64",
+              "nbytes": 24,
+              "sha256": "9d9003f774ca20a25e1e8c5bc4d6a3d8db8d26a2e642b312df72d0b5e2a693ee"
+            },
+            "token_count": 783,
+            "image_grid_thw_values": [
+              [
+                1,
+                48,
+                64
+              ]
+            ]
+          }
+        },
+        "image24": {
+          "image_count": 24,
+          "input_bytes": 6376486,
+          "warmups": 3,
+          "iterations": 10,
+          "timing": {
+            "bind": {
+              "min_ms": 0.247,
+              "median_ms": 0.25,
+              "p90_ms": 0.255,
+              "max_ms": 0.256
+            },
+            "chat_template": {
+              "min_ms": 0.094,
+              "median_ms": 0.096,
+              "p90_ms": 0.098,
+              "max_ms": 0.098
+            },
+            "process_vision_info": {
+              "min_ms": 141.681,
+              "median_ms": 142.377,
+              "p90_ms": 143.358,
+              "max_ms": 144.047
+            },
+            "hf_processor": {
+              "min_ms": 74.266,
+              "median_ms": 79.356,
+              "p90_ms": 79.632,
+              "max_ms": 79.948
+            },
+            "total": {
+              "min_ms": 216.295,
+              "median_ms": 221.969,
+              "p90_ms": 223.244,
+              "max_ms": 223.405
+            }
+          },
+          "samples_ms": [
+            {
+              "bind": 0.249,
+              "chat_template": 0.096,
+              "process_vision_info": 142.004,
+              "hf_processor": 78.989,
+              "total": 221.338
+            },
+            {
+              "bind": 0.249,
+              "chat_template": 0.098,
+              "process_vision_info": 141.681,
+              "hf_processor": 74.266,
+              "total": 216.295
+            },
+            {
+              "bind": 0.247,
+              "chat_template": 0.095,
+              "process_vision_info": 142.825,
+              "hf_processor": 79.948,
+              "total": 223.115
+            },
+            {
+              "bind": 0.254,
+              "chat_template": 0.096,
+              "process_vision_info": 144.047,
+              "hf_processor": 79.007,
+              "total": 223.405
+            },
+            {
+              "bind": 0.256,
+              "chat_template": 0.097,
+              "process_vision_info": 142.486,
+              "hf_processor": 79.154,
+              "total": 221.993
+            },
+            {
+              "bind": 0.253,
+              "chat_template": 0.096,
+              "process_vision_info": 142.034,
+              "hf_processor": 79.38,
+              "total": 221.764
+            },
+            {
+              "bind": 0.249,
+              "chat_template": 0.097,
+              "process_vision_info": 142.268,
+              "hf_processor": 79.331,
+              "total": 221.945
+            },
+            {
+              "bind": 0.252,
+              "chat_template": 0.098,
+              "process_vision_info": 142.595,
+              "hf_processor": 79.435,
+              "total": 222.38
+            },
+            {
+              "bind": 0.251,
+              "chat_template": 0.097,
+              "process_vision_info": 143.281,
+              "hf_processor": 79.597,
+              "total": 223.226
+            },
+            {
+              "bind": 0.25,
+              "chat_template": 0.094,
+              "process_vision_info": 142.061,
+              "hf_processor": 79.43,
+              "total": 221.834
+            }
+          ],
+          "output": {
+            "input_ids": {
+              "shape": [
+                1,
+                18493
+              ],
+              "dtype": "int64",
+              "nbytes": 147944,
+              "sha256": "d931e9233adc05161d6a5513234359a4c8f225d73c483e5473c680dbdfda7d8f"
+            },
+            "attention_mask": {
+              "shape": [
+                1,
+                18493
+              ],
+              "dtype": "int64",
+              "nbytes": 147944,
+              "sha256": "88e6c74ca3fbd41c7457251a184439ade3f7d76ca2a452a67551567b5cb0a045"
+            },
+            "pixel_values": {
+              "shape": [
+                73728,
+                1536
+              ],
+              "dtype": "float32",
+              "nbytes": 452984832,
+              "sha256": "45fa4c11aae23e8166bb35ae8a798ad221aea05bab1177317b3e3ecab819be8a"
+            },
+            "image_grid_thw": {
+              "shape": [
+                24,
+                3
+              ],
+              "dtype": "int64",
+              "nbytes": 576,
+              "sha256": "df3ae4ae29033a4cc3ee829fddf97992e5134c2b75e4592bf1c50661b55ed869"
+            },
+            "token_count": 18493,
+            "image_grid_thw_values": [
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "qwen3.5-9b": {
+      "model_id": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "processor_class": "Qwen3VLProcessor",
+      "image_processor_class": "Qwen2VLImageProcessor",
+      "image_processor_backend": "torchvision",
+      "image_patch_size": 16,
+      "artifacts": {
+        "chat_template.json": {
+          "available": false,
+          "error": "RemoteEntryNotFoundError"
+        },
+        "chat_template.jinja": {
+          "available": true,
+          "bytes": 7756,
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+        },
+        "config.json": {
+          "available": true,
+          "bytes": 3126,
+          "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+        },
+        "merges.txt": {
+          "available": true,
+          "bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+        },
+        "preprocessor_config.json": {
+          "available": true,
+          "bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        "tokenizer.json": {
+          "available": true,
+          "bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        },
+        "tokenizer_config.json": {
+          "available": true,
+          "bytes": 16710,
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+        },
+        "video_preprocessor_config.json": {
+          "available": true,
+          "bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        "vocab.json": {
+          "available": true,
+          "bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+        }
+      },
+      "cases": {
+        "image1": {
+          "image_count": 1,
+          "input_bytes": 266718,
+          "warmups": 3,
+          "iterations": 10,
+          "timing": {
+            "bind": {
+              "min_ms": 0.04,
+              "median_ms": 0.041,
+              "p90_ms": 0.044,
+              "max_ms": 0.044
+            },
+            "chat_template": {
+              "min_ms": 0.072,
+              "median_ms": 0.074,
+              "p90_ms": 0.077,
+              "max_ms": 0.078
+            },
+            "process_vision_info": {
+              "min_ms": 5.84,
+              "median_ms": 5.871,
+              "p90_ms": 5.881,
+              "max_ms": 5.884
+            },
+            "hf_processor": {
+              "min_ms": 2.97,
+              "median_ms": 2.995,
+              "p90_ms": 3.121,
+              "max_ms": 3.342
+            },
+            "total": {
+              "min_ms": 8.942,
+              "median_ms": 8.978,
+              "p90_ms": 9.1,
+              "max_ms": 9.332
+            }
+          },
+          "samples_ms": [
+            {
+              "bind": 0.041,
+              "chat_template": 0.076,
+              "process_vision_info": 5.851,
+              "hf_processor": 2.973,
+              "total": 8.942
+            },
+            {
+              "bind": 0.044,
+              "chat_template": 0.078,
+              "process_vision_info": 5.876,
+              "hf_processor": 2.981,
+              "total": 8.98
+            },
+            {
+              "bind": 0.04,
+              "chat_template": 0.074,
+              "process_vision_info": 5.854,
+              "hf_processor": 2.991,
+              "total": 8.96
+            },
+            {
+              "bind": 0.042,
+              "chat_template": 0.072,
+              "process_vision_info": 5.84,
+              "hf_processor": 3.02,
+              "total": 8.973
+            },
+            {
+              "bind": 0.042,
+              "chat_template": 0.077,
+              "process_vision_info": 5.88,
+              "hf_processor": 2.994,
+              "total": 8.994
+            },
+            {
+              "bind": 0.04,
+              "chat_template": 0.074,
+              "process_vision_info": 5.866,
+              "hf_processor": 2.997,
+              "total": 8.977
+            },
+            {
+              "bind": 0.044,
+              "chat_template": 0.077,
+              "process_vision_info": 5.879,
+              "hf_processor": 3.018,
+              "total": 9.018
+            },
+            {
+              "bind": 0.041,
+              "chat_template": 0.074,
+              "process_vision_info": 5.884,
+              "hf_processor": 2.97,
+              "total": 8.97
+            },
+            {
+              "bind": 0.042,
+              "chat_template": 0.073,
+              "process_vision_info": 5.876,
+              "hf_processor": 3.342,
+              "total": 9.332
+            },
+            {
+              "bind": 0.041,
+              "chat_template": 0.072,
+              "process_vision_info": 5.865,
+              "hf_processor": 3.097,
+              "total": 9.074
+            }
+          ],
+          "output": {
+            "input_ids": {
+              "shape": [
+                1,
+                785
+              ],
+              "dtype": "int64",
+              "nbytes": 6280,
+              "sha256": "7ab743336f1785aaf81453f5ded504e29f4eb78ec9f3d1291a8fee751a12742b"
+            },
+            "attention_mask": {
+              "shape": [
+                1,
+                785
+              ],
+              "dtype": "int64",
+              "nbytes": 6280,
+              "sha256": "662f61254e4c964987bb9464a7b7d93e66d7f08ca0516485f5ea691d25475855"
+            },
+            "pixel_values": {
+              "shape": [
+                3072,
+                1536
+              ],
+              "dtype": "float32",
+              "nbytes": 18874368,
+              "sha256": "eb9416d4a215de47b0df70868a25658a792b34408c65c92982acfd4658e9d3aa"
+            },
+            "image_grid_thw": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "int64",
+              "nbytes": 24,
+              "sha256": "9d9003f774ca20a25e1e8c5bc4d6a3d8db8d26a2e642b312df72d0b5e2a693ee"
+            },
+            "token_count": 785,
+            "image_grid_thw_values": [
+              [
+                1,
+                48,
+                64
+              ]
+            ]
+          }
+        },
+        "image24": {
+          "image_count": 24,
+          "input_bytes": 6376486,
+          "warmups": 3,
+          "iterations": 10,
+          "timing": {
+            "bind": {
+              "min_ms": 0.24,
+              "median_ms": 0.248,
+              "p90_ms": 0.253,
+              "max_ms": 0.255
+            },
+            "chat_template": {
+              "min_ms": 0.119,
+              "median_ms": 0.122,
+              "p90_ms": 0.123,
+              "max_ms": 0.124
+            },
+            "process_vision_info": {
+              "min_ms": 142.251,
+              "median_ms": 142.731,
+              "p90_ms": 144.581,
+              "max_ms": 144.591
+            },
+            "hf_processor": {
+              "min_ms": 74.401,
+              "median_ms": 79.687,
+              "p90_ms": 79.986,
+              "max_ms": 80.542
+            },
+            "total": {
+              "min_ms": 217.018,
+              "median_ms": 223.082,
+              "p90_ms": 224.719,
+              "max_ms": 224.868
+            }
+          },
+          "samples_ms": [
+            {
+              "bind": 0.248,
+              "chat_template": 0.122,
+              "process_vision_info": 144.575,
+              "hf_processor": 79.758,
+              "total": 224.703
+            },
+            {
+              "bind": 0.244,
+              "chat_template": 0.123,
+              "process_vision_info": 142.251,
+              "hf_processor": 74.401,
+              "total": 217.018
+            },
+            {
+              "bind": 0.252,
+              "chat_template": 0.123,
+              "process_vision_info": 142.778,
+              "hf_processor": 79.924,
+              "total": 223.077
+            },
+            {
+              "bind": 0.255,
+              "chat_template": 0.121,
+              "process_vision_info": 142.645,
+              "hf_processor": 79.321,
+              "total": 222.342
+            },
+            {
+              "bind": 0.249,
+              "chat_template": 0.124,
+              "process_vision_info": 143.099,
+              "hf_processor": 79.615,
+              "total": 223.087
+            },
+            {
+              "bind": 0.253,
+              "chat_template": 0.122,
+              "process_vision_info": 144.591,
+              "hf_processor": 79.902,
+              "total": 224.868
+            },
+            {
+              "bind": 0.247,
+              "chat_template": 0.119,
+              "process_vision_info": 142.684,
+              "hf_processor": 79.369,
+              "total": 222.419
+            },
+            {
+              "bind": 0.245,
+              "chat_template": 0.121,
+              "process_vision_info": 142.549,
+              "hf_processor": 80.542,
+              "total": 223.458
+            },
+            {
+              "bind": 0.247,
+              "chat_template": 0.122,
+              "process_vision_info": 144.58,
+              "hf_processor": 79.361,
+              "total": 224.31
+            },
+            {
+              "bind": 0.24,
+              "chat_template": 0.122,
+              "process_vision_info": 142.594,
+              "hf_processor": 79.89,
+              "total": 222.846
+            }
+          ],
+          "output": {
+            "input_ids": {
+              "shape": [
+                1,
+                18495
+              ],
+              "dtype": "int64",
+              "nbytes": 147960,
+              "sha256": "dc3503dab27588e1bb03a61f9ed1eccc08637d944f0d9fa97308417658dc98d4"
+            },
+            "attention_mask": {
+              "shape": [
+                1,
+                18495
+              ],
+              "dtype": "int64",
+              "nbytes": 147960,
+              "sha256": "2139aaa254e96816eee65c0083e81a237369c1621dd5f41f7978d3b357448a7a"
+            },
+            "pixel_values": {
+              "shape": [
+                73728,
+                1536
+              ],
+              "dtype": "float32",
+              "nbytes": 452984832,
+              "sha256": "45fa4c11aae23e8166bb35ae8a798ad221aea05bab1177317b3e3ecab819be8a"
+            },
+            "image_grid_thw": {
+              "shape": [
+                24,
+                3
+              ],
+              "dtype": "int64",
+              "nbytes": 576,
+              "sha256": "df3ae4ae29033a4cc3ee829fddf97992e5134c2b75e4592bf1c50661b55ed869"
+            },
+            "token_count": 18495,
+            "image_grid_thw_values": [
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ],
+              [
+                1,
+                48,
+                64
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+.kd/
+.DS_Store
+.venv/
+reference/.venv/
+reference/.cache/
+reference/results/smoke*.json
+__pycache__/
+*.py[cod]
