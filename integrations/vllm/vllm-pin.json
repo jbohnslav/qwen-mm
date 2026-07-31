@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "vllm": {
+    "version": "0.23.0",
+    "git_tag": "v0.23.0",
+    "git_commit": "0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665",
+    "repository": "https://github.com/vllm-project/vllm"
+  },
+  "prototype_environment": {
+    "platform": "macOS arm64 empty-device development build",
+    "python": "3.11.15",
+    "torch": "2.11.0",
+    "transformers": "5.14.1",
+    "VLLM_TARGET_DEVICE": "empty"
+  },
+  "production_canary_environment": {
+    "platform": "Linux x86_64",
+    "accelerator": "NVIDIA H100 80 GB",
+    "python": "3.11",
+    "torch": "2.11.0",
+    "transformers": "5.14.1",
+    "vllm_git_commit": "0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665"
+  },
+  "source_sha256": {
+    "vllm/model_executor/models/qwen3_vl.py": "2935e09be47a893f09176cddb1beb6ed2e73666459de2bfbb08aca50b3e08969",
+    "vllm/model_executor/models/qwen3_5.py": "04f3de5372973770d71c5c05f2e8a5e221ec52b62cca7a1e302d9201b61b8adc",
+    "vllm/multimodal/parse.py": "2714a37e8340838f141813adb618df76cbeb96174f7e61a3578a765e67ae3540",
+    "vllm/multimodal/inputs.py": "a8d2864466d7970e58f23c6e464dfddfe73945d2ddff4b83b607b8d6d172b487",
+    "vllm/multimodal/cache.py": "441c27bd84e4273feaef51f11f1f9f7e157c7c4b4a90310fd86e44ad1c896c6b",
+    "vllm/multimodal/encoder_budget.py": "76aaf25bb8755f7232c5f89cd15173a2bb08d8cdaaaa10797199a49448a5b49b",
+    "vllm/multimodal/registry.py": "d4627c89d3459ce35a729e0940a0c5be5b54793b40192c1c068416b57a0a82fd",
+    "vllm/multimodal/processing/processor.py": "deda51d93d244c0782e0f5d4f4d3ec75b0c986d0d7580fb31bbefa1fc6e52f06",
+    "vllm/multimodal/processing/inputs.py": "85de6ef9d6240d80bdac237a3fb1be5243963e57dbbcc33d7606dc731ff6ed33",
+    "vllm/renderers/base.py": "7213ffb05a468340f18967dc17c3b07886936110c87ecf36a7cbfbb83e29eef7",
+    "vllm/plugins/__init__.py": "4be66190ceaee9d0465f62ade801a8e94a907d7ab9fdb0a67fa14ce87448ae9f",
+    "vllm/v1/engine/input_processor.py": "c5673988c0f7cfec268220e3f044e718702c015a4f236c020937cfd40a793f15",
+    "vllm/v1/engine/async_llm.py": "2128cf018fe136b698c5e89dc7325bc6dced9d516cc9d772695f044716970b64"
+  }
+}
