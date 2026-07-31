@@ -1,40 +1,42 @@
 .PHONY: check core-check format hooks lint pre-commit-check rust-check sync reference-smoke wheel-smoke
 
-PYO3_PYTHON ?= $(shell uv python find)
+CARGO_CMD ?= ./scripts/cargo.sh
+UV_CMD ?= ./scripts/with-cargo.sh uv
+PYO3_PYTHON ?= $(shell $(UV_CMD) python find)
 
 check: lint rust-check reference-smoke wheel-smoke
 
 sync:
-	uv sync --locked --all-packages
+	$(UV_CMD) sync --locked --all-packages
 
 hooks:
-	uv run --locked pre-commit install
+	$(UV_CMD) run --locked pre-commit install
 
 lint:
-	uv run --locked ruff check .
-	uv run --locked ruff format --check .
+	$(UV_CMD) run --locked ruff check .
+	$(UV_CMD) run --locked ruff format --check .
 
 format:
-	uv run --locked ruff check --fix .
-	uv run --locked ruff format .
-	cargo fmt --all
+	$(UV_CMD) run --locked ruff check --fix .
+	$(UV_CMD) run --locked ruff format .
+	$(CARGO_CMD) fmt --all
 
 pre-commit-check:
-	uv run --locked pre-commit run --all-files
+	$(UV_CMD) run --locked pre-commit run --all-files
 
 rust-check:
-	cargo fmt --all -- --check
-	PYO3_PYTHON="$(PYO3_PYTHON)" cargo clippy --workspace --all-targets --locked -- -D warnings
-	PYO3_PYTHON="$(PYO3_PYTHON)" cargo test --workspace --all-targets --locked
-	PYO3_PYTHON="$(PYO3_PYTHON)" cargo test --workspace --doc --locked
+	$(CARGO_CMD) fmt --all -- --check
+	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) clippy --workspace --all-targets --locked -- -D warnings
+	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --all-targets --locked
+	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --doc --locked
 	$(MAKE) core-check
 
 core-check:
-	cargo build --package qwen-mm-core --locked --offline
+	$(CARGO_CMD) build --package qwen-mm-core --locked --offline
 
 reference-smoke:
-	uv sync --locked --inexact --package qwen-mm-reference
-	uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
+	$(UV_CMD) sync --locked --inexact --package qwen-mm-reference
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh

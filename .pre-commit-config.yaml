@@ -6,25 +6,25 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: uv run --locked ruff check --fix
+        entry: ./scripts/with-cargo.sh uv run --locked ruff check --fix
         language: system
         types_or: [python, pyi]
         require_serial: true
       - id: ruff-format
         name: ruff format
-        entry: uv run --locked ruff format
+        entry: ./scripts/with-cargo.sh uv run --locked ruff format
         language: system
         types_or: [python, pyi]
         require_serial: true
       - id: cargo-fmt
         name: cargo fmt
-        entry: cargo fmt --all
+        entry: ./scripts/cargo.sh fmt --all
         language: system
-        files: '(^Cargo\.toml$|^rust-toolchain\.toml$|\.rs$)'
+        files: '(^Cargo\.toml$|^rust-toolchain\.toml$|^scripts/(cargo|with-cargo)\.sh$|\.rs$)'
         pass_filenames: false
       - id: uv-lock
         name: uv lock
-        entry: uv lock --check
+        entry: ./scripts/with-cargo.sh uv lock --check
         language: system
-        files: '(^|/)(pyproject\.toml|uv\.lock)$'
+        files: '(^|/)(pyproject\.toml|uv\.lock)$|^scripts/(cargo|with-cargo)\.sh$'
         pass_filenames: false

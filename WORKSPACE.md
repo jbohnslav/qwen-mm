@@ -51,6 +51,13 @@ depend on a separately installed `pip`, virtualenv, or `uvx` tool.
 Cargo remains authoritative for Rust. Its first command installs the exact
 toolchain declared in `rust-toolchain.toml` when rustup is available, and Cargo
 uses the committed `Cargo.lock`; the final core build is explicitly offline.
+Repository commands call `scripts/cargo.sh`, which first uses Cargo from
+`PATH`, then falls back to rustup's conventional `$CARGO_HOME/bin/cargo` or
+`$HOME/.cargo/bin/cargo`. If Cargo is not installed, it prints the rustup setup
+requirement instead of failing with an opaque shell error. Commands that invoke
+uv use `scripts/with-cargo.sh` to export that resolved directory on `PATH`, so
+Maturin can launch Cargo internally even before a newly installed rustup path
+has been loaded into the calling shell.
 Workspace tests resolve the root uv-managed interpreter and pass it to PyO3, so
 they do not accidentally bind to an older system Python. Set `PYO3_PYTHON` to an
 explicit Python 3.11 executable only to override that discovery in a custom
