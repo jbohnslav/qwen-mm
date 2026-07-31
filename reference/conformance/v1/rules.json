@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "oracle": "qwen-vl-utils==0.0.14",
+  "rules": [
+    {"id": "round-half-0-even", "kind": "round_by_factor", "input": {"number": 16, "factor": 32}, "expected": 0, "tags": ["geometry.factor32_half_tie"]},
+    {"id": "round-half-2-even", "kind": "round_by_factor", "input": {"number": 48, "factor": 32}, "expected": 64, "tags": ["geometry.factor32_half_tie"]},
+    {"id": "round-half-2-even-down", "kind": "round_by_factor", "input": {"number": 80, "factor": 32}, "expected": 64, "tags": ["geometry.factor32_half_tie"]},
+    {"id": "round-half-4-even", "kind": "round_by_factor", "input": {"number": 112, "factor": 32}, "expected": 128, "tags": ["geometry.factor32_half_tie"]},
+    {"id": "resize-default-min-below", "kind": "smart_resize", "input": {"height": 31, "width": 31, "factor": 32}, "expected": [64, 64], "tags": ["geometry.min_pixel_transition"]},
+    {"id": "resize-default-min-edge", "kind": "smart_resize", "input": {"height": 63, "width": 63, "factor": 32}, "expected": [64, 64], "tags": ["geometry.min_pixel_transition"]},
+    {"id": "resize-explicit-min", "kind": "smart_resize", "input": {"height": 20, "width": 20, "factor": 32, "min_pixels": 4096}, "expected": [64, 64], "tags": ["geometry.min_pixel_transition"]},
+    {"id": "resize-explicit-max", "kind": "smart_resize", "input": {"height": 2000, "width": 2000, "factor": 32, "max_pixels": 4096}, "expected": [64, 64], "tags": ["geometry.max_pixel_transition"]},
+    {"id": "resize-exact-budget", "kind": "smart_resize", "input": {"height": 64, "width": 96, "factor": 32, "min_pixels": 6144, "max_pixels": 6144}, "expected": [64, 96], "tags": ["geometry.min_pixel_transition", "geometry.max_pixel_transition"]},
+    {"id": "aspect-ratio-200", "kind": "smart_resize", "input": {"height": 100, "width": 20000, "factor": 32}, "expected": [96, 20000], "tags": ["geometry.aspect_ratio_limit"]},
+    {"id": "aspect-ratio-over-200", "kind": "smart_resize", "input": {"height": 100, "width": 20001, "factor": 32}, "expected_error": {"exception": "ValueError", "category": "media_geometry"}, "tags": ["geometry.aspect_ratio_limit", "errors.media_geometry"]},
+    {"id": "explicit-dimensions-paired", "kind": "explicit_dimensions", "input": {"resized_height": 64, "resized_width": 96}, "expected": [64, 96], "tags": ["geometry.explicit_dimensions"]},
+    {"id": "explicit-dimensions-unpaired", "kind": "explicit_dimensions", "input": {"resized_height": 64}, "expected_error": {"exception": "ValueError", "category": "media_geometry"}, "tags": ["geometry.explicit_dimensions", "errors.media_geometry"]},
+    {"id": "nframes-half-up-to-even", "kind": "smart_nframes", "input": {"options": {"nframes": 3}, "total_frames": 10, "video_fps": 30.0}, "expected": 4, "tags": ["temporal.frame_count"]},
+    {"id": "nframes-half-down-to-even", "kind": "smart_nframes", "input": {"options": {"nframes": 5}, "total_frames": 10, "video_fps": 30.0}, "expected": 4, "tags": ["temporal.frame_count"]},
+    {"id": "fps-default-min", "kind": "smart_nframes", "input": {"options": {"fps": 2.0}, "total_frames": 30, "video_fps": 30.0}, "expected": 4, "tags": ["temporal.sampling"]},
+    {"id": "fps-clamped-max", "kind": "smart_nframes", "input": {"options": {"fps": 2.0, "min_frames": 4, "max_frames": 12}, "total_frames": 300, "video_fps": 30.0}, "expected": 12, "tags": ["temporal.sampling"]},
+    {"id": "fps-and-nframes-exclusive", "kind": "smart_nframes", "input": {"options": {"fps": 2.0, "nframes": 4}, "total_frames": 10, "video_fps": 30.0}, "expected_error": {"exception": "AssertionError", "category": "media_geometry"}, "tags": ["temporal.sampling", "errors.media_geometry"]},
+    {"id": "nframes-below-factor", "kind": "smart_nframes", "input": {"options": {"nframes": 1}, "total_frames": 10, "video_fps": 30.0}, "expected_error": {"exception": "ValueError", "category": "media_geometry"}, "tags": ["temporal.frame_count", "errors.media_geometry"]},
+    {"id": "sample-indices-five", "kind": "sample_indices", "input": {"total_frames": 11, "nframes": 5, "video_fps": 10.0}, "expected": {"indices": [0, 2, 5, 8, 10], "timestamps": [0.0, 0.2, 0.5, 0.8, 1.0]}, "tags": ["temporal.sampling", "temporal.timestamps"]},
+    {"id": "image-placeholder-count", "kind": "placeholder_count", "input": {"grid_thw": [1, 4, 6], "merge_size": 2}, "expected": 6, "tags": ["text.placeholder_count"]},
+    {"id": "video-placeholder-count", "kind": "placeholder_count", "input": {"grid_thw": [2, 4, 4], "merge_size": 2}, "expected": 8, "tags": ["text.placeholder_count", "temporal.frame_count"]},
+    {"id": "checked-product-largest", "kind": "checked_product_u64", "input": {"values": [4294967295, 4294967297]}, "expected": 18446744073709551615, "tags": ["errors.arithmetic_boundary"]},
+    {"id": "checked-product-overflow", "kind": "checked_product_u64", "input": {"values": [4294967296, 4294967296]}, "expected_error": {"exception": "OverflowError", "category": "arithmetic_overflow"}, "tags": ["errors.arithmetic_boundary", "errors.arithmetic_overflow"]}
+  ]
+}

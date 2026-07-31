@@ -4,6 +4,7 @@
 reference/.venv/
 reference/.cache/
 reference/results/smoke*.json
+reference/results/conformance-local/
 __pycache__/
 *.py[cod]
 target/

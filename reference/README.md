@@ -85,3 +85,24 @@ canonical manifest hash:
 uv run --locked --no-sync --package qwen-mm-reference \
   python -m qwen_mm_reference.golden validate reference/goldens/v1
 ```
+
+## Conformance corpus and comparator
+
+The versioned three-tier corpus, structured comparator, seeded live runner, and
+regression minimizer are documented in
+[`docs/conformance-v1.md`](../docs/conformance-v1.md). Run the fast committed
+gate with:
+
+```bash
+make conformance-smoke
+```
+
+This executes the compact pinned rules, validates that every required coverage
+tag remains represented, and checks all committed goldens and their cross-stage
+grid/patch/placeholder invariants. The full seeded matrix takes a candidate
+command and runs both pinned profiles against freshly exported oracle results:
+
+```bash
+make conformance-full \
+  CANDIDATE_COMMAND='qwen-mm-candidate --case {case} --profile {profile} --output {actual}'
+```

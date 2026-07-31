@@ -388,6 +388,11 @@ def _decode_image(source: Mapping[str, Any], record: dict[str, Any]) -> Image.Im
         "height": image.height,
         "exif_orientation": image.getexif().get(274),
     }
+    if image.format == "WEBP":
+        # VP8L is the lossless payload chunk, including inside an extended VP8X
+        # container. The comparator needs this distinction because A1 freezes
+        # exact prepared RGB for lossless WebP and a one-level bound for lossy.
+        record["source_properties"]["lossless"] = b"VP8L" in data
     return image
 
 

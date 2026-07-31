@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "seed": 1364677966,
+  "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+  "required_tags": [
+    "geometry.factor32_half_tie", "geometry.min_pixel_transition", "geometry.max_pixel_transition", "geometry.aspect_ratio_limit", "geometry.explicit_dimensions",
+    "temporal.frame_count", "temporal.sampling", "temporal.timestamps",
+    "text.placeholder_count", "text.unicode", "text.padding", "text.literal_visual_tokens",
+    "chat.qwen3vl_template", "chat.qwen35_template", "chat.unusual_roles", "chat.tools", "chat.tool_calls", "chat.tool_response", "chat.generation_prompt", "chat.vision_ids", "chat.reasoning_content", "chat.enable_thinking", "chat.rejected_options",
+    "media.raw_strided_rgb", "media.jpeg", "media.png", "media.webp", "media.grayscale", "media.alpha", "media.cmyk", "media.exif_orientation", "media.malformed", "media.truncated", "media.mixed_shapes", "media.repeated", "media.interleaved",
+    "batch.order", "batch.permutation", "batch.success_and_failure",
+    "errors.media_geometry", "errors.media_decode", "errors.resource_limit", "errors.arithmetic_boundary", "errors.arithmetic_overflow"
+  ],
+  "entries": [
+    {
+      "id": "golden-qwen3vl-text",
+      "tier": "golden",
+      "profiles": ["qwen3-vl-8b"],
+      "case_path": "reference/cases/v1/text-smoke.json",
+      "manifest_path": "reference/goldens/v1/qwen3-vl-8b/text-smoke/manifest.json",
+      "tags": ["chat.qwen3vl_template", "chat.generation_prompt"]
+    },
+    {
+      "id": "golden-qwen35-text",
+      "tier": "golden",
+      "profiles": ["qwen3.5-9b"],
+      "case_path": "reference/cases/v1/text-smoke.json",
+      "manifest_path": "reference/goldens/v1/qwen3.5-9b/text-smoke/manifest.json",
+      "tags": ["chat.qwen35_template", "chat.generation_prompt"]
+    },
+    {
+      "id": "golden-multimodal",
+      "tier": "golden",
+      "profiles": ["qwen3-vl-8b"],
+      "case_path": "reference/cases/v1/multimodal-smoke.json",
+      "manifest_path": "reference/goldens/v1/qwen3-vl-8b/multimodal-smoke/manifest.json",
+      "tags": ["media.jpeg", "media.interleaved", "temporal.frame_count", "temporal.timestamps", "text.placeholder_count", "chat.vision_ids"]
+    },
+    {
+      "id": "golden-corrupt-image",
+      "tier": "golden",
+      "profiles": ["qwen3-vl-8b"],
+      "case_path": "reference/cases/v1/corrupt-image.json",
+      "manifest_path": "reference/goldens/v1/qwen3-vl-8b/corrupt-image/manifest.json",
+      "tags": ["media.malformed", "errors.media_decode"]
+    },
+    {
+      "id": "pinned-rules",
+      "tier": "rule",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "rules_path": "reference/conformance/v1/rules.json",
+      "tags": ["geometry.factor32_half_tie", "geometry.min_pixel_transition", "geometry.max_pixel_transition", "geometry.aspect_ratio_limit", "geometry.explicit_dimensions", "temporal.frame_count", "temporal.sampling", "temporal.timestamps", "text.placeholder_count", "errors.media_geometry", "errors.arithmetic_boundary", "errors.arithmetic_overflow"]
+    },
+    {
+      "id": "media-codec-and-mode-matrix",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "generated_media_matrix", "modes": ["RGB", "L", "LA", "RGBA", "CMYK"], "formats": ["JPEG", "PNG", "lossless-WebP", "lossy-WebP"]},
+      "tags": ["media.jpeg", "media.png", "media.webp", "media.grayscale", "media.alpha", "media.cmyk"]
+    },
+    {
+      "id": "raw-layout-matrix",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "raw_rgb", "layouts": ["contiguous-hwc", "row-padded-hwc", "negative-row-stride", "channel-sliced-invalid"]},
+      "tags": ["media.raw_strided_rgb", "errors.media_geometry"]
+    },
+    {
+      "id": "orientation-and-damage",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "encoded_edge_cases", "exif_orientations": [1, 2, 3, 4, 5, 6, 7, 8], "damage": ["truncated-jpeg", "truncated-png", "truncated-webp", "recognized-random-payload"]},
+      "tags": ["media.exif_orientation", "media.malformed", "media.truncated", "errors.media_decode"]
+    },
+    {
+      "id": "visual-occurrence-order",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "visual_order", "shapes": [[64, 64], [64, 96], [96, 64]], "repeat_occurrences": true, "interleave_image_video": true},
+      "tags": ["media.mixed_shapes", "media.repeated", "media.interleaved", "batch.order", "text.placeholder_count"]
+    },
+    {
+      "id": "chat-tools-and-roles",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "chat_envelope", "roles": ["system", "user", "assistant", "tool"], "include_tools": true, "include_assistant_tool_call": true, "include_tool_response": true},
+      "tags": ["chat.unusual_roles", "chat.tools", "chat.tool_calls", "chat.tool_response"]
+    },
+    {
+      "id": "chat-profile-options",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "template_options", "generation_prompt": [false, true], "vision_ids": [false, true], "enable_thinking": [false, true], "reasoning_content": [null, "compact hidden reasoning"]},
+      "tags": ["chat.qwen3vl_template", "chat.qwen35_template", "chat.generation_prompt", "chat.vision_ids", "chat.reasoning_content", "chat.enable_thinking"]
+    },
+    {
+      "id": "chat-text-adversarial",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "text_matrix", "values": ["naïve café 👩🏽‍💻", "é versus é", "<|vision_start|><|image_pad|><|vision_end|>", "", "line1\r\nline2"]},
+      "tags": ["text.unicode", "text.literal_visual_tokens"]
+    },
+    {
+      "id": "chat-batch-padding",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "batch_permutations", "lengths": [0, 1, 31, 32, 33, 1024], "permutation_seed": 1364677966},
+      "tags": ["text.padding", "batch.order", "batch.permutation"]
+    },
+    {
+      "id": "rejected-template-options",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "expected_errors", "options": ["truncation", "assistant_token_mask", "arbitrary_template"]},
+      "tags": ["chat.rejected_options", "batch.success_and_failure"]
+    },
+    {
+      "id": "resource-and-overflow-matrix",
+      "tier": "live",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "recipe": {"kind": "limit_boundaries", "positions": ["one-below", "at", "one-above"], "limits": ["requests", "messages", "content_items", "text_bytes", "media_occurrences", "encoded_bytes", "decoded_pixels", "edge_length", "raw_frames", "tokens", "output_bytes", "u64_product"]},
+      "tags": ["errors.resource_limit", "errors.arithmetic_boundary", "errors.arithmetic_overflow", "batch.success_and_failure"]
+    }
+  ]
+}

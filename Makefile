@@ -1,8 +1,11 @@
-.PHONY: check core-check format hooks lint pre-commit-check rust-check sync reference-smoke wheel-smoke
+.PHONY: check conformance-full conformance-smoke core-check format hooks lint pre-commit-check rust-check sync reference-smoke wheel-smoke
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
 PYO3_PYTHON ?= $(shell $(UV_CMD) python find)
+CONFORMANCE_SEED ?= 1364677966
+CONFORMANCE_CASES ?= 16
+CONFORMANCE_OUTPUT ?= reference/results/conformance-local
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -39,6 +42,15 @@ reference-smoke:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m unittest discover -s reference/tests
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.golden validate reference/goldens/v1
+	$(MAKE) conformance-smoke
+
+conformance-smoke:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.corpus validate
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.conformance check reference/goldens/v1
+
+conformance-full: conformance-smoke
+	$(if $(CANDIDATE_COMMAND),,$(error CANDIDATE_COMMAND is required; see docs/conformance-v1.md))
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.corpus matrix --seed $(CONFORMANCE_SEED) --count $(CONFORMANCE_CASES) --candidate-command '$(CANDIDATE_COMMAND)' --output-directory $(CONFORMANCE_OUTPUT)
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh
