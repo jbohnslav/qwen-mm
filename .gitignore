@@ -6,3 +6,8 @@ reference/.cache/
 reference/results/smoke*.json
 __pycache__/
 *.py[cod]
+target/
+dist/
+*.so
+*.pyd
+*.dylib

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin==1.14.1"]
+build-backend = "maturin"
+
+[project]
+name = "qwen-mm"
+version = "0.1.0"
+description = "Rust multimodal preprocessing for Qwen3-VL and Qwen3.5-VL"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.maturin]
+bindings = "pyo3"
+features = ["extension-module"]
+manifest-path = "Cargo.toml"
+module-name = "qwen_mm._native"
+python-source = "python"

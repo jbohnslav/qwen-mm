@@ -1,0 +1,10 @@
+[package]
+name = "qwen-mm-core"
+description = "Dependency-light core primitives for qwen-mm preprocessing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true

@@ -1,0 +1,22 @@
+[package]
+name = "qwen-mm-python"
+description = "PyO3 extension package for qwen-mm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "qwen_mm_native"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+extension-module = ["pyo3/extension-module"]
+
+[dependencies]
+pyo3.workspace = true
+qwen-mm-core.workspace = true
+
+[lints]
+workspace = true
