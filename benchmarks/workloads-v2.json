@@ -1,0 +1,186 @@
+{
+  "schema_version": 2,
+  "schema_id": "qwen-mm-benchmark-workload-v2",
+  "cases": [
+    {
+      "case_id": "text_short",
+      "boundary": "structured_messages_to_numpy",
+      "layout": "text",
+      "source": {"kind": "none"},
+      "text_repetitions": 1,
+      "cache_mode": "disabled",
+      "float_atol": 1e-6,
+      "tags": ["smoke", "release"]
+    },
+    {
+      "case_id": "text_long",
+      "boundary": "structured_messages_to_numpy",
+      "layout": "text",
+      "source": {"kind": "none"},
+      "text_repetitions": 512,
+      "cache_mode": "disabled",
+      "float_atol": 1e-6,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "image1",
+      "release_name": "jpeg1_offgrid",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 1},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["smoke", "release"]
+    },
+    {
+      "case_id": "image24",
+      "release_name": "jpeg24_one_request",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 24},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["smoke", "release", "core"]
+    },
+    {
+      "case_id": "jpeg24_requests",
+      "boundary": "encoded_to_numpy",
+      "layout": "independent_requests",
+      "source": {"kind": "fixture_cycle", "count": 24},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "core"]
+    },
+    {
+      "case_id": "ragged24",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {
+        "kind": "generated_encoded",
+        "count": 24,
+        "formats": ["JPEG", "PNG", "WEBP"],
+        "shapes": [[127, 193], [511, 257], [1023, 767], [320, 2048], [1537, 97]],
+        "seed": 20260731
+      },
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "core"]
+    },
+    {
+      "case_id": "aligned24",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {
+        "kind": "generated_encoded",
+        "count": 24,
+        "formats": ["PNG"],
+        "shapes": [[768, 1024]],
+        "seed": 20260732
+      },
+      "cache_mode": "disabled",
+      "float_atol": 1e-6,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "minmax_boundaries",
+      "boundary": "encoded_to_numpy",
+      "layout": "independent_requests",
+      "source": {
+        "kind": "generated_encoded",
+        "count": 12,
+        "formats": ["PNG"],
+        "shapes": [[31, 31], [32, 32], [33, 33], [255, 257], [511, 513], [1023, 1025]],
+        "seed": 20260733
+      },
+      "cache_mode": "disabled",
+      "float_atol": 1e-6,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "rgb24",
+      "boundary": "rgb_to_vllm_ready",
+      "layout": "one_request",
+      "source": {
+        "kind": "generated_rgb",
+        "count": 24,
+        "shapes": [[767, 1023], [512, 768], [1024, 320]],
+        "seed": 20260734
+      },
+      "cache_mode": "disabled",
+      "float_atol": 1e-6,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "repeat24_uncached",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_repeat", "count": 24, "index": 0},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "repeat24_cached",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_repeat", "count": 24, "index": 0},
+      "cache_mode": "enabled",
+      "float_atol": 0.007844,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "repeat24_separated",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 24},
+      "cache_mode": "separated",
+      "float_atol": 0.007844,
+      "tags": ["release"]
+    },
+    {
+      "case_id": "images_1",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 1},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "scaling"]
+    },
+    {
+      "case_id": "images_4",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 4},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "scaling"]
+    },
+    {
+      "case_id": "images_16",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 16},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "scaling"]
+    },
+    {
+      "case_id": "images_32",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 32},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "scaling"]
+    },
+    {
+      "case_id": "images_64",
+      "boundary": "encoded_to_numpy",
+      "layout": "one_request",
+      "source": {"kind": "fixture_cycle", "count": 64},
+      "cache_mode": "disabled",
+      "float_atol": 0.007844,
+      "tags": ["release", "scaling"]
+    }
+  ]
+}

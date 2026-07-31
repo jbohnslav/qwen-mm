@@ -86,6 +86,21 @@ uv run --locked --no-sync --package qwen-mm-reference \
   python -m qwen_mm_reference.golden validate reference/goldens/v1
 ```
 
+## Paired benchmark v2
+
+The historical `qwen_mm_reference.bench` command is a directional official-path
+baseline. Reference-versus-candidate measurements use
+`qwen_mm_reference.benchmark_v2`, whose workload, result schemas, adapter
+contract, CI smoke mode, and dedicated-host protocol are documented in
+[`benchmarks/README.md`](../benchmarks/README.md).
+
+Run the protocol without model downloads through its deterministic subprocess
+self-test:
+
+```console
+make benchmark-v2-self-test
+```
+
 ## Conformance corpus and comparator
 
 The versioned three-tier corpus, structured comparator, seeded live runner, and

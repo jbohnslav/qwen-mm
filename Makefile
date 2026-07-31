@@ -1,4 +1,6 @@
-.PHONY: check conformance-full conformance-smoke core-check format hooks lint pre-commit-check rust-check sync reference-smoke wheel-smoke
+.PHONY: benchmark-v2-self-test benchmark-v2-smoke check conformance-full \
+	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
+	rust-check sync wheel-smoke
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -6,6 +8,9 @@ PYO3_PYTHON ?= $(shell $(UV_CMD) python find)
 CONFORMANCE_SEED ?= 1364677966
 CONFORMANCE_CASES ?= 16
 CONFORMANCE_OUTPUT ?= reference/results/conformance-local
+BENCHMARK_CANDIDATE ?=
+BENCHMARK_OUTPUT ?= /tmp/qwen-mm-benchmark-v2.json
+BENCHMARK_REPORT ?= /tmp/qwen-mm-benchmark-v2.md
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -51,6 +56,19 @@ conformance-smoke:
 conformance-full: conformance-smoke
 	$(if $(CANDIDATE_COMMAND),,$(error CANDIDATE_COMMAND is required; see docs/conformance-v1.md))
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.corpus matrix --seed $(CONFORMANCE_SEED) --count $(CONFORMANCE_CASES) --candidate-command '$(CANDIDATE_COMMAND)' --output-directory $(CONFORMANCE_OUTPUT)
+
+benchmark-v2-self-test:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.benchmark_v2 run \
+		--mode smoke --reference-adapter synthetic --candidate-adapter synthetic \
+		--profiles qwen3-vl-8b --cases text_short,image1 \
+		--output "$(BENCHMARK_OUTPUT)" --report "$(BENCHMARK_REPORT)"
+
+benchmark-v2-smoke:
+	@test -n "$(BENCHMARK_CANDIDATE)" || \
+		{ echo "set BENCHMARK_CANDIDATE=module:factory" >&2; exit 2; }
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.benchmark_v2 run \
+		--mode smoke --candidate-adapter "$(BENCHMARK_CANDIDATE)" \
+		--output "$(BENCHMARK_OUTPUT)" --report "$(BENCHMARK_REPORT)"
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh
