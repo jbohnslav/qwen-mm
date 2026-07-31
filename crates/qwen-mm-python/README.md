@@ -1,8 +1,9 @@
-# qwen-mm Python package
+# qwen-mm Python binding crate
 
-This package is the thin PyO3 boundary around `qwen-mm-core`. Processor logic
-belongs in the core crate; Python-specific conversion and packaging code belongs
-here.
+This crate is the thin PyO3 boundary around `qwen-mm-core`. The publishable
+Python project metadata and Maturin configuration live in the repository-root
+`pyproject.toml`; Python-specific conversion and native module code live here.
+Processor logic belongs in the core crate.
 
 Build and verify a development wheel from the repository root with:
 

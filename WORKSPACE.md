@@ -35,10 +35,12 @@ make wheel-smoke      # build, install, import, and exercise a fresh development
 make check            # run all of the above
 ```
 
-The root `pyproject.toml`, `.python-version`, and `uv.lock` define one Python
-3.11 workspace containing the reference package and PyO3 package. Maturin is a
-locked root development dependency and is invoked through `uv run`; Python
-tools do not depend on a separately installed `pip`, virtualenv, or `uvx` tool.
+The root `pyproject.toml` is the future publishable `qwen-mm` distribution and
+uses Maturin to build the PyO3 crate under `crates/qwen-mm-python/`. Together
+with `.python-version` and `uv.lock`, it defines one Python 3.11 workspace whose
+only additional package is the reference oracle. Maturin is also a locked root
+development dependency and is invoked through `uv run`; Python tools do not
+depend on a separately installed `pip`, virtualenv, or `uvx` tool.
 
 Cargo remains authoritative for Rust. Its first command installs the exact
 toolchain declared in `rust-toolchain.toml` when rustup is available, and Cargo
@@ -51,8 +53,9 @@ environment.
 ## Ownership and future layout
 
 - `crates/qwen-mm-core/`: processor semantics and dependency-light Rust APIs.
-- `crates/qwen-mm-python/`: PyO3 conversions, Python package metadata, and wheel
-  tests. Processor algorithms do not belong here.
+- `crates/qwen-mm-python/`: PyO3 conversions, native module source, and wheel
+  tests for the root `qwen-mm` distribution. Processor algorithms do not belong
+  here.
 - `profiles/`: future versioned compatibility manifests and pinned processor
   assets. Large or licensed upstream assets should be addressed by their hash,
   not copied casually.

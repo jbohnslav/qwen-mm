@@ -6,7 +6,6 @@ requires-python = "==3.11.*"
 members = [
     "qwen-mm",
     "qwen-mm-reference",
-    "qwen-mm-workspace",
 ]
 
 [[package]]
@@ -598,7 +597,17 @@ wheels = [
 [[package]]
 name = "qwen-mm"
 version = "0.1.0"
-source = { editable = "crates/qwen-mm-python" }
+source = { editable = "." }
+
+[package.dev-dependencies]
+dev = [
+    { name = "maturin" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "maturin", specifier = "==1.14.1" }]
 
 [[package]]
 name = "qwen-mm-reference"
@@ -622,21 +631,6 @@ requires-dist = [
     { name = "torchvision", specifier = ">=0.23" },
     { name = "transformers", specifier = "==5.14.1" },
 ]
-
-[[package]]
-name = "qwen-mm-workspace"
-version = "0.1.0"
-source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
-    { name = "maturin" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [{ name = "maturin", specifier = "==1.14.1" }]
 
 [[package]]
 name = "qwen-vl-utils"
