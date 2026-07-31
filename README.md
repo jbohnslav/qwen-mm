@@ -8,4 +8,8 @@ The goal of this project is to consolidate that pipeline in Rust, deduplicate an
 
 See [DESIGN.md](DESIGN.md) for the proposed architecture, compatibility contract, and conformance strategy.
 
+The implementation-level compatibility source of truth is
+[ADR 0001](docs/compatibility-v1.md), with machine-readable pinned profiles in
+[`reference/compatibility/v1.json`](reference/compatibility/v1.json).
+
 The first current-path measurement is documented in [BENCHMARK.md](BENCHMARK.md).

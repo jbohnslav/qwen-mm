@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "contract_id": "qwen-mm-compat-v1",
+  "created_at": "2026-07-31",
+  "python": "3.11.15",
+  "lock": {
+    "path": "reference/uv.lock",
+    "sha256": "30d82d0dfa563005a9ef997f90372d4029e5d1d26c0e20a3f7a03bc0d026acab"
+  },
+  "packages": {
+    "transformers": "5.14.1",
+    "tokenizers": "0.22.2",
+    "qwen-vl-utils": "0.0.14",
+    "Pillow": "12.3.0",
+    "numpy": "2.4.6",
+    "torch": "2.13.0",
+    "torchvision": "0.28.0",
+    "av": "18.0.0"
+  },
+  "source_files": {
+    "qwen_vl_utils/vision_process.py": "f3710ced8ffe735da57d08cf5236cf9d326ff646ed1bdad2e62593a7801adc33",
+    "transformers/models/qwen3_vl/processing_qwen3_vl.py": "add767ca5e9511e1db0a69091d51b1d0b2078c874d59ee3a58c4748b5d9014a4",
+    "transformers/models/qwen2_vl/image_processing_qwen2_vl.py": "f19497685281402691f0049a0ab5be8085f92fb5c37adfcc680e4ccd17863a77",
+    "transformers/models/qwen3_vl/video_processing_qwen3_vl.py": "36f6aa5a541172e7e97c904c07bcf233b68eb7d4ff5a0ac71072c1f657a8c7cc",
+    "transformers/processing_utils.py": "d49b92aba8a755e6d93928a5fec94950004a5bc53a48746f9b83dd04cb7edacd"
+  },
+  "environment": {
+    "MODEL_SEQ_LEN": null,
+    "MODEL_SEQ_LEN_effective": 128000,
+    "FORCE_QWENVL_VIDEO_READER": null,
+    "TORCHCODEC_NUM_THREADS": null,
+    "TORCHCODEC_NUM_THREADS_effective": 8,
+    "OMP_NUM_THREADS": null,
+    "MKL_NUM_THREADS": null,
+    "OPENBLAS_NUM_THREADS": null,
+    "VECLIB_MAXIMUM_THREADS": null,
+    "TOKENIZERS_PARALLELISM": null
+  },
+  "oracle_kwargs": {
+    "apply_chat_template": {
+      "tokenize": false
+    },
+    "process_vision_info": {
+      "image_patch_size": 16,
+      "return_video_kwargs": true,
+      "return_video_metadata": true
+    },
+    "processor": {
+      "padding": true,
+      "truncation": false,
+      "do_resize": false,
+      "do_sample_frames": false,
+      "return_tensors": "np"
+    }
+  },
+  "profiles": {
+    "qwen3-vl-8b": {
+      "fingerprint": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+      "classes": {
+        "processor": "Qwen3VLProcessor",
+        "tokenizer": "Qwen2Tokenizer",
+        "image_processor": "Qwen2VLImageProcessor",
+        "image_backend": "torchvision",
+        "video_processor": "Qwen3VLVideoProcessor",
+        "video_backend": "torchvision"
+      },
+      "visual": {
+        "patch_size": 16,
+        "temporal_patch_size": 2,
+        "merge_size": 2,
+        "patch_width": 1536,
+        "image_mean": [0.5, 0.5, 0.5],
+        "image_std": [0.5, 0.5, 0.5],
+        "image_config_min_pixels": 65536,
+        "image_config_max_pixels": 16777216,
+        "composed_image_min_pixels": 4096,
+        "composed_image_max_pixels": 16777216,
+        "video_config_min_pixels": 4096,
+        "video_config_max_pixels": 25165824
+      },
+      "tokenizer": {
+        "padding_side": "right",
+        "truncation_side": "right",
+        "model_max_length": 262144,
+        "bos_token_id": null,
+        "eos_token_id": 151645,
+        "pad_token_id": 151643,
+        "image_token_id": 151655,
+        "video_token_id": 151656,
+        "vision_start_token_id": 151652,
+        "vision_end_token_id": 151653
+      },
+      "artifacts": {
+        "chat_template.json": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce",
+        "config.json": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661",
+        "merges.txt": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+        "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+        "tokenizer.json": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7",
+        "tokenizer_config.json": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399",
+        "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    },
+    "qwen3.5-9b": {
+      "fingerprint": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5",
+      "model_id": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "classes": {
+        "processor": "Qwen3VLProcessor",
+        "tokenizer": "Qwen2Tokenizer",
+        "image_processor": "Qwen2VLImageProcessor",
+        "image_backend": "torchvision",
+        "video_processor": "Qwen3VLVideoProcessor",
+        "video_backend": "torchvision"
+      },
+      "visual": {
+        "patch_size": 16,
+        "temporal_patch_size": 2,
+        "merge_size": 2,
+        "patch_width": 1536,
+        "image_mean": [0.5, 0.5, 0.5],
+        "image_std": [0.5, 0.5, 0.5],
+        "image_config_min_pixels": 65536,
+        "image_config_max_pixels": 16777216,
+        "composed_image_min_pixels": 4096,
+        "composed_image_max_pixels": 16777216,
+        "video_config_min_pixels": 4096,
+        "video_config_max_pixels": 25165824
+      },
+      "tokenizer": {
+        "padding_side": "right",
+        "truncation_side": "right",
+        "model_max_length": 262144,
+        "bos_token_id": null,
+        "eos_token_id": 248046,
+        "pad_token_id": 248044,
+        "image_token_id": 248056,
+        "video_token_id": 248057,
+        "vision_start_token_id": 248053,
+        "vision_end_token_id": 248054
+      },
+      "artifacts": {
+        "chat_template.jinja": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+        "config.json": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05",
+        "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+        "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+        "tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+        "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+        "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+      }
+    }
+  }
+}
