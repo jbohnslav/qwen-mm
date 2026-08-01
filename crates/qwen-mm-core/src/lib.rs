@@ -1,14 +1,39 @@
-//! Core primitives for Qwen multimodal preprocessing.
+//! Dependency-light contracts for Qwen multimodal preprocessing.
 //!
-//! This bootstrap intentionally contains no processor behavior. Semantic
-//! implementations land behind conformance tickets after the compatibility
-//! contract and golden reference are frozen.
+//! The crate owns immutable offline profiles, Rust-native request/media types,
+//! resource-safe preflight, stable errors, and exact parity output layouts.
+//! It deliberately contains no Python, Torch, `OpenCV`, networking, decoding,
+//! resizing, tokenization, or model execution.
 //!
 //! ```
 //! assert_eq!(qwen_mm_core::version(), "0.1.0");
 //! ```
 
 #![forbid(unsafe_code)]
+
+pub mod error;
+pub mod limits;
+pub mod output;
+pub mod profile;
+pub mod request;
+
+pub use error::{DiagnosticValue, ErrorCategory, QwenError, Result, ValidationStage};
+pub use limits::{
+    LimitOverrides, PreflightSummary, ProfiledRequest, ResourceLimits, checked_add,
+    checked_capacity_bytes, checked_mul, preflight_batch,
+};
+pub use output::{
+    CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, PreparedArrays, PreparedBatch,
+    ReplacementRange, VideoSidecar,
+};
+pub use profile::{
+    ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,
+};
+pub use request::{
+    ContentItem, ExcludedOptions, FunctionCall, ImageFormat, ImageInput, ImageOptions, ImageRef,
+    Message, MessageContent, OccurrenceLocation, Request, RequestOptions, Rgb8, Role, ToolCall,
+    ToolDefinition, VideoInput, VideoOptions, VideoRef,
+};
 
 /// Returns the core crate version embedded at compile time.
 #[must_use]

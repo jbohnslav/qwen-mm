@@ -68,3 +68,11 @@ part of the frozen stage boundary, but Phase B does not expose a video API.
 Created the Phase B epic and seven child tickets from the dependency-ordered
 roadmap. The graph preserves the frozen Phase A prerequisites and keeps the
 epic itself as a completion roll-up rather than executable implementation work.
+
+### 2026-08-01 — execution model selected
+
+The King asked the Lord to orchestrate Phase B with collaboration subagents,
+not Kingdom peasants. Work will follow the dependency graph: each child starts
+only after its prerequisites close, independent ready tickets may run in
+parallel, and the Lord will personally review code, acceptance criteria, and
+test evidence before updating the worklog, closing, and committing each ticket.
