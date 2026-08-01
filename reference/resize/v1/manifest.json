@@ -1,0 +1,958 @@
+{
+  "artifacts": {
+    "pillow-image-rgb8.bin": {
+      "byte_length": 359424,
+      "sha256": "8a7d8f79f1a0eabd5257a7e35b086ef9a5bbad72e5780eaf5fc7ae88dc24b5b2"
+    },
+    "sources.rgb8.bin": {
+      "byte_length": 582565,
+      "sha256": "b2bdeece59fa3711a4f073e9aa6f6cc5c60ffff7ee9a511859c5f76366f8a15a"
+    },
+    "torchvision-video-f32le.bin": {
+      "byte_length": 1437696,
+      "sha256": "dc6f0b22d600dc76be485cf58f8db2b68ba8a0e977d63d403211dc60fafca710"
+    }
+  },
+  "candidate_requirements": {
+    "clamping": "image/video uint8 outputs clamp to 0..255",
+    "color_domain": "non-linear RGB; no linear-light conversion",
+    "coordinate_transform": "half-pixel centers (align_corners=false)",
+    "image_kernel": "cubic convolution a=-0.5 with downscale antialias",
+    "video_kernel": "TorchVision float32 Keys bicubic-antialias convolution followed by clamp, ties-to-even uint8 quantization, and float32 exposure"
+  },
+  "cases": [
+    {
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "aligned-no-op-ramp",
+      "pattern": "ramp",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 0,
+        "sha256": "bcb5c5fea1c12e07af011d6c06dd9c201f9d45aa4514fd252f6965963b9d0fed",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 0,
+        "sha256": "bcb5c5fea1c12e07af011d6c06dd9c201f9d45aa4514fd252f6965963b9d0fed",
+        "stride_bytes": 288,
+        "width": 96
+      },
+      "tags": [
+        "no_op",
+        "aligned",
+        "ramp",
+        "landscape"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 0,
+        "sha256": "594c56d7e3438d293301b7345d57c3f0378d6650256fcb49f681d8fb447b528d",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "factor-below-impulse",
+      "pattern": "impulse",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 18432,
+        "sha256": "512e477384f6f3d87a889cde99fe2f19987c093a8ea9422c3febafee506ff4dd",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 2883,
+        "height": 31,
+        "offset": 18432,
+        "sha256": "74fc47e02e82eca4c78a08c4e3e6b53f056bd990b7dcad73f8ae4c501e3cc952",
+        "stride_bytes": 93,
+        "width": 31
+      },
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "min_boundary",
+        "impulse"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 73728,
+        "sha256": "a799d0d0e880dee4a9004c8590cd5bc625a196129e803598fe6bfb6dfd00c2e8",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "factor-at-checkerboard",
+      "pattern": "checkerboard",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 30720,
+        "sha256": "31bac115b3203a6e49bfcd594fc97b9d9f3f88a1bc24474413f58d80c9cc2f3a",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 3072,
+        "height": 32,
+        "offset": 21315,
+        "sha256": "4aea0e83a64d617f844075b2eff519ab47a0132f14adbf5a3d59460728d77eed",
+        "stride_bytes": 96,
+        "width": 32
+      },
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "checkerboard"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 122880,
+        "sha256": "ef6036f41e211e76fef36c9b4df93634418d1626f6362e96a37289ac2c3baf16",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "factor-above-independent-rgb",
+      "pattern": "independent_rgb",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 43008,
+        "sha256": "7366b5cb3bc32069143dafecba7437ce13ecdedf7594e57d0557458d4819cf6f",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 3267,
+        "height": 33,
+        "offset": 24387,
+        "sha256": "f060782abaae547da4a32900af86785c890bad211d84c5d69d792a038ca80c03",
+        "stride_bytes": 99,
+        "width": 33
+      },
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "independent_rgb"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 172032,
+        "sha256": "60e4ede6b874f41b9581fb866de34fb62201b46292e740835505ce20fa746992",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "off-grid-landscape-checkerboard",
+      "pattern": "checkerboard",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 55296,
+        "sha256": "5530fc393ac08e1fadc7d7c0929e80edfd17e853754f2d57a21d0378c894d9a1",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 17955,
+        "height": 63,
+        "offset": 27654,
+        "sha256": "e72973665c96ef549a8b65e86e977e2f33376af048ba9d3514fb7693fefeeda7",
+        "stride_bytes": 285,
+        "width": 95
+      },
+      "tags": [
+        "off_grid",
+        "landscape",
+        "checkerboard"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 221184,
+        "sha256": "eb4599c394b8220e68aa85228dfa5592055752fad245d688c86612c424ffdef7",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "off-grid-portrait-edges",
+      "pattern": "edges",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 73728,
+        "sha256": "61d23eed2aaad2bfb945e8ec319f6a27a29fa8c45b2f83d44bdea08bbf4cbe5b",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 17955,
+        "height": 95,
+        "offset": 45609,
+        "sha256": "499ec03076e809b92a8e261b727221003b92f63e0355e0758cd39f0ea9f0fffb",
+        "stride_bytes": 189,
+        "width": 63
+      },
+      "tags": [
+        "off_grid",
+        "portrait",
+        "edges"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 294912,
+        "sha256": "237c8309bbe932307f11a75e90c47b62f98dcf3ba29bc963c3c6463636cb2e7f",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "horizontal-only-padded-independent-rgb",
+      "pattern": "independent_rgb",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 92160,
+        "sha256": "4d67f4c3f574438ee59589c936e07b1d247cfd1ff7a145af92188a6f84baa7d4",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 18688,
+        "height": 64,
+        "offset": 63564,
+        "sha256": "f4fb6b732437a33487a9cd254f826ed9b6857a30f1a942daa048e7ab92ce0c99",
+        "stride_bytes": 292,
+        "width": 95
+      },
+      "tags": [
+        "upsample",
+        "off_grid",
+        "landscape",
+        "horizontal_only",
+        "padded_stride",
+        "independent_rgb"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 368640,
+        "sha256": "3048b88152e0aedcde27e847d64de0db8986d8dcb05ccd95cb78e13f79a062ea",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "vertical-only-checkerboard",
+      "pattern": "checkerboard",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 110592,
+        "sha256": "dab15eed5b4b7f89c7c373c35e748dc2dc1ae967445aabff0b546f551c2bc883",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 18240,
+        "height": 95,
+        "offset": 82252,
+        "sha256": "ed0a82930e606d8fca61909735dad229049b634d7f1aa365aa1de4d736ede414",
+        "stride_bytes": 192,
+        "width": 64
+      },
+      "tags": [
+        "upsample",
+        "off_grid",
+        "portrait",
+        "vertical_only",
+        "checkerboard"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 442368,
+        "sha256": "df9a39e1496b9ee48259f4384d6ec63665a354540359051b77702153786d0cb7",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 32,
+        "width": 128
+      },
+      "geometry_options": {
+        "max_pixels": 16777216,
+        "min_pixels": 4095
+      },
+      "id": "min-below-ramp",
+      "pattern": "ramp",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 129024,
+        "sha256": "b0ea5c68434c2e66afb1bd5171b1d54f2af2b37d46e6ba97a4e5d6b27f458554",
+        "shape": [
+          32,
+          128,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 12288,
+        "height": 32,
+        "offset": 100492,
+        "sha256": "b0ea5c68434c2e66afb1bd5171b1d54f2af2b37d46e6ba97a4e5d6b27f458554",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "min_boundary",
+        "ramp",
+        "landscape"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 516096,
+        "sha256": "83e021873e44bd2325e16e45ae6c5b788d979507aaaf4bb1070f6b1806b279e2",
+        "shape": [
+          32,
+          128,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 32,
+        "width": 128
+      },
+      "geometry_options": {
+        "max_pixels": 16777216,
+        "min_pixels": 4096
+      },
+      "id": "min-at-independent-rgb",
+      "pattern": "independent_rgb",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 141312,
+        "sha256": "cfd63d1aa90908ccc5a469ddb6fb47c75cde3282d1af789efeb2480d9b24fa78",
+        "shape": [
+          32,
+          128,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 12288,
+        "height": 32,
+        "offset": 112780,
+        "sha256": "cfd63d1aa90908ccc5a469ddb6fb47c75cde3282d1af789efeb2480d9b24fa78",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "min_boundary",
+        "independent_rgb",
+        "landscape"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 565248,
+        "sha256": "bb0e9cf2399c170ecba07247ef5ec0bab7f282b460f472052c7e15db948e3fd7",
+        "shape": [
+          32,
+          128,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 160
+      },
+      "geometry_options": {
+        "max_pixels": 16777216,
+        "min_pixels": 4097
+      },
+      "id": "min-above-checkerboard",
+      "pattern": "checkerboard",
+      "pillow_image_rgb8": {
+        "byte_length": 30720,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 153600,
+        "sha256": "cd886d243627c8fdb61b7d8c57d846ab6e0cdd373c824754a408ac0d3076a53d",
+        "shape": [
+          64,
+          160,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 12288,
+        "height": 32,
+        "offset": 125068,
+        "sha256": "9189289e98bcc7bda6ac8711239e0a17f13f0de640ce98345bf8eb25babf31cf",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "upsample",
+        "min_boundary",
+        "checkerboard",
+        "landscape"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 122880,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 614400,
+        "sha256": "17784a621607e9cb32c957929095bd94653fc68e9d531a6b02209f9ae3eb2e97",
+        "shape": [
+          64,
+          160,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 96,
+        "width": 96
+      },
+      "geometry_options": {
+        "max_pixels": 16383,
+        "min_pixels": 4096
+      },
+      "id": "max-below-noise",
+      "pattern": "noise",
+      "pillow_image_rgb8": {
+        "byte_length": 27648,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 184320,
+        "sha256": "f5aae45605a06a01542f0aed928cb691922e96f02944102f3ba1a721c388df53",
+        "shape": [
+          96,
+          96,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 49152,
+        "height": 128,
+        "offset": 137356,
+        "sha256": "7c927b21841955d5dc286687acec24d9d877da83cb651858f9ce46158bb3ad18",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "downsample",
+        "max_boundary",
+        "high_frequency"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 110592,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 737280,
+        "sha256": "f4834f77cfa8759d94d3e5a5a27f3dbb351e01f274c0384121e7e4370b90f07c",
+        "shape": [
+          96,
+          96,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 128,
+        "width": 128
+      },
+      "geometry_options": {
+        "max_pixels": 16384,
+        "min_pixels": 4096
+      },
+      "id": "max-at-impulse",
+      "pattern": "impulse",
+      "pillow_image_rgb8": {
+        "byte_length": 49152,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 211968,
+        "sha256": "43dfd54f5f289ae80d9e9dc13dddd0591f2c22dda472c72db80b3f7e1d2cf122",
+        "shape": [
+          128,
+          128,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 49152,
+        "height": 128,
+        "offset": 186508,
+        "sha256": "43dfd54f5f289ae80d9e9dc13dddd0591f2c22dda472c72db80b3f7e1d2cf122",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "no_op",
+        "max_boundary",
+        "impulse"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 196608,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 847872,
+        "sha256": "e55cad9a58ac6002fdfa00b5410d68f56bfc7b5ccf845922c8c62c38ad8d6fb8",
+        "shape": [
+          128,
+          128,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 128,
+        "width": 128
+      },
+      "geometry_options": {
+        "max_pixels": 16385,
+        "min_pixels": 4096
+      },
+      "id": "max-above-edges",
+      "pattern": "edges",
+      "pillow_image_rgb8": {
+        "byte_length": 49152,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 261120,
+        "sha256": "bc976348b215a0bf83098d1c70702f32653a5c6947898a1ffdbf6fefc2ecf42f",
+        "shape": [
+          128,
+          128,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 49152,
+        "height": 128,
+        "offset": 235660,
+        "sha256": "bc976348b215a0bf83098d1c70702f32653a5c6947898a1ffdbf6fefc2ecf42f",
+        "stride_bytes": 384,
+        "width": 128
+      },
+      "tags": [
+        "no_op",
+        "max_boundary",
+        "edges"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 196608,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 1044480,
+        "sha256": "5c0a0c9d9eaeb831661d0ebd1ac1aca040ab33ebdfa47fbca8926fb4961df0ac",
+        "shape": [
+          128,
+          128,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": 6144,
+        "min_pixels": 4096
+      },
+      "id": "representative-downsample-noise",
+      "pattern": "noise",
+      "pillow_image_rgb8": {
+        "byte_length": 12288,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 310272,
+        "sha256": "e64f42d8b31c26d1bbd64f4619f3e5622d1e3003d71b4b8435f9d62d05eb337d",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 296835,
+        "height": 257,
+        "offset": 284812,
+        "sha256": "0d32b998f5f152410e33b24684762577a6ac70104c05eeb09357b974c84aaaaf",
+        "stride_bytes": 1155,
+        "width": 385
+      },
+      "tags": [
+        "downsample",
+        "off_grid",
+        "high_frequency",
+        "landscape"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 49152,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 1241088,
+        "sha256": "373ba9a7b454ced1873f0dd50e21d99a16155cbf9e055789a3b27497e74adf58",
+        "shape": [
+          64,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "representative-upsample-portrait",
+      "pattern": "independent_rgb",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 322560,
+        "sha256": "ed51f0a6b1b2f3bf24e7fe54b2ea7cfaa3a3169f8f89a2f6b93e93a171fd06f7",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 459,
+        "height": 17,
+        "offset": 581647,
+        "sha256": "9451ca813ef4cd767c6df1c80cc335cfa28b29a71a0e60c5a40349f404df8f6c",
+        "stride_bytes": 27,
+        "width": 9
+      },
+      "tags": [
+        "upsample",
+        "off_grid",
+        "portrait",
+        "independent_rgb"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 1290240,
+        "sha256": "6e5c210de2e0cf26764d4e1cec433dc61e29d649606b4bea272998c724ecd17d",
+        "shape": [
+          96,
+          64,
+          3
+        ]
+      }
+    },
+    {
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "geometry_options": {
+        "max_pixels": null,
+        "min_pixels": null
+      },
+      "id": "representative-upsample-landscape",
+      "pattern": "edges",
+      "pillow_image_rgb8": {
+        "byte_length": 18432,
+        "dtype": "uint8",
+        "layout": "HWC RGB",
+        "offset": 340992,
+        "sha256": "e91b7d694447321c2102c96312ac160bc9298448bcc8658e3bc8a9d5945f4d2c",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      },
+      "source": {
+        "byte_length": 459,
+        "height": 9,
+        "offset": 582106,
+        "sha256": "ff5ffc61b72621ef22de29b5872365dbdcfd9d0a136cfe8750123bc9231daa3a",
+        "stride_bytes": 51,
+        "width": 17
+      },
+      "tags": [
+        "upsample",
+        "off_grid",
+        "landscape",
+        "edges"
+      ],
+      "torchvision_video_rgb_f32": {
+        "byte_length": 73728,
+        "domain": "0..255",
+        "dtype": "float32-le",
+        "layout": "HWC RGB (transposed from the oracle TCHW result)",
+        "offset": 1363968,
+        "sha256": "dbc8fdc58a796dd1ffc88a4bd1108f05c048d038f4053a9770001539b09fd4d7",
+        "shape": [
+          64,
+          96,
+          3
+        ]
+      }
+    }
+  ],
+  "comparison_policy": {
+    "diagnostics": [
+      "maximum_absolute_error",
+      "rmse",
+      "absolute_error_p50_p90_p99",
+      "count_nonzero_differences",
+      "count_over_tolerance",
+      "maximum_ulp_distance",
+      "first_differing_case_pixel_channel"
+    ],
+    "pillow_image_rgb8": {
+      "absolute_byte_error_max": 1
+    },
+    "torchvision_video_rgb_f32": {
+      "atol": 0.0001,
+      "rtol": 0.0
+    }
+  },
+  "contract_id": "qwen-mm-compat-v1",
+  "coverage_tags": [
+    "aligned",
+    "checkerboard",
+    "downsample",
+    "edges",
+    "factor_boundary",
+    "high_frequency",
+    "horizontal_only",
+    "impulse",
+    "independent_rgb",
+    "landscape",
+    "max_boundary",
+    "min_boundary",
+    "no_op",
+    "off_grid",
+    "padded_stride",
+    "portrait",
+    "ramp",
+    "upsample",
+    "vertical_only"
+  ],
+  "generator": {
+    "command": "./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.resize_conformance",
+    "source": "reference/src/qwen_mm_reference/resize_conformance.py",
+    "source_sha256": "deb9191b6f0465d268fc493ce0faaacb5f8dfbadea10e20e1b7418fc96bf03c9"
+  },
+  "oracle": {
+    "capture_platform": {
+      "machine": "arm64",
+      "python": "3.11.15",
+      "system": "Darwin"
+    },
+    "compatibility_manifest": {
+      "path": "reference/compatibility/v1.json",
+      "sha256": "01c03d10feb34313525f0c4fd08abeaa11151a20b1e87ad57a65ff677ad1cc06"
+    },
+    "image": "Pillow Image.resize default (Resampling.BICUBIC)",
+    "packages": {
+      "Pillow": "12.3.0",
+      "numpy": "2.4.6",
+      "qwen-vl-utils": "0.0.14",
+      "torch": "2.13.0",
+      "torchvision": "0.28.0"
+    },
+    "profile_fingerprints": {
+      "qwen3-vl-8b": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "qwen3.5-9b": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5"
+    },
+    "qwen_vl_utils_source_sha256": "f3710ced8ffe735da57d08cf5236cf9d326ff646ed1bdad2e62593a7801adc33",
+    "video": "torchvision.transforms.functional.resize on a CPU uint8 CHW tensor; the wrapper casts to float32, uses InterpolationMode.BICUBIC with antialias=True, clamps and rounds back to uint8, then qwen calls float()"
+  },
+  "schema_version": 1,
+  "stage_id": "qwen-mm-resize-stage-v1"
+}

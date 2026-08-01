@@ -1,0 +1,1628 @@
+{
+  "schema_version": 1,
+  "contract_id": "qwen-mm-compat-v1",
+  "stage_id": "qwen-mm-resize-stage-v1",
+  "fixture_manifest": {
+    "path": "reference/resize/v1/manifest.json",
+    "byte_length": 25031,
+    "sha256": "fb846bd7487dafa6bb91da1f9e18b7719f086a08057f284b42f9d11361dfe1ea"
+  },
+  "selected_implementation": {
+    "path": "crates/qwen-mm-core/src/resize.rs",
+    "byte_length": 30005,
+    "sha256": "bf05ef4166f5d9fc8d7f2e76df10f814c607d027ea53a435eb7b778d61fd3dd7"
+  },
+  "evidence_source": {
+    "path": "crates/qwen-mm-core/examples/resize_stage_report.rs",
+    "byte_length": 21157,
+    "sha256": "750356853f2ce8f641015617012a5e5a4fbe48a950ea9f85ba61162e5266339e"
+  },
+  "generated_by": "./scripts/cargo.sh run --locked -p qwen-mm-core --example resize_stage_report -- --output <path> --host-id <id> --execution <kind>",
+  "host": {
+    "id": "macos-arm64-native",
+    "execution": "native",
+    "os": "macos",
+    "architecture": "aarch64",
+    "uname": "Darwin mini.localdomain 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:26:22 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8132 arm64",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6"
+  },
+  "candidates": {
+    "fast_image_resize-6.1.0-catmull-rom": {
+      "exact_version": "fast_image_resize=6.1.0",
+      "selected": false,
+      "image_cases_failed": 6,
+      "video_cases_failed": 3,
+      "passed": false
+    },
+    "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+      "exact_version": "qwen-mm-core 0.1.0 custom fixed-point image / source-faithful TorchVision video",
+      "selected": true,
+      "image_cases_failed": 0,
+      "video_cases_failed": 0,
+      "passed": true
+    }
+  },
+  "cases": [
+    {
+      "id": "aligned-no-op-ramp",
+      "tags": [
+        "no_op",
+        "aligned",
+        "ramp",
+        "landscape"
+      ],
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "factor-below-impulse",
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "min_boundary",
+        "impulse"
+      ],
+      "source": {
+        "height": 31,
+        "width": 31
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.023867581744561668,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 7,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 3883,
+                "y": 20,
+                "x": 14,
+                "channel": 1,
+                "actual": 70.0,
+                "expected": 69.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "factor-at-checkerboard",
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "checkerboard"
+      ],
+      "source": {
+        "height": 32,
+        "width": 32
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 16.0,
+              "rmse": 3.618854794826903,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 4.0,
+              "absolute_error_p99": 15.0,
+              "count_nonzero_differences": 2794,
+              "count_over_tolerance": 2056,
+              "maximum_ulp_distance": 16,
+              "first_difference": {
+                "element_index": 3,
+                "y": 0,
+                "x": 1,
+                "channel": 0,
+                "actual": 54.0,
+                "expected": 41.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "factor-above-independent-rgb",
+      "tags": [
+        "upsample",
+        "factor_boundary",
+        "independent_rgb"
+      ],
+      "source": {
+        "height": 33,
+        "width": 33
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 13.0,
+              "rmse": 0.767535880675946,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 3.0,
+              "count_nonzero_differences": 556,
+              "count_over_tolerance": 189,
+              "maximum_ulp_distance": 13,
+              "first_difference": {
+                "element_index": 116,
+                "y": 0,
+                "x": 38,
+                "channel": 2,
+                "actual": 235.0,
+                "expected": 234.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.015625,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 3,
+              "count_over_tolerance": 3,
+              "maximum_ulp_distance": 262144,
+              "first_difference": {
+                "element_index": 4091,
+                "y": 21,
+                "x": 19,
+                "channel": 2,
+                "actual": 50.0,
+                "expected": 49.0
+              }
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.09674049802607662,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 115,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 3457,
+                "y": 18,
+                "x": 0,
+                "channel": 1,
+                "actual": 247.0,
+                "expected": 246.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "off-grid-landscape-checkerboard",
+      "tags": [
+        "off_grid",
+        "landscape",
+        "checkerboard"
+      ],
+      "source": {
+        "height": 63,
+        "width": 95
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 21.0,
+              "rmse": 2.8125964489635233,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 3.0,
+              "absolute_error_p99": 13.0,
+              "count_nonzero_differences": 5202,
+              "count_over_tolerance": 2452,
+              "maximum_ulp_distance": 21,
+              "first_difference": {
+                "element_index": 6,
+                "y": 0,
+                "x": 2,
+                "channel": 0,
+                "actual": 1.0,
+                "expected": 0.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.0914058790353346,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 154,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 169,
+                "y": 0,
+                "x": 56,
+                "channel": 1,
+                "actual": 116.0,
+                "expected": 117.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "off-grid-portrait-edges",
+      "tags": [
+        "off_grid",
+        "portrait",
+        "edges"
+      ],
+      "source": {
+        "height": 95,
+        "width": 63
+      },
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.05462546084219539,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 55,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 3638,
+                "y": 18,
+                "x": 60,
+                "channel": 2,
+                "actual": 30.0,
+                "expected": 31.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.01473139127471974,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 4,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 4967,
+                "y": 25,
+                "x": 55,
+                "channel": 2,
+                "actual": 193.0,
+                "expected": 194.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "horizontal-only-padded-independent-rgb",
+      "tags": [
+        "upsample",
+        "off_grid",
+        "landscape",
+        "horizontal_only",
+        "padded_stride",
+        "independent_rgb"
+      ],
+      "source": {
+        "height": 64,
+        "width": 95
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.01473139127471974,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 4,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 3674,
+                "y": 12,
+                "x": 72,
+                "channel": 2,
+                "actual": 249.0,
+                "expected": 250.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.01473139127471974,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 4,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 3674,
+                "y": 12,
+                "x": 72,
+                "channel": 2,
+                "actual": 249.0,
+                "expected": 250.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "vertical-only-checkerboard",
+      "tags": [
+        "upsample",
+        "off_grid",
+        "portrait",
+        "vertical_only",
+        "checkerboard"
+      ],
+      "source": {
+        "height": 95,
+        "width": 64
+      },
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.08267972847076846,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 126,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 387,
+                "y": 2,
+                "x": 1,
+                "channel": 0,
+                "actual": 255.0,
+                "expected": 254.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.08267972847076846,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 126,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 387,
+                "y": 2,
+                "x": 1,
+                "channel": 0,
+                "actual": 255.0,
+                "expected": 254.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "min-below-ramp",
+      "tags": [
+        "min_boundary",
+        "ramp",
+        "landscape"
+      ],
+      "source": {
+        "height": 32,
+        "width": 128
+      },
+      "destination": {
+        "height": 32,
+        "width": 128
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "min-at-independent-rgb",
+      "tags": [
+        "min_boundary",
+        "independent_rgb",
+        "landscape"
+      ],
+      "source": {
+        "height": 32,
+        "width": 128
+      },
+      "destination": {
+        "height": 32,
+        "width": 128
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "min-above-checkerboard",
+      "tags": [
+        "upsample",
+        "min_boundary",
+        "checkerboard",
+        "landscape"
+      ],
+      "source": {
+        "height": 32,
+        "width": 128
+      },
+      "destination": {
+        "height": 64,
+        "width": 160
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 16.0,
+              "rmse": 3.433596268248982,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 4.0,
+              "absolute_error_p99": 16.0,
+              "count_nonzero_differences": 6555,
+              "count_over_tolerance": 4728,
+              "maximum_ulp_distance": 16,
+              "first_difference": {
+                "element_index": 3,
+                "y": 0,
+                "x": 1,
+                "channel": 0,
+                "actual": 202.0,
+                "expected": 215.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.05929270612815711,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 108,
+              "count_over_tolerance": 108,
+              "maximum_ulp_distance": 262144,
+              "first_difference": {
+                "element_index": 38,
+                "y": 0,
+                "x": 12,
+                "channel": 2,
+                "actual": 64.0,
+                "expected": 63.0
+              }
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.031766563920785224,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 31,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 29290,
+                "y": 61,
+                "x": 3,
+                "channel": 1,
+                "actual": 226.0,
+                "expected": 225.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "max-below-noise",
+      "tags": [
+        "downsample",
+        "max_boundary",
+        "high_frequency"
+      ],
+      "source": {
+        "height": 128,
+        "width": 128
+      },
+      "destination": {
+        "height": 96,
+        "width": 96
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 10.0,
+              "rmse": 0.6359571926835375,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 1.0,
+              "absolute_error_p99": 2.0,
+              "count_nonzero_differences": 7449,
+              "count_over_tolerance": 294,
+              "maximum_ulp_distance": 10,
+              "first_difference": {
+                "element_index": 2,
+                "y": 0,
+                "x": 0,
+                "channel": 2,
+                "actual": 93.0,
+                "expected": 92.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.010416666666666666,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 3,
+              "count_over_tolerance": 3,
+              "maximum_ulp_distance": 131072,
+              "first_difference": {
+                "element_index": 11273,
+                "y": 39,
+                "x": 13,
+                "channel": 2,
+                "actual": 127.0,
+                "expected": 126.0
+              }
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.08023763894646765,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 178,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 238,
+                "y": 0,
+                "x": 79,
+                "channel": 1,
+                "actual": 58.0,
+                "expected": 57.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "max-at-impulse",
+      "tags": [
+        "no_op",
+        "max_boundary",
+        "impulse"
+      ],
+      "source": {
+        "height": 128,
+        "width": 128
+      },
+      "destination": {
+        "height": 128,
+        "width": 128
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "max-above-edges",
+      "tags": [
+        "no_op",
+        "max_boundary",
+        "edges"
+      ],
+      "source": {
+        "height": 128,
+        "width": 128
+      },
+      "destination": {
+        "height": 128,
+        "width": 128
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "representative-downsample-noise",
+      "tags": [
+        "downsample",
+        "off_grid",
+        "high_frequency",
+        "landscape"
+      ],
+      "source": {
+        "height": 257,
+        "width": 385
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.3661054535581244,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 1.0,
+              "absolute_error_p99": 1.0,
+              "count_nonzero_differences": 1647,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 0,
+                "y": 0,
+                "x": 0,
+                "channel": 0,
+                "actual": 142.0,
+                "expected": 141.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.05776321097088238,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 41,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 277,
+                "y": 1,
+                "x": 28,
+                "channel": 1,
+                "actual": 119.0,
+                "expected": 118.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "representative-upsample-portrait",
+      "tags": [
+        "upsample",
+        "off_grid",
+        "portrait",
+        "independent_rgb"
+      ],
+      "source": {
+        "height": 17,
+        "width": 9
+      },
+      "destination": {
+        "height": 96,
+        "width": 64
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": false,
+            "diagnostics": {
+              "maximum_absolute_error": 19.0,
+              "rmse": 0.8192163642096567,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 4.0,
+              "count_nonzero_differences": 834,
+              "count_over_tolerance": 330,
+              "maximum_ulp_distance": 19,
+              "first_difference": {
+                "element_index": 129,
+                "y": 0,
+                "x": 43,
+                "channel": 0,
+                "actual": 237.0,
+                "expected": 238.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.091702171154474,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 155,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 95,
+                "y": 0,
+                "x": 31,
+                "channel": 2,
+                "actual": 128.0,
+                "expected": 127.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "representative-upsample-landscape",
+      "tags": [
+        "upsample",
+        "off_grid",
+        "landscape",
+        "edges"
+      ],
+      "source": {
+        "height": 9,
+        "width": 17
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "candidates": {
+        "fast_image_resize-6.1.0-catmull-rom": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.1358167167750552,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 1.0,
+              "count_nonzero_differences": 340,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 197,
+                "y": 0,
+                "x": 65,
+                "channel": 2,
+                "actual": 29.0,
+                "expected": 28.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        },
+        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+          "image": {
+            "tolerance": 1.0,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 1.0,
+              "rmse": 0.03036954111898594,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 17,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 1,
+              "first_difference": {
+                "element_index": 500,
+                "y": 1,
+                "x": 70,
+                "channel": 2,
+                "actual": 11.0,
+                "expected": 12.0
+              }
+            }
+          },
+          "video": {
+            "tolerance": 0.0001,
+            "passed": true,
+            "diagnostics": {
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
+              "absolute_error_p50": 0.0,
+              "absolute_error_p90": 0.0,
+              "absolute_error_p99": 0.0,
+              "count_nonzero_differences": 0,
+              "count_over_tolerance": 0,
+              "maximum_ulp_distance": 0,
+              "first_difference": null
+            }
+          }
+        }
+      }
+    }
+  ],
+  "status": "pass"
+}

@@ -10,6 +10,32 @@ classes, and special-token/configuration values are recorded in
 output, tolerance, limit, and error contract is
 [`docs/compatibility-v1.md`](../docs/compatibility-v1.md).
 
+## Resize-stage conformance
+
+The B5 decision, source semantics, evaluated candidates, complete diagnostics,
+and platform qualifications are recorded in
+[`docs/resize-parity-v1.md`](../docs/resize-parity-v1.md). Its committed
+17-case corpus lives in [`resize/v1/`](resize/v1/) and is consumed by an
+always-on Rust test without Python or Torch at runtime.
+
+Run the committed corpus and comparator hardening tests with:
+
+```console
+make resize-conformance
+```
+
+Regenerate the oracle in the exact locked reference environment and immediately
+rerun the Rust gate with:
+
+```console
+make resize-conformance-regenerate
+```
+
+Generate the native macOS arm64 candidate report with `make
+resize-report-macos`. The tracked Linux x86_64 report was executed under QEMU
+emulation and is labeled accordingly; see the decision record for its exact
+Docker command and limitations.
+
 From the repository root, generate or verify the committed baseline images in
 the shared locked uv workspace:
 
