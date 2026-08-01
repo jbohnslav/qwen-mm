@@ -4,16 +4,15 @@ Status: accepted for B5 on 2026-08-01.
 
 ## Decision
 
-Use the in-tree `qwen-mm-tolerance-image-and-torchvision-video-v1` kernels in
+Use the in-tree `qwen-mm-exact-pillow-image-and-torchvision-video-v1` kernels in
 `qwen-mm-core`:
 
-- Image: a custom separable, fixed-point RGB8 Keys bicubic-antialias kernel.
-  It uses half-pixel coordinates, `a=-0.5`, normalized double-precision
-  weights, dynamic precision at most 22 bits, i16 coefficients, clamping, and
-  an independently quantized horizontal and vertical pass. It is
-  tolerance-compatible with Pillow 12.3.0 under the frozen one-byte bound. It
-  is **not** an arithmetic port of Pillow's constant-22-bit/i32 `Resample.c`
-  path and must not be described as exact Pillow arithmetic.
+- Image: a source-faithful port of Pillow 12.3.0's separable, fixed-point RGB8
+  Keys bicubic-antialias path. It uses Pillow's half-pixel coordinates,
+  `a=-0.5` evaluation order, normalized double-precision weights, fixed
+  22-bit precision, i32 coefficients rounded away from zero, i64
+  accumulation, clamping, and independently quantized horizontal and vertical
+  passes.
 - Video: an in-tree source-faithful implementation of the pinned TorchVision
   CPU uint8 tensor path. It casts RGB8 to float32, performs the PyTorch
   separable antialiased Keys cubic (`a=-0.5`) convolution using float32 and the
@@ -68,14 +67,14 @@ element/pixel/channel are stored in the host reports.
 
 | Candidate | Exact version | Image result | Video result | Decision |
 | --- | --- | --- | --- | --- |
-| In-tree custom kernels | `qwen-mm-core 0.1.0`; implementation SHA-256 `bf05ef4166f5d9fc8d7f2e76df10f814c607d027ea53a435eb7b778d61fd3dd7` | 0/17 cases failed; max error 1; 825/359,424 bytes differ; none beyond tolerance. Worst RMSE 0.0967404980 in `factor-above-independent-rgb`, first difference element 3457: 247 vs 246. | 0/17 cases failed; bit-identical on the corpus (max error and ULP distance 0). | Selected |
-| `fast_image_resize` Catmull-Rom | `fast_image_resize=6.1.0` | 6/17 cases failed; 10,049 values beyond tolerance. Worst case `off-grid-landscape-checkerboard`: max error 21, RMSE 2.812596449, p90 3, p99 13, first difference element 6: 1 vs 0. | 3/17 cases failed; 114 values beyond `1e-4`. Worst RMSE case `min-above-checkerboard`: max error 1, RMSE 0.0592927061, 108 beyond tolerance, first difference element 38: 64 vs 63. | Rejected |
+| In-tree source-faithful kernels | `qwen-mm-core 0.1.0`; implementation SHA-256 `1f6ed5d430016a04ac2b593d1e60b0af295cdb759a92f37fec3d95be924c4f30` | 0/17 cases failed; all 359,424 bytes are exact (max error, ULP distance, and nonzero count 0). | 0/17 cases failed; bit-identical on the corpus (max error and ULP distance 0). | Selected |
+| `fast_image_resize` Catmull-Rom | `fast_image_resize=6.1.0` | 12/17 cases failed under the exact evidence bound; 25,569 values differ. Worst case `off-grid-landscape-checkerboard`: max error 21, RMSE 2.812596449, first difference element 6: 1 vs 0. | 3/17 cases failed; 114 values beyond `1e-4`. Worst RMSE case `min-above-checkerboard`: max error 1, RMSE 0.0592927061, 108 beyond tolerance, first difference element 38: 64 vs 63. | Rejected |
 
-The selected image differences are expected from its dynamic-i16 arithmetic;
-they are evidence of tolerance compatibility, not exact Pillow reproduction.
-The v1 tolerance remains unchanged. The selected video result is exact for the
-frozen weights and samples, but this record does not claim a general
-bit-for-bit guarantee beyond the supported corpus and platforms.
+The v1 contract's one-byte Pillow-resize allowance remains unchanged, but the
+selected image implementation now meets the stronger exact bound for all 17
+frozen cases. The selected video result is also exact for the frozen weights
+and samples. This record does not claim a general bit-for-bit guarantee beyond
+the supported corpus and platforms.
 
 ## Platform evidence
 

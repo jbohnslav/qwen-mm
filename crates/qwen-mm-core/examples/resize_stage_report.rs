@@ -17,8 +17,8 @@ use sha2::{Digest, Sha256};
 const DEFAULT_MANIFEST: &str = "reference/resize/v1/manifest.json";
 const IMPLEMENTATION_PATH: &str = "crates/qwen-mm-core/src/resize.rs";
 const REPORT_SOURCE_PATH: &str = "crates/qwen-mm-core/examples/resize_stage_report.rs";
-const SELECTED_CANDIDATE: &str = "qwen-mm-tolerance-image-and-torchvision-video-v1";
-const IMAGE_TOLERANCE: f64 = 1.0;
+const SELECTED_CANDIDATE: &str = "qwen-mm-exact-pillow-image-and-torchvision-video-v1";
+const IMAGE_TOLERANCE: f64 = 0.0;
 const VIDEO_TOLERANCE: f64 = 1.0e-4;
 
 #[derive(Deserialize)]
@@ -295,7 +295,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             SELECTED_CANDIDATE.to_owned(),
             CandidateSummary {
                 exact_version: format!(
-                    "qwen-mm-core {} custom fixed-point image / source-faithful TorchVision video",
+                    "qwen-mm-core {} source-faithful Pillow image / source-faithful TorchVision video",
                     env!("CARGO_PKG_VERSION")
                 ),
                 selected: true,

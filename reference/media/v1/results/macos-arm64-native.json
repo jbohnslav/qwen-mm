@@ -1,0 +1,2980 @@
+{
+  "schema_version": 1,
+  "contract_id": "qwen-mm-compat-v1",
+  "stage": "prepared_hwc_rgb8",
+  "fixture_manifest": {
+    "path": "reference/media/v1/manifest.json",
+    "byte_length": 30866,
+    "sha256": "5c4a260ee611feafd8cf23f3bcf0622e479172dc15f928267e63c71fceea7627"
+  },
+  "input_artifacts": {
+    "encoded.bin": {
+      "path": "reference/media/v1/encoded.bin",
+      "byte_length": 196089,
+      "sha256": "efaec0c1995bc84a48fdc5f462266c3d3f0e0f116fcf61d13581396bf56c67a8"
+    },
+    "prepared-rgb8.bin": {
+      "path": "reference/media/v1/prepared-rgb8.bin",
+      "byte_length": 1038336,
+      "sha256": "8fdea5c4ca27959cd79543948287d3ae7b6cc55a3cbb3099af7c90220fd20aaa"
+    }
+  },
+  "build_inputs": {
+    "cargo_lock": {
+      "path": "Cargo.lock",
+      "byte_length": 26928,
+      "sha256": "a84f53ec6022df346f23b7a9801fd43159fe3ff11f3f3e5171b2c16611725938"
+    },
+    "core_manifest": {
+      "path": "crates/qwen-mm-core/Cargo.toml",
+      "byte_length": 458,
+      "sha256": "885efbefc009d645dae182a0d90bc272ef417ce246cb829c22afd3d86b832c25"
+    },
+    "workspace_manifest": {
+      "path": "Cargo.toml",
+      "byte_length": 929,
+      "sha256": "93d090a3f0f0b9fd5a52421d436bd1652116dfed6eb3b4363b8fdb8d2734a043"
+    }
+  },
+  "implementations": {
+    "decode_color": {
+      "path": "crates/qwen-mm-core/src/media.rs",
+      "byte_length": 55138,
+      "sha256": "120db91e184bdcecf9efa6be327fdf9b1aed6f1daffd72539e9d57ed12e7577e"
+    },
+    "resize": {
+      "path": "crates/qwen-mm-core/src/resize.rs",
+      "byte_length": 28868,
+      "sha256": "1f6ed5d430016a04ac2b593d1e60b0af295cdb759a92f37fec3d95be924c4f30"
+    }
+  },
+  "evidence_source": {
+    "path": "crates/qwen-mm-core/examples/media_stage_report.rs",
+    "byte_length": 22944,
+    "sha256": "9cec884fe0319ab59e296349ee2a17090e635472dbbc50c6224828ac73e99d31"
+  },
+  "generated_by": "./scripts/cargo.sh run --locked -p qwen-mm-core --example media_stage_report -- --output <path> --host-id <id> --execution <kind>",
+  "oracle": {
+    "Pillow": "12.3.0",
+    "capture_platform": "macOS-26.5.2-arm64-arm-64bit",
+    "exif_policy": "stored raster; no transpose",
+    "la_policy": "unsupported_media by accepted ADR envelope",
+    "libjpeg_turbo": "3.1.4.1",
+    "libwebp": "1.6.0",
+    "numpy": "2.4.6",
+    "python": "3.11.15 (main, Mar  3 2026, 15:47:15) [Clang 21.1.4 ]",
+    "qwen-vl-utils": "0.0.14",
+    "rgba_policy": "white background via Pillow paste with alpha mask"
+  },
+  "provenance": {
+    "compatibility_manifest": {
+      "path": "reference/compatibility/v1.json",
+      "sha256": "01c03d10feb34313525f0c4fd08abeaa11151a20b1e87ad57a65ff677ad1cc06"
+    },
+    "generator": {
+      "path": "reference/src/qwen_mm_reference/media_conformance.py",
+      "sha256": "54990f2387e20a8ceff38f0abc9144c0f854a02bfb3e320751ae6653db0b3101"
+    },
+    "profile_fingerprints": {
+      "qwen3-vl-8b": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "qwen3.5-9b": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5"
+    }
+  },
+  "rust_codec_stack": {
+    "image": "0.25.10 (default-features=false; png,webp)",
+    "image-webp": "0.2.4",
+    "libjpeg-turbo-rs": "0.8.0 (default-features=false; simd,std)",
+    "png": "0.18.1"
+  },
+  "host": {
+    "id": "macos-arm64-native",
+    "execution": "native",
+    "os": "macos",
+    "architecture": "aarch64",
+    "uname": "Darwin mini.localdomain 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:26:22 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8132 arm64",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6"
+  },
+  "cases": [
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-rgb-aligned-no-op",
+      "tags": [
+        "png",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-luma-off-grid-resize",
+      "tags": [
+        "png",
+        "grayscale",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-rgba-white-composite",
+      "tags": [
+        "png",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-rgb-trns-ignored",
+      "tags": [
+        "png",
+        "rgb",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-luma-trns-ignored",
+      "tags": [
+        "png",
+        "grayscale",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-rgb-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-rgb-off-grid-resize",
+      "tags": [
+        "jpeg",
+        "rgb",
+        "resize",
+        "progressive",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-cmyk-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "cmyk",
+        "no_op",
+        "lossy",
+        "adobe_app14"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-ycck-adobe-transform-2",
+      "tags": [
+        "jpeg",
+        "ycck",
+        "cmyk",
+        "lossy",
+        "adobe_transform_2"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-luma-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "grayscale",
+        "no_op",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-1-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_1",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-2-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_2",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-3-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_3",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-4-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_4",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-5-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_5",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-6-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_6",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-7-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_7",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-exif-orientation-8-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_8",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossless-rgb-aligned-no-op",
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossless-rgb-off-grid-resize",
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "off_grid",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossless-rgba-white-composite",
+      "tags": [
+        "webp",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossy-aligned-no-op",
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossy-off-grid-resize",
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-lossy-rgba-white-composite",
+      "tags": [
+        "webp",
+        "rgba",
+        "vp8x",
+        "alpha",
+        "white_composite",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-unusual-aspect-200",
+      "tags": [
+        "png",
+        "unusual_aspect",
+        "aspect_200",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 32,
+        "width": 6400
+      },
+      "destination": {
+        "height": 32,
+        "width": 6400
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-la-rejected-by-v1-envelope",
+      "tags": [
+        "png",
+        "la",
+        "alpha",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-palette-rejected",
+      "tags": [
+        "png",
+        "palette",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-16bit-rejected",
+      "tags": [
+        "png",
+        "16bit",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-missing-terminal-eoi",
+      "tags": [
+        "jpeg",
+        "truncated",
+        "missing_eoi"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-truncated",
+      "tags": [
+        "jpeg",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-truncated",
+      "tags": [
+        "png",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-truncated",
+      "tags": [
+        "webp",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-oversized-header",
+      "tags": [
+        "jpeg",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-oversized-header",
+      "tags": [
+        "png",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-oversized-header",
+      "tags": [
+        "webp",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-pixel-bomb-header",
+      "tags": [
+        "png",
+        "malicious_header",
+        "decoded_pixel_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-malformed-rgb-bit-depth",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_bit_depth"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-malformed-reserved-color-type",
+      "tags": [
+        "png",
+        "malformed_header",
+        "reserved_color_type"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-malformed-method-before-excluded-la",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_method",
+        "la"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-malformed-crc-before-excluded-la",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_crc",
+        "la"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "apng-malformed-control-length",
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "invalid_chunk_length"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "apng-malformed-zero-frames",
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "zero_frames"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-malformed-baseline-precision",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_precision"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-malformed-zero-components",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_component_count"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-malformed-excluded-component-sampling",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_sampling",
+        "components_2"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-malformed-reserved-animation-flags",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "reserved_flags"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-malformed-lossless-version",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_version"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-malformed-extended-length",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_chunk_length"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-chunk-outside-declared-riff",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "riff_extent"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "png-valid-aspect-201-rejected",
+      "tags": [
+        "png",
+        "valid_decode",
+        "aspect_201",
+        "media_geometry"
+      ],
+      "expected": "media_geometry",
+      "actual": "media_geometry",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "webp-animated-rejected",
+      "tags": [
+        "webp",
+        "animated",
+        "unsupported_media"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "apng-animated-rejected",
+      "tags": [
+        "png",
+        "apng",
+        "animated",
+        "unsupported_media"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "gif-codec-rejected",
+      "tags": [
+        "gif",
+        "unsupported_codec"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "jpeg-declared-png-mismatch",
+      "tags": [
+        "format_mismatch",
+        "media_decode"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "raw-packed-aligned-no-op",
+      "tags": [
+        "raw",
+        "packed",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "raw-padded-exact-last-row-no-op",
+      "tags": [
+        "raw",
+        "padded_stride",
+        "exact_last_row",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "raw-packed-luma-off-grid-resize",
+      "tags": [
+        "raw",
+        "packed",
+        "off_grid",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "id": "raw-padded-luma-off-grid-resize",
+      "tags": [
+        "raw",
+        "padded_stride",
+        "exact_last_row",
+        "off_grid",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-rgb-aligned-no-op",
+      "tags": [
+        "png",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-luma-off-grid-resize",
+      "tags": [
+        "png",
+        "grayscale",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-rgba-white-composite",
+      "tags": [
+        "png",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-rgb-trns-ignored",
+      "tags": [
+        "png",
+        "rgb",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-luma-trns-ignored",
+      "tags": [
+        "png",
+        "grayscale",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-rgb-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-rgb-off-grid-resize",
+      "tags": [
+        "jpeg",
+        "rgb",
+        "resize",
+        "progressive",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-cmyk-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "cmyk",
+        "no_op",
+        "lossy",
+        "adobe_app14"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-ycck-adobe-transform-2",
+      "tags": [
+        "jpeg",
+        "ycck",
+        "cmyk",
+        "lossy",
+        "adobe_transform_2"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-luma-aligned-no-op",
+      "tags": [
+        "jpeg",
+        "grayscale",
+        "no_op",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 64
+      },
+      "destination": {
+        "height": 64,
+        "width": 64
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-1-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_1",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-2-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_2",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-3-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_3",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-4-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_4",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-5-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_5",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-6-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_6",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-7-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_7",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-exif-orientation-8-ignored",
+      "tags": [
+        "jpeg",
+        "exif_orientation_8",
+        "stored_raster",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossless-rgb-aligned-no-op",
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossless-rgb-off-grid-resize",
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "off_grid",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossless-rgba-white-composite",
+      "tags": [
+        "webp",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossy-aligned-no-op",
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossy-off-grid-resize",
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 71,
+        "width": 109
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-lossy-rgba-white-composite",
+      "tags": [
+        "webp",
+        "rgba",
+        "vp8x",
+        "alpha",
+        "white_composite",
+        "lossy"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 1,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-unusual-aspect-200",
+      "tags": [
+        "png",
+        "unusual_aspect",
+        "aspect_200",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 32,
+        "width": 6400
+      },
+      "destination": {
+        "height": 32,
+        "width": 6400
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-la-rejected-by-v1-envelope",
+      "tags": [
+        "png",
+        "la",
+        "alpha",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-palette-rejected",
+      "tags": [
+        "png",
+        "palette",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-16bit-rejected",
+      "tags": [
+        "png",
+        "16bit",
+        "unsupported_mode"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-missing-terminal-eoi",
+      "tags": [
+        "jpeg",
+        "truncated",
+        "missing_eoi"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-truncated",
+      "tags": [
+        "jpeg",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-truncated",
+      "tags": [
+        "png",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-truncated",
+      "tags": [
+        "webp",
+        "truncated"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-oversized-header",
+      "tags": [
+        "jpeg",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-oversized-header",
+      "tags": [
+        "png",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-oversized-header",
+      "tags": [
+        "webp",
+        "malicious_header",
+        "edge_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-pixel-bomb-header",
+      "tags": [
+        "png",
+        "malicious_header",
+        "decoded_pixel_limit"
+      ],
+      "expected": "resource_limit",
+      "actual": "resource_limit",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-malformed-rgb-bit-depth",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_bit_depth"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-malformed-reserved-color-type",
+      "tags": [
+        "png",
+        "malformed_header",
+        "reserved_color_type"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-malformed-method-before-excluded-la",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_method",
+        "la"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-malformed-crc-before-excluded-la",
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_crc",
+        "la"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "apng-malformed-control-length",
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "invalid_chunk_length"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "apng-malformed-zero-frames",
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "zero_frames"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-malformed-baseline-precision",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_precision"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-malformed-zero-components",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_component_count"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-malformed-excluded-component-sampling",
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_sampling",
+        "components_2"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-malformed-reserved-animation-flags",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "reserved_flags"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-malformed-lossless-version",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_version"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-malformed-extended-length",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_chunk_length"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-chunk-outside-declared-riff",
+      "tags": [
+        "webp",
+        "malformed_header",
+        "riff_extent"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "png-valid-aspect-201-rejected",
+      "tags": [
+        "png",
+        "valid_decode",
+        "aspect_201",
+        "media_geometry"
+      ],
+      "expected": "media_geometry",
+      "actual": "media_geometry",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "webp-animated-rejected",
+      "tags": [
+        "webp",
+        "animated",
+        "unsupported_media"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "apng-animated-rejected",
+      "tags": [
+        "png",
+        "apng",
+        "animated",
+        "unsupported_media"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "gif-codec-rejected",
+      "tags": [
+        "gif",
+        "unsupported_codec"
+      ],
+      "expected": "unsupported_media",
+      "actual": "unsupported_media",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "jpeg-declared-png-mismatch",
+      "tags": [
+        "format_mismatch",
+        "media_decode"
+      ],
+      "expected": "media_decode",
+      "actual": "media_decode",
+      "passed": true,
+      "source": null,
+      "destination": null,
+      "tolerance": null,
+      "diagnostics": null
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "raw-packed-aligned-no-op",
+      "tags": [
+        "raw",
+        "packed",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "raw-padded-exact-last-row-no-op",
+      "tags": [
+        "raw",
+        "padded_stride",
+        "exact_last_row",
+        "no_op",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 64,
+        "width": 96
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "raw-packed-luma-off-grid-resize",
+      "tags": [
+        "raw",
+        "packed",
+        "off_grid",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "id": "raw-padded-luma-off-grid-resize",
+      "tags": [
+        "raw",
+        "padded_stride",
+        "exact_last_row",
+        "off_grid",
+        "resize",
+        "lossless"
+      ],
+      "expected": "prepared_rgb8",
+      "actual": "prepared_rgb8",
+      "passed": true,
+      "source": {
+        "height": 65,
+        "width": 97
+      },
+      "destination": {
+        "height": 64,
+        "width": 96
+      },
+      "tolerance": 0,
+      "diagnostics": {
+        "maximum_absolute_error": 0,
+        "rmse": 0.0,
+        "absolute_error_p50": 0,
+        "absolute_error_p90": 0,
+        "absolute_error_p99": 0,
+        "count_nonzero_differences": 0,
+        "count_over_tolerance": 0,
+        "maximum_ulp_distance": 0,
+        "first_difference": null
+      }
+    }
+  ],
+  "status": "pass"
+}

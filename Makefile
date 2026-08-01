@@ -1,6 +1,7 @@
 .PHONY: benchmark-v2-self-test benchmark-v2-smoke chat-conformance check conformance-full \
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
-	resize-conformance resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke
+	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
+	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -12,6 +13,7 @@ BENCHMARK_CANDIDATE ?=
 BENCHMARK_OUTPUT ?= /tmp/qwen-mm-benchmark-v2.json
 BENCHMARK_REPORT ?= /tmp/qwen-mm-benchmark-v2.md
 RESIZE_REPORT_OUTPUT ?= reference/resize/v1/results/macos-arm64-native.json
+MEDIA_REPORT_OUTPUT ?= reference/media/v1/results/macos-arm64-native.json
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -53,6 +55,17 @@ resize-conformance-regenerate:
 resize-report-macos: resize-conformance
 	$(CARGO_CMD) run --locked --package qwen-mm-core --example resize_stage_report -- \
 		--output "$(RESIZE_REPORT_OUTPUT)" --host-id macos-arm64-native --execution native
+
+media-conformance:
+	$(CARGO_CMD) test --locked --package qwen-mm-core --all-targets
+
+media-conformance-regenerate:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.media_conformance
+	$(MAKE) media-conformance
+
+media-report-macos: media-conformance
+	$(CARGO_CMD) run --locked --package qwen-mm-core --example media_stage_report -- \
+		--output "$(MEDIA_REPORT_OUTPUT)" --host-id macos-arm64-native --execution native
 
 reference-smoke:
 	$(UV_CMD) sync --locked --inexact --package qwen-mm-reference

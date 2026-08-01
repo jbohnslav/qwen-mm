@@ -9,13 +9,13 @@
   },
   "selected_implementation": {
     "path": "crates/qwen-mm-core/src/resize.rs",
-    "byte_length": 30005,
-    "sha256": "bf05ef4166f5d9fc8d7f2e76df10f814c607d027ea53a435eb7b778d61fd3dd7"
+    "byte_length": 28868,
+    "sha256": "1f6ed5d430016a04ac2b593d1e60b0af295cdb759a92f37fec3d95be924c4f30"
   },
   "evidence_source": {
     "path": "crates/qwen-mm-core/examples/resize_stage_report.rs",
-    "byte_length": 21157,
-    "sha256": "750356853f2ce8f641015617012a5e5a4fbe48a950ea9f85ba61162e5266339e"
+    "byte_length": 21164,
+    "sha256": "227c5d12263bb5ca679790405092bf13adc51654ff1ab7c0bcc3c1fdec34f062"
   },
   "generated_by": "./scripts/cargo.sh run --locked -p qwen-mm-core --example resize_stage_report -- --output <path> --host-id <id> --execution <kind>",
   "host": {
@@ -23,19 +23,19 @@
     "execution": "docker-desktop-qemu-emulation-on-macos-arm64",
     "os": "linux",
     "architecture": "x86_64",
-    "uname": "Linux 20cf61c5d5f9 6.12.76-linuxkit #1 SMP Sun Mar  8 14:41:59 UTC 2026 x86_64 GNU/Linux",
+    "uname": "Linux 41dd8a4e7aa6 6.12.76-linuxkit #1 SMP Sun Mar  8 14:41:59 UTC 2026 x86_64 GNU/Linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6"
   },
   "candidates": {
     "fast_image_resize-6.1.0-catmull-rom": {
       "exact_version": "fast_image_resize=6.1.0",
       "selected": false,
-      "image_cases_failed": 6,
+      "image_cases_failed": 12,
       "video_cases_failed": 3,
       "passed": false
     },
-    "qwen-mm-tolerance-image-and-torchvision-video-v1": {
-      "exact_version": "qwen-mm-core 0.1.0 custom fixed-point image / source-faithful TorchVision video",
+    "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
+      "exact_version": "qwen-mm-core 0.1.0 source-faithful Pillow image / source-faithful TorchVision video",
       "selected": true,
       "image_cases_failed": 0,
       "video_cases_failed": 0,
@@ -62,7 +62,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -92,9 +92,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -145,8 +145,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.023867581744561668,
@@ -154,7 +154,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
               "count_nonzero_differences": 7,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 7,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 3883,
@@ -182,9 +182,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -234,7 +234,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 16.0,
@@ -243,7 +243,7 @@
               "absolute_error_p90": 4.0,
               "absolute_error_p99": 15.0,
               "count_nonzero_differences": 2794,
-              "count_over_tolerance": 2056,
+              "count_over_tolerance": 2794,
               "maximum_ulp_distance": 16,
               "first_difference": {
                 "element_index": 3,
@@ -271,9 +271,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -323,7 +323,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 13.0,
@@ -332,7 +332,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 3.0,
               "count_nonzero_differences": 556,
-              "count_over_tolerance": 189,
+              "count_over_tolerance": 556,
               "maximum_ulp_distance": 13,
               "first_difference": {
                 "element_index": 116,
@@ -367,27 +367,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.09674049802607662,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 115,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 3457,
-                "y": 18,
-                "x": 0,
-                "channel": 1,
-                "actual": 247.0,
-                "expected": 246.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -426,7 +419,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 21.0,
@@ -435,7 +428,7 @@
               "absolute_error_p90": 3.0,
               "absolute_error_p99": 13.0,
               "count_nonzero_differences": 5202,
-              "count_over_tolerance": 2452,
+              "count_over_tolerance": 5202,
               "maximum_ulp_distance": 21,
               "first_difference": {
                 "element_index": 6,
@@ -463,27 +456,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.0914058790353346,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 154,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 169,
-                "y": 0,
-                "x": 56,
-                "channel": 1,
-                "actual": 116.0,
-                "expected": 117.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -522,8 +508,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.05462546084219539,
@@ -531,7 +517,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
               "count_nonzero_differences": 55,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 55,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 3638,
@@ -559,27 +545,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.01473139127471974,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 4,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 4967,
-                "y": 25,
-                "x": 55,
-                "channel": 2,
-                "actual": 193.0,
-                "expected": 194.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -621,8 +600,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.01473139127471974,
@@ -630,7 +609,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
               "count_nonzero_differences": 4,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 4,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 3674,
@@ -658,27 +637,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.01473139127471974,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 4,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 3674,
-                "y": 12,
-                "x": 72,
-                "channel": 2,
-                "actual": 249.0,
-                "expected": 250.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -719,8 +691,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.08267972847076846,
@@ -728,7 +700,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
               "count_nonzero_differences": 126,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 126,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 387,
@@ -756,27 +728,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.08267972847076846,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 126,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 387,
-                "y": 2,
-                "x": 1,
-                "channel": 0,
-                "actual": 255.0,
-                "expected": 254.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -815,7 +780,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -845,9 +810,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -897,7 +862,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -927,9 +892,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -980,7 +945,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 16.0,
@@ -989,7 +954,7 @@
               "absolute_error_p90": 4.0,
               "absolute_error_p99": 16.0,
               "count_nonzero_differences": 6555,
-              "count_over_tolerance": 4728,
+              "count_over_tolerance": 6555,
               "maximum_ulp_distance": 16,
               "first_difference": {
                 "element_index": 3,
@@ -1024,27 +989,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.031766563920785224,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 31,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 29290,
-                "y": 61,
-                "x": 3,
-                "channel": 1,
-                "actual": 226.0,
-                "expected": 225.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -1083,7 +1041,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 10.0,
@@ -1092,7 +1050,7 @@
               "absolute_error_p90": 1.0,
               "absolute_error_p99": 2.0,
               "count_nonzero_differences": 7449,
-              "count_over_tolerance": 294,
+              "count_over_tolerance": 7449,
               "maximum_ulp_distance": 10,
               "first_difference": {
                 "element_index": 2,
@@ -1127,27 +1085,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.08023763894646765,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 178,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 238,
-                "y": 0,
-                "x": 79,
-                "channel": 1,
-                "actual": 58.0,
-                "expected": 57.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -1186,7 +1137,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -1216,9 +1167,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -1268,7 +1219,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -1298,9 +1249,9 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
               "maximum_absolute_error": 0.0,
@@ -1351,8 +1302,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.3661054535581244,
@@ -1360,7 +1311,7 @@
               "absolute_error_p90": 1.0,
               "absolute_error_p99": 1.0,
               "count_nonzero_differences": 1647,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 1647,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 0,
@@ -1388,27 +1339,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.05776321097088238,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 41,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 277,
-                "y": 1,
-                "x": 28,
-                "channel": 1,
-                "actual": 119.0,
-                "expected": 118.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -1448,7 +1392,7 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 19.0,
@@ -1457,7 +1401,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 4.0,
               "count_nonzero_differences": 834,
-              "count_over_tolerance": 330,
+              "count_over_tolerance": 834,
               "maximum_ulp_distance": 19,
               "first_difference": {
                 "element_index": 129,
@@ -1485,27 +1429,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.091702171154474,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 155,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 95,
-                "y": 0,
-                "x": 31,
-                "channel": 2,
-                "actual": 128.0,
-                "expected": 127.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {
@@ -1545,8 +1482,8 @@
       "candidates": {
         "fast_image_resize-6.1.0-catmull-rom": {
           "image": {
-            "tolerance": 1.0,
-            "passed": true,
+            "tolerance": 0.0,
+            "passed": false,
             "diagnostics": {
               "maximum_absolute_error": 1.0,
               "rmse": 0.1358167167750552,
@@ -1554,7 +1491,7 @@
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 1.0,
               "count_nonzero_differences": 340,
-              "count_over_tolerance": 0,
+              "count_over_tolerance": 340,
               "maximum_ulp_distance": 1,
               "first_difference": {
                 "element_index": 197,
@@ -1582,27 +1519,20 @@
             }
           }
         },
-        "qwen-mm-tolerance-image-and-torchvision-video-v1": {
+        "qwen-mm-exact-pillow-image-and-torchvision-video-v1": {
           "image": {
-            "tolerance": 1.0,
+            "tolerance": 0.0,
             "passed": true,
             "diagnostics": {
-              "maximum_absolute_error": 1.0,
-              "rmse": 0.03036954111898594,
+              "maximum_absolute_error": 0.0,
+              "rmse": 0.0,
               "absolute_error_p50": 0.0,
               "absolute_error_p90": 0.0,
               "absolute_error_p99": 0.0,
-              "count_nonzero_differences": 17,
+              "count_nonzero_differences": 0,
               "count_over_tolerance": 0,
-              "maximum_ulp_distance": 1,
-              "first_difference": {
-                "element_index": 500,
-                "y": 1,
-                "x": 70,
-                "channel": 2,
-                "actual": 11.0,
-                "expected": 12.0
-              }
+              "maximum_ulp_distance": 0,
+              "first_difference": null
             }
           },
           "video": {

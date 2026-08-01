@@ -7,6 +7,8 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+image.workspace = true
+libjpeg-turbo-rs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

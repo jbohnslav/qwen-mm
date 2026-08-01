@@ -12,6 +12,8 @@ rust-version = "1.97.1"
 
 [workspace.dependencies]
 fast_image_resize = { version = "=6.1.0", default-features = false, features = ["std"] }
+image = { version = "=0.25.10", default-features = false, features = ["png", "webp"] }
+libjpeg-turbo-rs = { version = "=0.8.0", default-features = false, features = ["simd", "std"] }
 pyo3 = { version = "=0.29.0", features = ["abi3-py311"] }
 qwen-mm-core = { path = "crates/qwen-mm-core" }
 serde = { version = "=1.0.229", features = ["derive"] }

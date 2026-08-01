@@ -2,8 +2,8 @@
 //!
 //! The crate owns immutable offline profiles, Rust-native request/media types,
 //! resource-safe preflight, stable errors, and exact parity output layouts.
-//! It deliberately contains no Python, Torch, `OpenCV`, networking, decoding,
-//! or model execution.
+//! It deliberately contains no Python, Torch, `OpenCV`, networking, or model
+//! execution.
 //!
 //! ```
 //! assert_eq!(qwen_mm_core::version(), "0.1.0");
@@ -14,6 +14,7 @@
 pub mod error;
 pub mod geometry;
 pub mod limits;
+pub mod media;
 pub mod output;
 pub mod patchify;
 pub mod profile;
@@ -21,6 +22,8 @@ pub mod request;
 pub mod resize;
 pub mod text;
 
+#[cfg(test)]
+mod media_conformance_tests;
 #[cfg(test)]
 mod patchify_conformance_tests;
 
@@ -32,6 +35,7 @@ pub use limits::{
     LimitOverrides, PreflightSummary, ProfiledRequest, ResourceLimits, checked_add,
     checked_capacity_bytes, checked_mul, preflight_batch,
 };
+pub use media::{PreparedRgbImage, prepare_image_rgb8};
 pub use output::{
     CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, PreparedArrays, PreparedBatch,
     ReplacementRange, VideoSidecar,

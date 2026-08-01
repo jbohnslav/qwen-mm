@@ -8,7 +8,7 @@ use crate::{
 
 const RGB_CHANNELS: u64 = 3;
 
-/// Resizes one RGB8 image with a Pillow-tolerance-compatible bicubic kernel.
+/// Resizes one RGB8 image with a Pillow-compatible bicubic kernel.
 ///
 /// The source may have row padding. The returned image is packed HWC RGB8 and
 /// its dimensions are taken from `plan`.
@@ -256,17 +256,11 @@ fn convolve_vertical_f32(
 #[derive(Debug)]
 struct FixedWeights {
     bounds: Vec<(usize, usize)>,
-    coefficients: Vec<i16>,
+    coefficients: Vec<i32>,
     kernel_size: usize,
-    precision: u32,
 }
 
-/// A custom separable fixed-point RGB8 bicubic-antialias kernel.
-///
-/// It uses the pinned Keys cubic geometry with dynamic precision and i16
-/// coefficients. It is accepted against Pillow under the v1 one-byte bound,
-/// but is not an arithmetic port of Pillow's constant-22-bit/i32 `Resample.c`
-/// path.
+/// A source-faithful port of Pillow's separable 8-bit bicubic resampler.
 fn resize_fixed_point_u8(
     source: &[u8],
     source_height: usize,
@@ -310,6 +304,7 @@ fn resize_fixed_point_u8(
     clippy::cast_sign_loss
 )] // All casts deliberately mirror pinned PyTorch C++ conversions.
 fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWeights> {
+    const PRECISION: u32 = 22;
     if input_size == 0 || output_size == 0 {
         return Err(geometry("resize dimensions must be non-zero"));
     }
@@ -326,7 +321,6 @@ fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWei
         .ok_or_else(|| overflow("image resize weights capacity"))?;
     let mut floating = vec![0.0_f64; floating_len];
     let mut bounds = Vec::with_capacity(output_size);
-    let mut maximum_weight = 0.0_f64;
 
     for output_index in 0..output_size {
         let center = scale * (output_index as f64 + 0.5);
@@ -355,42 +349,27 @@ fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWei
         if total != 0.0 {
             for weight in row.iter_mut().take(count) {
                 *weight /= total;
-                maximum_weight = maximum_weight.max(*weight);
             }
         }
     }
 
-    let mut precision = 0_u32;
-    while precision < 22 {
-        let next = (0.5 + maximum_weight * f64::from(1_u32 << (precision + 1))) as i32;
-        if next >= 1 << 15 {
-            break;
-        }
-        precision += 1;
-    }
-    if precision == 0 {
-        return Err(invariant("image fixed-point precision is zero"));
-    }
-    let scale = f64::from(1_u32 << precision);
+    let scale = f64::from(1_u32 << PRECISION);
     let coefficients = floating
         .into_iter()
         .map(|weight| {
             let scaled = weight * scale;
-            let rounded = if scaled < 0.0 {
+            if scaled < 0.0 {
                 (scaled - 0.5) as i32
             } else {
                 (scaled + 0.5) as i32
-            };
-            i16::try_from(rounded)
-                .map_err(|_| invariant("image fixed-point weight does not fit i16"))
+            }
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Vec<_>>();
 
     Ok(FixedWeights {
         bounds,
         coefficients,
         kernel_size,
-        precision,
     })
 }
 
@@ -400,7 +379,7 @@ fn keys_cubic(mut value: f64) -> f64 {
     if value < 1.0 {
         ((A + 2.0) * value - (A + 3.0)) * value * value + 1.0
     } else if value < 2.0 {
-        ((A * value - 5.0 * A) * value + 8.0 * A) * value - 4.0 * A
+        (((value - 5.0) * value + 8.0) * value - 4.0) * A
     } else {
         0.0
     }
@@ -413,6 +392,7 @@ fn convolve_horizontal(
     destination_width: usize,
     weights: &FixedWeights,
 ) -> Result<Vec<u8>> {
+    const PRECISION: u32 = 22;
     let destination_len = height
         .checked_mul(destination_width)
         .and_then(|value| value.checked_mul(3))
@@ -424,13 +404,13 @@ fn convolve_horizontal(
             let coefficients = &weights.coefficients
                 [output_x * weights.kernel_size..output_x * weights.kernel_size + count];
             for channel in 0..3 {
-                let mut sum = 1_i64 << (weights.precision - 1);
+                let mut sum = 1_i64 << (PRECISION - 1);
                 for (index, &coefficient) in coefficients.iter().enumerate() {
                     let source_index = ((row * source_width + minimum + index) * 3) + channel;
                     sum += i64::from(source[source_index]) * i64::from(coefficient);
                 }
-                let value = u8::try_from((sum >> weights.precision).clamp(0, 255))
-                    .expect("clamped RGB8 value");
+                let value =
+                    u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
                 destination[(row * destination_width + output_x) * 3 + channel] = value;
             }
         }
@@ -445,6 +425,7 @@ fn convolve_vertical(
     width: usize,
     weights: &FixedWeights,
 ) -> Result<Vec<u8>> {
+    const PRECISION: u32 = 22;
     debug_assert_eq!(weights.bounds.len(), destination_height);
     let row_bytes = width
         .checked_mul(3)
@@ -459,13 +440,13 @@ fn convolve_vertical(
         let coefficients = &weights.coefficients
             [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
         for byte in 0..row_bytes {
-            let mut sum = 1_i64 << (weights.precision - 1);
+            let mut sum = 1_i64 << (PRECISION - 1);
             for (index, &coefficient) in coefficients.iter().enumerate() {
                 sum += i64::from(source[(minimum + index) * row_bytes + byte])
                     * i64::from(coefficient);
             }
             destination[output_y * row_bytes + byte] =
-                u8::try_from((sum >> weights.precision).clamp(0, 255)).expect("clamped RGB8 value");
+                u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
         }
     }
     Ok(destination)
@@ -783,17 +764,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("{} image resize: {error}", case.id));
             let expected_image = &PILLOW[case.pillow_image_rgb8.offset
                 ..case.pillow_image_rgb8.offset + case.pillow_image_rgb8.byte_length];
-            let maximum_image_error = actual_image
-                .iter()
-                .zip(expected_image)
-                .map(|(&actual, &expected)| actual.abs_diff(expected))
-                .max()
-                .unwrap_or(0);
-            assert!(
-                maximum_image_error <= 1,
-                "{} Pillow max byte error {maximum_image_error}",
-                case.id
-            );
+            assert_eq!(actual_image, expected_image, "{} Pillow RGB8", case.id);
 
             let actual_video = resize_video_rgb8_to_f32(
                 source,

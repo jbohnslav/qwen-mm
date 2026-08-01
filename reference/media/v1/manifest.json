@@ -1,0 +1,1210 @@
+{
+  "artifacts": {
+    "encoded.bin": {
+      "byte_length": 196089,
+      "sha256": "efaec0c1995bc84a48fdc5f462266c3d3f0e0f116fcf61d13581396bf56c67a8"
+    },
+    "prepared-rgb8.bin": {
+      "byte_length": 1038336,
+      "sha256": "8fdea5c4ca27959cd79543948287d3ae7b6cc55a3cbb3099af7c90220fd20aaa"
+    }
+  },
+  "cases": [
+    {
+      "encoded": {
+        "byte_length": 973,
+        "offset": 0,
+        "sha256": "a6953672b02b2e273c9f253de35ff6207a94a0d4fbb0ec028852729de76eee1c"
+      },
+      "format": "png",
+      "id": "png-rgb-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 0,
+        "row_stride_bytes": 288,
+        "sha256": "3436a3a0ad1df8b398f0eff04c1e75e753048870016a14229df088f199949bd8",
+        "width": 96
+      },
+      "tags": [
+        "png",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 269,
+        "offset": 973,
+        "sha256": "dbed75825461804747a68b00dc1a76c39a13dea68db351ae7ba26b01e3248a5d"
+      },
+      "format": "png",
+      "id": "png-luma-off-grid-resize",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 18432,
+        "row_stride_bytes": 288,
+        "sha256": "df11e6c07f49d9a8e4b0b1099795345a05d52657adae13f05783dd9d61d41a84",
+        "width": 96
+      },
+      "tags": [
+        "png",
+        "grayscale",
+        "resize",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 1578,
+        "offset": 1242,
+        "sha256": "151817a77227df7ded04bae3cc86d4e56253a1e2f1882b6b00ddb0a8790719da"
+      },
+      "format": "png",
+      "id": "png-rgba-white-composite",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 36864,
+        "row_stride_bytes": 288,
+        "sha256": "2ea39410877a9c19fcac9bb6ca5630b2fbc0e91cc1f85f62db54d10676b04fce",
+        "width": 96
+      },
+      "tags": [
+        "png",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 1018,
+        "offset": 2820,
+        "sha256": "813030868c3a94a80b309642ca4a3b57036b7edf11c9c3ed7fda8c5e8ce8143b"
+      },
+      "format": "png",
+      "id": "png-rgb-trns-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 55296,
+        "row_stride_bytes": 288,
+        "sha256": "e0f0236993e01c44791cab29f9407d5efe98dbb2bd1719b533a21edafdd01734",
+        "width": 96
+      },
+      "tags": [
+        "png",
+        "rgb",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 282,
+        "offset": 3838,
+        "sha256": "200e2007dbd4a6e83c6dfb298031cac13bbbd4b9aa4aed6c0f9548cc5effe780"
+      },
+      "format": "png",
+      "id": "png-luma-trns-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 73728,
+        "row_stride_bytes": 288,
+        "sha256": "061fdb9ec64fe0f99a0e7c85d545bd968a5d76461a3b9476ffe985eacec70c2e",
+        "width": 96
+      },
+      "tags": [
+        "png",
+        "grayscale",
+        "trns",
+        "alpha_ignored",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11137,
+        "offset": 4120,
+        "sha256": "66681c9186d2a52238ea2b48be6a2e3f8b422f751dcb1e9094b25d5fc5ce3d58"
+      },
+      "format": "jpeg",
+      "id": "jpeg-rgb-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 92160,
+        "row_stride_bytes": 288,
+        "sha256": "096b5a837a87fc4a5b998494c365095d5756e9b7ed2c5d5eab298f2d544df4cc",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "rgb",
+        "no_op",
+        "aligned",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 6373,
+        "offset": 15257,
+        "sha256": "4dada37eaa2504d8137b320866244e30763591df28c04ce21eb422ddc6431713"
+      },
+      "format": "jpeg",
+      "id": "jpeg-rgb-off-grid-resize",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 110592,
+        "row_stride_bytes": 288,
+        "sha256": "e7c51c6081f446b7f4744cbeab8e2c85e450d7a03b689618f9254993fe6f2d78",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "rgb",
+        "resize",
+        "progressive",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 7052,
+        "offset": 21630,
+        "sha256": "98be98247f1eedce754fb766af12cacf4b2fb8aa808365d4895930e1f2540cc7"
+      },
+      "format": "jpeg",
+      "id": "jpeg-cmyk-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 12288,
+        "height": 64,
+        "offset": 129024,
+        "row_stride_bytes": 192,
+        "sha256": "4d2029dfcd9608b9816754a4dd6ce0cf85200b8260073778238c1b2cb09bb757",
+        "width": 64
+      },
+      "tags": [
+        "jpeg",
+        "cmyk",
+        "no_op",
+        "lossy",
+        "adobe_app14"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 7052,
+        "offset": 28682,
+        "sha256": "0eb611992c5266daacc05d4cf27c892e745e3128b9522ebd6c38b9d585018457"
+      },
+      "format": "jpeg",
+      "id": "jpeg-ycck-adobe-transform-2",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 12288,
+        "height": 64,
+        "offset": 141312,
+        "row_stride_bytes": 192,
+        "sha256": "24a7db44ba3aefa446f8a368c367f64a79c242310672e4dc2ad4dc2f9737ce7a",
+        "width": 64
+      },
+      "tags": [
+        "jpeg",
+        "ycck",
+        "cmyk",
+        "lossy",
+        "adobe_transform_2"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 3340,
+        "offset": 35734,
+        "sha256": "fc4192c61cb2e4ce4ff801334498f806c5e0362d31aa0c79f2f33b1a57f67dbd"
+      },
+      "format": "jpeg",
+      "id": "jpeg-luma-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 12288,
+        "height": 64,
+        "offset": 153600,
+        "row_stride_bytes": 192,
+        "sha256": "5956687756fd133960793b236aee3c482a2f78c9a5d7dcbe3d288ee221ca5581",
+        "width": 64
+      },
+      "tags": [
+        "jpeg",
+        "grayscale",
+        "no_op",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11655,
+        "offset": 39074,
+        "sha256": "ce561188db05fe0027f59b1a817d896795999757bd1507e506ae421798840ec5"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-1-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 165888,
+        "row_stride_bytes": 288,
+        "sha256": "528cef1fc04a6b4067cbb7c57c7d54dbd2acf1f6807a2ab3429ea49bf96d5fae",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_1",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11609,
+        "offset": 50729,
+        "sha256": "7c2d8fdd85d0a5db1895897ac59fe03e198fa6adea4b32aa1dcaff5c7c397cae"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-2-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 184320,
+        "row_stride_bytes": 288,
+        "sha256": "593b06d7a9397923b8c9e87bc730e21606153fe1c4098f0219ce1b4df4a1eab7",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_2",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11662,
+        "offset": 62338,
+        "sha256": "2c5a561b0df8fdd60b6bb6b363be3e4dcd244477d368237aa58a10f5ab2e3f5c"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-3-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 202752,
+        "row_stride_bytes": 288,
+        "sha256": "e4d15385826f6f832e731f9b5be3a2532e22217539a56b6046a01b0036b22e82",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_3",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11664,
+        "offset": 74000,
+        "sha256": "1834c4a5c0bd83a70be8ff01cc9e93a78ca6809f78fc4186538a0ea3ed57b40d"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-4-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 221184,
+        "row_stride_bytes": 288,
+        "sha256": "ca012f38638d414124059b5cfbfd8a121c2a7c4d99cfba34f8c5c4ea75b83b62",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_4",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11640,
+        "offset": 85664,
+        "sha256": "8f789f20ad2cafa5709c54e28df6b0b06e5098a2253fa4d4eae8b9b9a2ebbc72"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-5-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 239616,
+        "row_stride_bytes": 288,
+        "sha256": "7e53b8db54f853ff16a67b3ea3ac3900036cb36e5121b4afc8ca9b364a4ef57a",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_5",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11707,
+        "offset": 97304,
+        "sha256": "1780fa99bbaac656fe3d4b17f6922745cf018c71e18a731d7ff18b33904b40be"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-6-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 258048,
+        "row_stride_bytes": 288,
+        "sha256": "e5dc499a32eaf4ea197da52db4b324247342f34cc40fb908540d696c7ba45c72",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_6",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11644,
+        "offset": 109011,
+        "sha256": "9a043036f87b075bd685c71c4fa18d5f8c5d012432c24322e52c879f65bd5d5d"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-7-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 276480,
+        "row_stride_bytes": 288,
+        "sha256": "ad72390413ec19446224a75dbe30591c0db465d6f1ecfd3e1cd07bc47475ed6b",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_7",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11689,
+        "offset": 120655,
+        "sha256": "719d52844d42505f75246cf12a8d7741b4aacbd970f33e9bc597adddc1eb076d"
+      },
+      "format": "jpeg",
+      "id": "jpeg-exif-orientation-8-ignored",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 294912,
+        "row_stride_bytes": 288,
+        "sha256": "84efd27b9c6050dcd0334e326bf500f0f20d688875b3f35b51b25278e626c7bb",
+        "width": 96
+      },
+      "tags": [
+        "jpeg",
+        "exif_orientation_8",
+        "stored_raster",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 68,
+        "offset": 132344,
+        "sha256": "380a08cfa96917c99872838dad5ed577bd2436028c468752d8770319146d0c95"
+      },
+      "format": "webp",
+      "id": "webp-lossless-rgb-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 313344,
+        "row_stride_bytes": 288,
+        "sha256": "07fbb7fe9f4b1d92bd2f73fe64dfbe1c053d1d90e68b6914555f72fa0ad2609a",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 68,
+        "offset": 132412,
+        "sha256": "debd1b7c1e3fa5520a41c10ff2e826658e6a6cda8a17a119ea4369a54e823cc0"
+      },
+      "format": "webp",
+      "id": "webp-lossless-rgb-off-grid-resize",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 331776,
+        "row_stride_bytes": 288,
+        "sha256": "003df0877885035fa22c51e3237fe3dffd777bf535fd49849c37758974577e16",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "off_grid",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 94,
+        "offset": 132480,
+        "sha256": "b3456c4721312807dd47113033ab5e58319df4c0569ea746c810219e51be24ca"
+      },
+      "format": "webp",
+      "id": "webp-lossless-rgba-white-composite",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 350208,
+        "row_stride_bytes": 288,
+        "sha256": "2ea39410877a9c19fcac9bb6ca5630b2fbc0e91cc1f85f62db54d10676b04fce",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgba",
+        "alpha",
+        "white_composite",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4174,
+        "offset": 132574,
+        "sha256": "81ba954127d6d5d39302b9e534175b820bb8d0465958ba0a3b03d024d5da5027"
+      },
+      "format": "webp",
+      "id": "webp-lossy-aligned-no-op",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 368640,
+        "row_stride_bytes": 288,
+        "sha256": "51299f1500b22ef767fa3377cc6eb15f9df05c1fc215d3d1e23647d10ac0c672",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgb",
+        "no_op",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 5362,
+        "offset": 136748,
+        "sha256": "b2528110bebd9f27a7ec56a3197dc9d184191d29bcd1432ffeb6e2c8f332fe1e"
+      },
+      "format": "webp",
+      "id": "webp-lossy-off-grid-resize",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 387072,
+        "row_stride_bytes": 288,
+        "sha256": "8780ab1537cabcdbe01603735b36943f4a47380920d7acde85a634ec4ff39f36",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgb",
+        "resize",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4266,
+        "offset": 142110,
+        "sha256": "2532a415f376ec8705d856fb9e67fb4323d2fab89f18fd8970e42babc01074d5"
+      },
+      "format": "webp",
+      "id": "webp-lossy-rgba-white-composite",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 1,
+        "byte_length": 18432,
+        "height": 64,
+        "offset": 405504,
+        "row_stride_bytes": 288,
+        "sha256": "ed99f9d20e8978b43c86eba250789dfaf0d64d032e54a303bace04eaedb2fd73",
+        "width": 96
+      },
+      "tags": [
+        "webp",
+        "rgba",
+        "vp8x",
+        "alpha",
+        "white_composite",
+        "lossy"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4219,
+        "offset": 146376,
+        "sha256": "34114ce51f3a99683ef1c5af1eab2220292f22ce59a445313d40335b5499adb6"
+      },
+      "format": "png",
+      "id": "png-unusual-aspect-200",
+      "options": {},
+      "prepared_rgb8": {
+        "absolute_byte_error_max": 0,
+        "byte_length": 614400,
+        "height": 32,
+        "offset": 423936,
+        "row_stride_bytes": 19200,
+        "sha256": "aef39474a60cca0b97e6f68a4f2ee9a127f0e24e9f74c2c2179a11e8a19983e1",
+        "width": 6400
+      },
+      "tags": [
+        "png",
+        "unusual_aspect",
+        "aspect_200",
+        "lossless"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 574,
+        "offset": 150595,
+        "sha256": "ef80df790bc5173fc116c25463ca6820f2ef20fd3587bc9b01cd54638f324243"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "png",
+      "id": "png-la-rejected-by-v1-envelope",
+      "options": {},
+      "tags": [
+        "png",
+        "la",
+        "alpha",
+        "unsupported_mode"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 894,
+        "offset": 151169,
+        "sha256": "f2a2e0440ffe7dd6cca0abb882c2b14d13f7a16569797f5cd306cf50db06cbc6"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "png",
+      "id": "png-palette-rejected",
+      "options": {},
+      "tags": [
+        "png",
+        "palette",
+        "unsupported_mode"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 335,
+        "offset": 152063,
+        "sha256": "40ee4e5200716896e34593a77b5688d4c57addd052f68569737b3a1c423c1503"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "png",
+      "id": "png-16bit-rejected",
+      "options": {},
+      "tags": [
+        "png",
+        "16bit",
+        "unsupported_mode"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11687,
+        "offset": 152398,
+        "sha256": "3295293a44ec1fe894e95e2ccaf76ac0a627ea99c0e35a368bfbe6faf7b3eadc"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-missing-terminal-eoi",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "truncated",
+        "missing_eoi"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 11625,
+        "offset": 164085,
+        "sha256": "0458f7df439c723f3455c703b16080c69e18cdfec960c48248fae39b80015f5b"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-truncated",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "truncated"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 40,
+        "offset": 175710,
+        "sha256": "329460832b65ac946b4c9b598b4316439af7bf4841851f6f78c4bfb9bb8b7b12"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "png-truncated",
+      "options": {},
+      "tags": [
+        "png",
+        "truncated"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4250,
+        "offset": 175750,
+        "sha256": "f896c1c1c308ffe39a149cf13ae597e05d7fc3a69c82d62c2439ffd694e86ff8"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "webp",
+      "id": "webp-truncated",
+      "options": {},
+      "tags": [
+        "webp",
+        "truncated"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 21,
+        "offset": 180000,
+        "sha256": "3df3c02b80dcc33911add370659a722b0043ef8bbc45a679fbf6a7678ac8e2be"
+      },
+      "expected_error": {
+        "category": "resource_limit"
+      },
+      "format": "jpeg",
+      "id": "jpeg-oversized-header",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "malicious_header",
+        "edge_limit"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180021,
+        "sha256": "decbdbee5940f9adffb9a11855ea2cff57c589db1636c37adda2deac8aa5d8f8"
+      },
+      "expected_error": {
+        "category": "resource_limit"
+      },
+      "format": "png",
+      "id": "png-oversized-header",
+      "options": {},
+      "tags": [
+        "png",
+        "malicious_header",
+        "edge_limit"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 30,
+        "offset": 180066,
+        "sha256": "c4e3bcd644cb1babc2e85aadc51b99533a37aebf9a1b3c0a27e2324c9254a2ff"
+      },
+      "expected_error": {
+        "category": "resource_limit"
+      },
+      "format": "webp",
+      "id": "webp-oversized-header",
+      "options": {},
+      "tags": [
+        "webp",
+        "malicious_header",
+        "edge_limit"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180096,
+        "sha256": "dff07f0c275cff73bdf5e061dc82bd201097aa645a6c791b4c68dc11a1205b18"
+      },
+      "expected_error": {
+        "category": "resource_limit"
+      },
+      "format": "png",
+      "id": "png-pixel-bomb-header",
+      "options": {},
+      "tags": [
+        "png",
+        "malicious_header",
+        "decoded_pixel_limit"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180141,
+        "sha256": "b691667ccb61d3bcc0221c900c7c1e8a11530e678ed0e9708539fdbcb73e3e1d"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "png-malformed-rgb-bit-depth",
+      "options": {},
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_bit_depth"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180186,
+        "sha256": "ae9a3beba18f4051fdb9a384a11df0b0e5361f384eb70b7f8e18c732d6db2dc9"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "png-malformed-reserved-color-type",
+      "options": {},
+      "tags": [
+        "png",
+        "malformed_header",
+        "reserved_color_type"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180231,
+        "sha256": "fda0d919555651c59790c3e082a7a6cb0cae53c118de651932a2bc41923b37be"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "png-malformed-method-before-excluded-la",
+      "options": {},
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_method",
+        "la"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 45,
+        "offset": 180276,
+        "sha256": "88a36aa218935d8f089b3f2887f0787b03fc9039fff1449c15849285ca79f8fe"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "png-malformed-crc-before-excluded-la",
+      "options": {},
+      "tags": [
+        "png",
+        "malformed_header",
+        "invalid_crc",
+        "la"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 61,
+        "offset": 180321,
+        "sha256": "295d3767f39f45a3c37829db81da054373d4cde3f48255a58639a380c72d0d9e"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "apng-malformed-control-length",
+      "options": {},
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "invalid_chunk_length"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 65,
+        "offset": 180382,
+        "sha256": "beb365ff725bbc12515d88c8ff4830e301515d26aa95a2ba3fe270bbe7b9e5cd"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "png",
+      "id": "apng-malformed-zero-frames",
+      "options": {},
+      "tags": [
+        "png",
+        "apng",
+        "malformed_header",
+        "zero_frames"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 21,
+        "offset": 180447,
+        "sha256": "db512ae229f6ba7f1622abf1d3772496cd7e81ec5c7c06e1c7b58d3ecae9fe62"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-malformed-baseline-precision",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_precision"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 12,
+        "offset": 180468,
+        "sha256": "a17e87e27a0276c088b524896c4916c4212de52a96331147b2fb136cb8ed9d11"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-malformed-zero-components",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_component_count"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 18,
+        "offset": 180480,
+        "sha256": "555aa7c09d814db9528eb769546343d4f42a4cb366fc7b830bf50661528a3646"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-malformed-excluded-component-sampling",
+      "options": {},
+      "tags": [
+        "jpeg",
+        "malformed_header",
+        "invalid_sampling",
+        "components_2"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 30,
+        "offset": 180498,
+        "sha256": "2c1129b31138dfd840408cb4db4a30a53d2a99f683958c988e5be47d94fbe234"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "webp",
+      "id": "webp-malformed-reserved-animation-flags",
+      "options": {},
+      "tags": [
+        "webp",
+        "malformed_header",
+        "reserved_flags"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 25,
+        "offset": 180528,
+        "sha256": "ea1b6440bf10f883a38337355098d01b030d519d205fff87a490fba2963b17ac"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "webp",
+      "id": "webp-malformed-lossless-version",
+      "options": {},
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_version"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 31,
+        "offset": 180553,
+        "sha256": "346270b900d269f9efc111bb6711a08cf6e9b60981eb8c2a247dd9b7d82075da"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "webp",
+      "id": "webp-malformed-extended-length",
+      "options": {},
+      "tags": [
+        "webp",
+        "malformed_header",
+        "invalid_chunk_length"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 30,
+        "offset": 180584,
+        "sha256": "e78c4f3113f91d8824f79270c36b96d558d836cf9d2491c1ca210045b5290cb1"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "webp",
+      "id": "webp-chunk-outside-declared-riff",
+      "options": {},
+      "tags": [
+        "webp",
+        "malformed_header",
+        "riff_extent"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4272,
+        "offset": 180614,
+        "sha256": "063da84888ff31e032e7b15439db1cd832b533ed0ac6b4ac972c92f58c31c001"
+      },
+      "expected_error": {
+        "category": "media_geometry"
+      },
+      "format": "png",
+      "id": "png-valid-aspect-201-rejected",
+      "options": {},
+      "tags": [
+        "png",
+        "valid_decode",
+        "aspect_201",
+        "media_geometry"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 1226,
+        "offset": 184886,
+        "sha256": "f3e3c387e38f79a2e36cc9658eb64b976ad03ae134922795df7fc5e9699591cf"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "webp",
+      "id": "webp-animated-rejected",
+      "options": {},
+      "tags": [
+        "webp",
+        "animated",
+        "unsupported_media"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 1743,
+        "offset": 186112,
+        "sha256": "9995539b38bc431a4ba6b18a133fe00b08e434df10a6fcb8b77e515c6e0e27b3"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "png",
+      "id": "apng-animated-rejected",
+      "options": {},
+      "tags": [
+        "png",
+        "apng",
+        "animated",
+        "unsupported_media"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4015,
+        "offset": 187855,
+        "sha256": "b8e301e4c618c58852efaf8c13bf3a4fa5b238d125ca58143450eec1a0fba7f9"
+      },
+      "expected_error": {
+        "category": "unsupported_media"
+      },
+      "format": "jpeg",
+      "id": "gif-codec-rejected",
+      "options": {},
+      "tags": [
+        "gif",
+        "unsupported_codec"
+      ]
+    },
+    {
+      "encoded": {
+        "byte_length": 4219,
+        "offset": 191870,
+        "sha256": "34114ce51f3a99683ef1c5af1eab2220292f22ce59a445313d40335b5499adb6"
+      },
+      "expected_error": {
+        "category": "media_decode"
+      },
+      "format": "jpeg",
+      "id": "jpeg-declared-png-mismatch",
+      "options": {},
+      "tags": [
+        "format_mismatch",
+        "media_decode"
+      ]
+    }
+  ],
+  "contract_id": "qwen-mm-compat-v1",
+  "generator_command": "./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.media_conformance",
+  "integrity": {
+    "algorithm": "sha256",
+    "canonical_json_without_integrity_sha256": "2e030730f7ed232c79770d5b88f409aed27636863249000b85289baa05efd7c5"
+  },
+  "oracle": {
+    "Pillow": "12.3.0",
+    "capture_platform": "macOS-26.5.2-arm64-arm-64bit",
+    "exif_policy": "stored raster; no transpose",
+    "la_policy": "unsupported_media by accepted ADR envelope",
+    "libjpeg_turbo": "3.1.4.1",
+    "libwebp": "1.6.0",
+    "numpy": "2.4.6",
+    "python": "3.11.15 (main, Mar  3 2026, 15:47:15) [Clang 21.1.4 ]",
+    "qwen-vl-utils": "0.0.14",
+    "rgba_policy": "white background via Pillow paste with alpha mask"
+  },
+  "provenance": {
+    "compatibility_manifest": {
+      "path": "reference/compatibility/v1.json",
+      "sha256": "01c03d10feb34313525f0c4fd08abeaa11151a20b1e87ad57a65ff677ad1cc06"
+    },
+    "generator": {
+      "path": "reference/src/qwen_mm_reference/media_conformance.py",
+      "sha256": "54990f2387e20a8ceff38f0abc9144c0f854a02bfb3e320751ae6653db0b3101"
+    },
+    "profile_fingerprints": {
+      "qwen3-vl-8b": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "qwen3.5-9b": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5"
+    }
+  },
+  "schema_version": 1,
+  "stage": "prepared_hwc_rgb8"
+}

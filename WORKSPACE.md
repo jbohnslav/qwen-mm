@@ -15,6 +15,8 @@ kernels ahead of their conformance work.
 | Edition | `2024` | Current Rust edition; the toolchain is new enough to support it directly. |
 | PyO3 | `0.29.0` | Current stable release in the live Cargo index when bootstrapped; exact-pinned in `Cargo.lock`, with the Python 3.11 stable ABI. |
 | Tokenizers | `0.22.2` | Matches the immutable Python oracle's tokenizer engine; the core enables only the Oniguruma regex backend needed by the pinned tokenizer JSON and never enables Hub access. |
+| Image | `0.25.10` | Exact-pinned dispatch for PNG and WebP only; default features and the non-parity JPEG path are disabled. |
+| libjpeg-turbo-rs | `0.8.0` | Exact-pinned Rust JPEG decode with `simd,std`; selected by the B6 Pillow-parity and corruption gates. |
 | Maturin | `1.14.1` | Current stable wheel builder when bootstrapped; exact-pinned in `pyproject.toml` and the smoke command. |
 | Ruff | `0.16.1` floor, locked | Python linting, import sorting, modernization checks, and formatting. |
 | pre-commit | `4.6.1` floor, locked | Runs the repository's uv, Ruff, Cargo-format, and lockfile checks before commits. |
@@ -38,6 +40,8 @@ make format           # apply Ruff fixes/formatting and cargo fmt
 make pre-commit-check # run every configured hook against every tracked file
 make core-check       # build qwen-mm-core locked and offline, with no Python dependency
 make rust-check       # format, Clippy -D warnings, unit tests, doc tests, offline core build
+make media-conformance # run the authenticated B6 decode/color corpus in Rust
+make media-report-macos # write native B6 host evidence after the corpus passes
 make reference-smoke  # sync the existing locked reference environment and verify fixtures
 make wheel-smoke      # build, install, import, and exercise a fresh development wheel
 make check            # run all of the above

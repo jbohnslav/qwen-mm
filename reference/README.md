@@ -36,6 +36,20 @@ resize-report-macos`. The tracked Linux x86_64 report was executed under QEMU
 emulation and is labeled accordingly; see the decision record for its exact
 Docker command and limitations.
 
+## Decode/color conformance
+
+The B6 decoder, color/orientation policy, dependency decision, corruption and
+resource cases, complete diagnostics, and platform qualifications are recorded
+in [`docs/media-parity-v1.md`](../docs/media-parity-v1.md). Its authenticated
+encoded and prepared-RGB corpus lives in [`media/v1/`](media/v1/) and runs
+against both supported profiles without Python at Rust test time.
+
+Run the committed corpus with `make media-conformance`, regenerate it only in
+the exact locked oracle environment with `make media-conformance-regenerate`,
+and produce the native macOS arm64 evidence with `make media-report-macos`.
+The tracked Linux x86_64 report is QEMU-emulated portability evidence and is
+labeled accordingly.
+
 From the repository root, generate or verify the committed baseline images in
 the shared locked uv workspace:
 
