@@ -15,9 +15,13 @@ pub mod error;
 pub mod geometry;
 pub mod limits;
 pub mod output;
+pub mod patchify;
 pub mod profile;
 pub mod request;
 pub mod text;
+
+#[cfg(test)]
+mod patchify_conformance_tests;
 
 pub use error::{DiagnosticValue, ErrorCategory, QwenError, Result, ValidationStage};
 pub use geometry::{
@@ -31,6 +35,7 @@ pub use output::{
     CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, PreparedArrays, PreparedBatch,
     ReplacementRange, VideoSidecar,
 };
+pub use patchify::{ImagePatchifyPlan, PreparedImage, patchify_image_rgb8, plan_image_patchify};
 pub use profile::{
     ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,
 };
