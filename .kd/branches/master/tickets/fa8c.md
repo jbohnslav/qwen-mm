@@ -1,7 +1,7 @@
 ---
 id: "fa8c"
 status: open
-deps: [8eb9, 832f, 2896, 6b73, 015f, 7b4b, 5e62]
+deps: [8eb9, 832f, 2896, 6b73, 015f, 7b4b, 5e62, c3b2]
 links: [e48a]
 created: 2026-08-01T00:29:33Z
 type: epic
@@ -20,6 +20,7 @@ runtime before batching, bindings, parallelism, or performance work begins.
 
 - B1 / `8eb9` — define profiles, public/core types, limits, and errors.
 - B2 / `832f` — implement the pinned tokenizer and chat-template surfaces.
+- B2.1 / `c3b2` — close the independently discovered A3 chat-corpus gap.
 - B3 / `2896` — implement geometry and `smart_resize` rules.
 - B4 / `6b73` — implement raw-RGB normalization and patchification.
 - B5 / `015f` — prove and select parity-safe resize kernels.

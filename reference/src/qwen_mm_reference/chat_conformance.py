@@ -6,16 +6,20 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from transformers import AutoProcessor
 
 from .fixtures import repository_root, sha256_file
 
 COMPATIBILITY_PATH = Path("reference/compatibility/v1.json")
+CORPUS_PATH = Path("reference/conformance/v1/corpus.json")
 DEFAULT_OUTPUT = Path("reference/conformance/v1/chat.json")
+GENERATOR_PATH = Path("reference/src/qwen_mm_reference/chat_conformance.py")
 GENERATOR_COMMAND = (
     "./scripts/with-cargo.sh uv run --locked --no-sync --package "
     "qwen-mm-reference python -m qwen_mm_reference.chat_conformance"
 )
+LITERAL_VISUAL_TEXT = "<|vision_start|><|image_pad|><|vision_end|>"
 
 
 def _json(value: Any) -> str:
@@ -201,7 +205,87 @@ def _qwen35_reasoning_extraction() -> dict[str, Any]:
     }
 
 
-def _error_cases() -> list[dict[str, Any]]:
+def _text_adversarial(profile: str, recipe: dict[str, Any]) -> dict[str, Any]:
+    values = recipe["values"]
+    if values.count(LITERAL_VISUAL_TEXT) != 1:
+        raise RuntimeError("chat-text-adversarial must contain the pinned literal visual value")
+    return {
+        "id": f"{profile}-text-adversarial",
+        "profile": profile,
+        "recipe_execution": {
+            "catalog_entry_id": "chat-text-adversarial",
+            "kind": recipe["kind"],
+            "values": values,
+            "value_semantics": "exact Unicode scalar sequence before chat templating",
+        },
+        "requests": [
+            {
+                "messages": [_text("user", value)],
+                "options": {"add_generation_prompt": False},
+                "visuals": [],
+            }
+            for value in values
+            if value != LITERAL_VISUAL_TEXT
+        ],
+    }
+
+
+def _sha256_permutation(values: list[int], seed: int, round_index: int) -> list[int]:
+    def key(value: int) -> bytes:
+        return hashlib.sha256(f"{seed}:{round_index}:{value}".encode()).digest()
+
+    return sorted(values, key=key)
+
+
+def _batch_padding_cases(profile: str, recipe: dict[str, Any]) -> list[dict[str, Any]]:
+    lengths = recipe["lengths"]
+    seed = recipe["permutation_seed"]
+    orders = [
+        ("identity", lengths),
+        ("permutation-0", _sha256_permutation(lengths, seed, 0)),
+        ("permutation-1", _sha256_permutation(lengths, seed, 1)),
+    ]
+    result = []
+    for order_name, row_order in orders:
+        result.append(
+            {
+                "id": f"{profile}-batch-padding-{order_name}",
+                "profile": profile,
+                "recipe_execution": {
+                    "catalog_entry_id": "chat-batch-padding",
+                    "kind": recipe["kind"],
+                    "catalog_lengths": lengths,
+                    "permutation_seed": seed,
+                    "permutation_algorithm": (
+                        "identity"
+                        if order_name == "identity"
+                        else "sha256-sort-v1(seed:round:length)"
+                    ),
+                    "permutation_round": (
+                        None if order_name == "identity" else int(order_name[-1])
+                    ),
+                    "row_order_lengths": row_order,
+                    "length_semantics": (
+                        "count of U+0078 code points in the sole user text message "
+                        "before chat templating; because U+0078 is one UTF-8 byte, "
+                        "the value is also the raw message byte length"
+                    ),
+                    "payload_code_point": "U+0078",
+                },
+                "requests": [
+                    {
+                        "messages": [_text("user", "x" * length)],
+                        "options": {"add_generation_prompt": False},
+                        "visuals": [],
+                    }
+                    for length in row_order
+                ],
+            }
+        )
+    return result
+
+
+def _error_cases(text_recipe: dict[str, Any]) -> list[dict[str, Any]]:
     def rejected(case_id: str, profile: str, option: str) -> dict[str, Any]:
         return {
             "id": case_id,
@@ -220,9 +304,33 @@ def _error_cases() -> list[dict[str, Any]]:
         {
             "id": "qwen3-vl-literal-image-token",
             "profile": "qwen3-vl-8b",
+            "recipe_execution": {
+                "catalog_entry_id": "chat-text-adversarial",
+                "kind": text_recipe["kind"],
+                "values": [LITERAL_VISUAL_TEXT],
+                "value_semantics": "exact Unicode scalar sequence before chat templating",
+            },
             "requests": [
                 {
-                    "messages": [_text("user", "literal <|image_pad|>")],
+                    "messages": [_text("user", LITERAL_VISUAL_TEXT)],
+                    "options": {},
+                    "visuals": [],
+                }
+            ],
+            "expected_error": {"category": "invalid_request"},
+        },
+        {
+            "id": "qwen3.5-literal-image-token",
+            "profile": "qwen3.5-9b",
+            "recipe_execution": {
+                "catalog_entry_id": "chat-text-adversarial",
+                "kind": text_recipe["kind"],
+                "values": [LITERAL_VISUAL_TEXT],
+                "value_semantics": "exact Unicode scalar sequence before chat templating",
+            },
+            "requests": [
+                {
+                    "messages": [_text("user", LITERAL_VISUAL_TEXT)],
                     "options": {},
                     "visuals": [],
                 }
@@ -286,7 +394,7 @@ def _error_cases() -> list[dict[str, Any]]:
     ]
 
 
-def cases() -> list[dict[str, Any]]:
+def cases(catalog: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         _roles_tools("qwen3-vl-8b"),
         _roles_tools("qwen3.5-9b"),
@@ -296,7 +404,11 @@ def cases() -> list[dict[str, Any]]:
         _qwen35_thinking("false", False),
         _qwen35_thinking("true", True),
         _qwen35_reasoning_extraction(),
-        *_error_cases(),
+        _text_adversarial("qwen3-vl-8b", catalog["chat-text-adversarial"]),
+        _text_adversarial("qwen3.5-9b", catalog["chat-text-adversarial"]),
+        *_batch_padding_cases("qwen3-vl-8b", catalog["chat-batch-padding"]),
+        *_batch_padding_cases("qwen3.5-9b", catalog["chat-batch-padding"]),
+        *_error_cases(catalog["chat-text-adversarial"]),
     ]
 
 
@@ -399,7 +511,19 @@ def _render_case(processor: Any, case: dict[str, Any]) -> dict[str, Any]:
         add_special_tokens=True,
         return_attention_mask=True,
     )
-    input_ids = encoded["input_ids"]
+    input_ids = np.asarray(encoded["input_ids"], dtype=np.int64)
+    attention_mask = np.asarray(encoded["attention_mask"], dtype=np.int64)
+    mm_token_type_ids = np.asarray(
+        processor.create_mm_token_type_ids(input_ids.tolist()), dtype=np.int64
+    )
+
+    def metadata(array: np.ndarray[Any, np.dtype[np.int64]]) -> dict[str, Any]:
+        return {
+            "dtype": str(array.dtype),
+            "shape": list(array.shape),
+            "strides": list(array.strides),
+        }
+
     return {
         "rendered_prompts": rendered,
         "expanded_prompts": expanded,
@@ -409,18 +533,42 @@ def _render_case(processor: Any, case: dict[str, Any]) -> dict[str, Any]:
         "expanded_sha256": [
             hashlib.sha256(value.encode("utf-8")).hexdigest() for value in expanded
         ],
-        "input_ids": input_ids,
-        "attention_mask": encoded["attention_mask"],
-        "mm_token_type_ids": processor.create_mm_token_type_ids(input_ids),
+        "input_ids": input_ids.tolist(),
+        "attention_mask": attention_mask.tolist(),
+        "mm_token_type_ids": mm_token_type_ids.tolist(),
+        "array_metadata": {
+            "input_ids": metadata(input_ids),
+            "attention_mask": metadata(attention_mask),
+            "mm_token_type_ids": metadata(mm_token_type_ids),
+        },
     }
+
+
+def _catalog_recipes(root: Path) -> dict[str, dict[str, Any]]:
+    catalog = json.loads((root / CORPUS_PATH).read_text(encoding="utf-8"))
+    wanted = {"chat-text-adversarial", "chat-batch-padding"}
+    entries = {entry["id"]: entry for entry in catalog["entries"] if entry["id"] in wanted}
+    if set(entries) != wanted:
+        raise RuntimeError(f"missing chat recipes in {CORPUS_PATH}: {wanted - set(entries)}")
+    for entry_id, entry in entries.items():
+        if entry["profiles"] != ["qwen3-vl-8b", "qwen3.5-9b"]:
+            raise RuntimeError(f"{entry_id}: unexpected profile list")
+    return {entry_id: entry["recipe"] for entry_id, entry in entries.items()}
+
+
+def _canonical_json(document: dict[str, Any]) -> bytes:
+    return json.dumps(document, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def generate(output: Path) -> dict[str, Any]:
     root = repository_root()
     compatibility = json.loads((root / COMPATIBILITY_PATH).read_text(encoding="utf-8"))
+    catalog = _catalog_recipes(root)
     processors: dict[str, Any] = {}
     generated_cases = []
-    for case in cases():
+    for case in cases(catalog):
         copied = json.loads(json.dumps(case, ensure_ascii=False))
         if "expected_error" not in copied:
             alias = copied["profile"]
@@ -437,6 +585,14 @@ def generate(output: Path) -> dict[str, Any]:
         "contract_id": compatibility["contract_id"],
         "generator": "qwen_mm_reference.chat_conformance",
         "generator_command": GENERATOR_COMMAND,
+        "provenance": {
+            "generator_path": GENERATOR_PATH.as_posix(),
+            "generator_sha256": sha256_file(root / GENERATOR_PATH),
+            "catalog_path": CORPUS_PATH.as_posix(),
+            "catalog_sha256": sha256_file(root / CORPUS_PATH),
+            "compatibility_path": COMPATIBILITY_PATH.as_posix(),
+            "compatibility_sha256": sha256_file(root / COMPATIBILITY_PATH),
+        },
         "profiles": {
             alias: {
                 "revision": profile["revision"],
@@ -445,6 +601,9 @@ def generate(output: Path) -> dict[str, Any]:
             for alias, profile in compatibility["profiles"].items()
         },
         "cases": generated_cases,
+    }
+    document["integrity"] = {
+        "canonical_json_sha256": hashlib.sha256(_canonical_json(document)).hexdigest()
     }
     output_path = root / output
     output_path.parent.mkdir(parents=True, exist_ok=True)

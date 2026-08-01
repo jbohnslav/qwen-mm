@@ -15,6 +15,10 @@ use crate::{
 };
 
 const FIXTURE: &str = include_str!("../../../reference/conformance/v1/chat.json");
+const GENERATOR_SOURCE: &str =
+    include_str!("../../../reference/src/qwen_mm_reference/chat_conformance.py");
+const CORPUS_SOURCE: &str = include_str!("../../../reference/conformance/v1/corpus.json");
+const COMPATIBILITY_SOURCE: &str = include_str!("../../../reference/compatibility/v1.json");
 static DUMMY_IMAGE: [u8; 1] = [0];
 static DUMMY_FRAME: [u8; 3] = [0, 0, 0];
 static DUMMY_FRAMES: [Rgb8<'static>; 1] = [Rgb8 {
@@ -30,8 +34,25 @@ struct ChatFixture {
     contract_id: String,
     generator: String,
     generator_command: String,
+    provenance: Provenance,
+    integrity: Integrity,
     profiles: serde_json::Value,
     cases: Vec<Case>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Provenance {
+    generator_path: String,
+    generator_sha256: String,
+    catalog_path: String,
+    catalog_sha256: String,
+    compatibility_path: String,
+    compatibility_sha256: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Integrity {
+    canonical_json_sha256: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,8 +60,24 @@ struct Case {
     id: String,
     profile: String,
     requests: Vec<RequestSpec>,
+    recipe_execution: Option<RecipeExecution>,
     expected: Option<Expected>,
     expected_error: Option<ExpectedError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RecipeExecution {
+    catalog_entry_id: String,
+    kind: String,
+    values: Option<Vec<String>>,
+    catalog_lengths: Option<Vec<usize>>,
+    permutation_seed: Option<u64>,
+    permutation_algorithm: Option<String>,
+    permutation_round: Option<usize>,
+    row_order_lengths: Option<Vec<usize>>,
+    length_semantics: Option<String>,
+    payload_code_point: Option<String>,
+    value_semantics: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -114,6 +151,21 @@ struct Expected {
     input_ids: Vec<Vec<i64>>,
     attention_mask: Vec<Vec<i64>>,
     mm_token_type_ids: Vec<Vec<i64>>,
+    array_metadata: ArrayMetadataSet,
+}
+
+#[derive(Debug, Deserialize)]
+struct ArrayMetadataSet {
+    input_ids: ArrayMetadata,
+    attention_mask: ArrayMetadata,
+    mm_token_type_ids: ArrayMetadata,
+}
+
+#[derive(Debug, Deserialize)]
+struct ArrayMetadata {
+    dtype: String,
+    shape: Vec<usize>,
+    strides: Vec<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,6 +181,43 @@ fn fixture() -> ChatFixture {
     assert_eq!(
         fixture.generator_command,
         "./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.chat_conformance"
+    );
+    assert_eq!(
+        fixture.provenance.generator_path,
+        "reference/src/qwen_mm_reference/chat_conformance.py"
+    );
+    assert_eq!(
+        fixture.provenance.generator_sha256,
+        digest(GENERATOR_SOURCE)
+    );
+    assert_eq!(
+        fixture.provenance.catalog_path,
+        "reference/conformance/v1/corpus.json"
+    );
+    assert_eq!(fixture.provenance.catalog_sha256, digest(CORPUS_SOURCE));
+    assert_eq!(
+        fixture.provenance.compatibility_path,
+        "reference/compatibility/v1.json"
+    );
+    assert_eq!(
+        fixture.provenance.compatibility_sha256,
+        digest(COMPATIBILITY_SOURCE)
+    );
+    let mut document: serde_json::Value =
+        serde_json::from_str(FIXTURE).expect("chat conformance JSON value");
+    let integrity = document
+        .as_object_mut()
+        .expect("chat fixture object")
+        .remove("integrity")
+        .expect("chat fixture integrity");
+    let canonical = serde_json::to_vec(&document).expect("canonical chat fixture JSON");
+    assert_eq!(
+        integrity["canonical_json_sha256"],
+        format!("{:x}", Sha256::digest(canonical))
+    );
+    assert_eq!(
+        fixture.integrity.canonical_json_sha256,
+        integrity["canonical_json_sha256"]
     );
     assert!(fixture.profiles.is_object());
     fixture
@@ -340,6 +429,65 @@ fn flatten(rows: &[Vec<i64>]) -> Vec<i64> {
     rows.iter().flatten().copied().collect()
 }
 
+fn assert_matrix_metadata(
+    matrix: &crate::Matrix<i64>,
+    expected: &ArrayMetadata,
+    case_id: &str,
+    field: &str,
+) {
+    assert_eq!(expected.dtype, "int64", "{case_id}: {field} dtype");
+    assert_eq!(
+        matrix.shape().as_slice(),
+        expected.shape,
+        "{case_id}: {field} shape"
+    );
+    assert_eq!(
+        matrix.byte_strides().expect("matrix strides").as_slice(),
+        expected.strides,
+        "{case_id}: {field} strides"
+    );
+}
+
+fn assert_expected_array_contract(expected: &Expected, case_id: &str) {
+    let rows = expected.input_ids.len();
+    let columns = expected.input_ids.first().expect("fixture row").len();
+    let element_bytes = u64::try_from(std::mem::size_of::<i64>()).expect("i64 size");
+    let row_bytes = u64::try_from(columns)
+        .expect("fixture column count")
+        .checked_mul(element_bytes)
+        .expect("fixture row byte stride");
+    for (field, values, metadata) in [
+        (
+            "input_ids",
+            &expected.input_ids,
+            &expected.array_metadata.input_ids,
+        ),
+        (
+            "attention_mask",
+            &expected.attention_mask,
+            &expected.array_metadata.attention_mask,
+        ),
+        (
+            "mm_token_type_ids",
+            &expected.mm_token_type_ids,
+            &expected.array_metadata.mm_token_type_ids,
+        ),
+    ] {
+        assert_eq!(values.len(), rows, "{case_id}: {field} rows");
+        assert!(
+            values.iter().all(|row| row.len() == columns),
+            "{case_id}: {field} rectangular"
+        );
+        assert_eq!(metadata.dtype, "int64", "{case_id}: {field} dtype");
+        assert_eq!(metadata.shape, [rows, columns], "{case_id}: {field} shape");
+        assert_eq!(
+            metadata.strides,
+            [row_bytes, element_bytes],
+            "{case_id}: {field} strides"
+        );
+    }
+}
+
 fn asset_directory(alias: ProfileAlias) -> PathBuf {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../reference/.cache/huggingface");
     match alias {
@@ -411,6 +559,7 @@ fn complete_chat_fixture_rendering_expansion_and_errors_are_always_on() {
 
         let profile = registry.resolve(&case.profile).expect("fixture profile");
         let expected = case.expected.as_ref().expect("success expectation");
+        assert_expected_array_contract(expected, &case.id);
         assert_eq!(expected.rendered_prompts.len(), case.requests.len());
         for (request_index, spec) in case.requests.iter().enumerate() {
             let planned = build_request(spec);
@@ -493,6 +642,173 @@ fn complete_chat_fixture_token_arrays_match_both_pinned_oracles() {
                 "{}",
                 case.id
             );
+            assert_matrix_metadata(
+                &output.input_ids,
+                &expected.array_metadata.input_ids,
+                &case.id,
+                "input_ids",
+            );
+            assert_matrix_metadata(
+                &output.attention_mask,
+                &expected.array_metadata.attention_mask,
+                &case.id,
+                "attention_mask",
+            );
+            assert_matrix_metadata(
+                &output.mm_token_type_ids,
+                &expected.array_metadata.mm_token_type_ids,
+                &case.id,
+                "mm_token_type_ids",
+            );
+        }
+    }
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn chat_fixture_executes_a3_text_and_padding_recipes() {
+    let fixture = fixture();
+    for profile in ["qwen3-vl-8b", "qwen3.5-9b"] {
+        let text_case_id = format!("{profile}-text-adversarial");
+        let text_case = fixture
+            .cases
+            .iter()
+            .find(|case| case.id == text_case_id)
+            .unwrap_or_else(|| panic!("missing A3 text_matrix execution for {profile}"));
+        let text_recipe = text_case
+            .recipe_execution
+            .as_ref()
+            .expect("text recipe metadata");
+        assert_eq!(text_recipe.catalog_entry_id, "chat-text-adversarial");
+        assert_eq!(text_recipe.kind, "text_matrix");
+        assert_eq!(
+            text_recipe
+                .values
+                .as_ref()
+                .expect("text recipe values")
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            [
+                "naïve café 👩🏽‍💻",
+                "e\u{301} versus é",
+                "<|vision_start|><|image_pad|><|vision_end|>",
+                "",
+                "line1\r\nline2",
+            ]
+        );
+        assert_eq!(
+            text_recipe.value_semantics.as_deref(),
+            Some("exact Unicode scalar sequence before chat templating")
+        );
+        let observed_values = text_case
+            .requests
+            .iter()
+            .map(|request| match &request.messages[0].content {
+                ContentSpec::Text(value) => value.as_str(),
+                ContentSpec::Items(_) => panic!("text recipe must use scalar text content"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            observed_values,
+            ["naïve café 👩🏽‍💻", "e\u{301} versus é", "", "line1\r\nline2"]
+        );
+        let literal_case_id = if profile == "qwen3-vl-8b" {
+            "qwen3-vl-literal-image-token"
+        } else {
+            "qwen3.5-literal-image-token"
+        };
+        let literal_case = fixture
+            .cases
+            .iter()
+            .find(|case| case.id == literal_case_id)
+            .unwrap_or_else(|| panic!("missing exact literal-token execution for {profile}"));
+        assert_eq!(
+            literal_case
+                .expected_error
+                .as_ref()
+                .expect("literal error")
+                .category,
+            "invalid_request"
+        );
+        assert_eq!(
+            literal_case
+                .recipe_execution
+                .as_ref()
+                .expect("literal recipe metadata")
+                .catalog_entry_id,
+            "chat-text-adversarial"
+        );
+        match &literal_case.requests[0].messages[0].content {
+            ContentSpec::Text(value) => {
+                assert_eq!(value, "<|vision_start|><|image_pad|><|vision_end|>");
+            }
+            ContentSpec::Items(_) => panic!("literal recipe must use scalar text content"),
+        }
+
+        let expected_orders = [
+            ("identity", vec![0, 1, 31, 32, 33, 1024]),
+            ("permutation-0", vec![33, 31, 32, 0, 1, 1024]),
+            ("permutation-1", vec![1024, 0, 31, 33, 32, 1]),
+        ];
+        for (order, expected_order) in expected_orders {
+            let case_id = format!("{profile}-batch-padding-{order}");
+            let case = fixture
+                .cases
+                .iter()
+                .find(|case| case.id == case_id)
+                .unwrap_or_else(|| {
+                    panic!("missing A3 batch_permutations execution {order} for {profile}")
+                });
+            let recipe = case
+                .recipe_execution
+                .as_ref()
+                .expect("padding recipe metadata");
+            assert_eq!(recipe.catalog_entry_id, "chat-batch-padding");
+            assert_eq!(recipe.kind, "batch_permutations");
+            assert_eq!(
+                recipe.catalog_lengths.as_deref(),
+                Some([0, 1, 31, 32, 33, 1024].as_slice())
+            );
+            assert_eq!(recipe.permutation_seed, Some(1_364_677_966));
+            assert_eq!(
+                recipe.row_order_lengths.as_deref(),
+                Some(expected_order.as_slice())
+            );
+            assert_eq!(recipe.payload_code_point.as_deref(), Some("U+0078"));
+            assert!(
+                recipe
+                    .length_semantics
+                    .as_deref()
+                    .expect("length semantics")
+                    .contains("raw message byte length")
+            );
+            if order == "identity" {
+                assert_eq!(recipe.permutation_algorithm.as_deref(), Some("identity"));
+                assert_eq!(recipe.permutation_round, None);
+            } else {
+                assert_eq!(
+                    recipe.permutation_algorithm.as_deref(),
+                    Some("sha256-sort-v1(seed:round:length)")
+                );
+                assert_eq!(
+                    recipe.permutation_round,
+                    Some(usize::from(order != "permutation-0"))
+                );
+            }
+            let request_lengths = case
+                .requests
+                .iter()
+                .map(|request| match &request.messages[0].content {
+                    ContentSpec::Text(value) => {
+                        assert!(value.bytes().all(|byte| byte == b'x'));
+                        assert_eq!(value.chars().count(), value.len());
+                        value.len()
+                    }
+                    ContentSpec::Items(_) => panic!("padding recipe must use scalar text content"),
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(request_lengths, expected_order);
         }
     }
 }
