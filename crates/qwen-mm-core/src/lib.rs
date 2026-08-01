@@ -12,12 +12,16 @@
 #![forbid(unsafe_code)]
 
 pub mod error;
+pub mod geometry;
 pub mod limits;
 pub mod output;
 pub mod profile;
 pub mod request;
 
 pub use error::{DiagnosticValue, ErrorCategory, QwenError, Result, ValidationStage};
+pub use geometry::{
+    ImageGeometryPlan, explicit_dimensions, plan_image_geometry, round_by_factor, smart_resize,
+};
 pub use limits::{
     LimitOverrides, PreflightSummary, ProfiledRequest, ResourceLimits, checked_add,
     checked_capacity_bytes, checked_mul, preflight_batch,
