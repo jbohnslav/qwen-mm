@@ -3,7 +3,7 @@
 //! The crate owns immutable offline profiles, Rust-native request/media types,
 //! resource-safe preflight, stable errors, and exact parity output layouts.
 //! It deliberately contains no Python, Torch, `OpenCV`, networking, decoding,
-//! resizing, tokenization, or model execution.
+//! resizing or model execution.
 //!
 //! ```
 //! assert_eq!(qwen_mm_core::version(), "0.1.0");
@@ -17,6 +17,7 @@ pub mod limits;
 pub mod output;
 pub mod profile;
 pub mod request;
+pub mod text;
 
 pub use error::{DiagnosticValue, ErrorCategory, QwenError, Result, ValidationStage};
 pub use geometry::{
@@ -37,6 +38,10 @@ pub use request::{
     ContentItem, ExcludedOptions, FunctionCall, ImageFormat, ImageInput, ImageOptions, ImageRef,
     Message, MessageContent, OccurrenceLocation, Request, RequestOptions, Rgb8, Role, ToolCall,
     ToolDefinition, VideoInput, VideoOptions, VideoRef,
+};
+pub use text::{
+    PlannedTextRequest, PreparedTextBatch, PreparedTextRequest, TextProcessor, TextReplacement,
+    VisualExpansion, VisualModality,
 };
 
 /// Returns the core crate version embedded at compile time.

@@ -1,4 +1,4 @@
-.PHONY: benchmark-v2-self-test benchmark-v2-smoke check conformance-full \
+.PHONY: benchmark-v2-self-test benchmark-v2-smoke chat-conformance check conformance-full \
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
 	rust-check sync wheel-smoke
 
@@ -52,6 +52,9 @@ reference-smoke:
 conformance-smoke:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.corpus validate
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.conformance check reference/goldens/v1
+
+chat-conformance:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.chat_conformance
 
 conformance-full: conformance-smoke
 	$(if $(CANDIDATE_COMMAND),,$(error CANDIDATE_COMMAND is required; see docs/conformance-v1.md))

@@ -14,14 +14,16 @@ kernels ahead of their conformance work.
 | Rust | `1.97.1` | Current stable patch on 2026-07-31; includes Cargo, rustfmt, and Clippy as one reproducible toolchain. |
 | Edition | `2024` | Current Rust edition; the toolchain is new enough to support it directly. |
 | PyO3 | `0.29.0` | Current stable release in the live Cargo index when bootstrapped; exact-pinned in `Cargo.lock`, with the Python 3.11 stable ABI. |
+| Tokenizers | `0.22.2` | Matches the immutable Python oracle's tokenizer engine; the core enables only the Oniguruma regex backend needed by the pinned tokenizer JSON and never enables Hub access. |
 | Maturin | `1.14.1` | Current stable wheel builder when bootstrapped; exact-pinned in `pyproject.toml` and the smoke command. |
 | Ruff | `0.16.1` floor, locked | Python linting, import sorting, modernization checks, and formatting. |
 | pre-commit | `4.6.1` floor, locked | Runs the repository's uv, Ruff, Cargo-format, and lockfile checks before commits. |
 
-`qwen-mm-core` has no third-party dependencies. In particular it builds without
-Python, Torch, OpenCV, vLLM, or network access. `qwen-mm-python` is a separate
-PyO3 extension package; its `extension-module` feature is enabled only by
-Maturin so ordinary Rust tests can link against the host Python normally.
+`qwen-mm-core` keeps a small offline dependency set and exact-pins the Rust
+`tokenizers` crate to the oracle's `0.22.2` release. It builds without Python,
+Torch, OpenCV, vLLM, or network access. `qwen-mm-python` is a separate PyO3
+extension package; its `extension-module` feature is enabled only by Maturin so
+ordinary Rust tests can link against the host Python normally.
 
 ## Commands
 

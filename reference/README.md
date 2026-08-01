@@ -121,3 +121,27 @@ command and runs both pinned profiles against freshly exported oracle results:
 make conformance-full \
   CANDIDATE_COMMAND='qwen-mm-candidate --case {case} --profile {profile} --output {actual}'
 ```
+
+## Chat-template conformance fixture
+
+`conformance/v1/chat.json` is a compact, versioned fixture for the complete v1
+chat recipe. It records exact UTF-8 prompts plus token, attention-mask, and
+multimodal token-type arrays from both hash-pinned local official processors.
+Regenerate it from the repository root with the locked uv workspace:
+
+```console
+make chat-conformance
+```
+
+The equivalent direct command, also recorded inside the fixture, is:
+
+```console
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.chat_conformance
+```
+
+The generator verifies every local processor artifact against
+`compatibility/v1.json`, passes `local_files_only=True`, and performs no network
+access. Rust's always-on test consumes the committed prompt/error portions; its
+ignored local-oracle test additionally compares the complete arrays when both
+pinned snapshots are available under `reference/.cache`.
