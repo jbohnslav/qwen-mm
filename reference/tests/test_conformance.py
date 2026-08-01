@@ -8,6 +8,7 @@ from pathlib import Path
 
 from qwen_mm_reference.conformance import (
     _output_tolerance,
+    _pixel_coordinate,
     check_invariants,
     compare_manifests,
 )
@@ -57,6 +58,8 @@ class ComparatorTests(unittest.TestCase):
 
     def test_pixel_mismatch_has_required_diagnostics_and_coordinate(self) -> None:
         actual = copy.deepcopy(self.expected)
+        self.expected["input"]["media"][0]["input_index"] = 7
+        actual["input"]["media"][0]["input_index"] = 7
         descriptor = actual["output"]["arrays"]["pixel_values"]
         descriptor["data"][3][300] += 0.25
 
@@ -72,8 +75,17 @@ class ComparatorTests(unittest.TestCase):
         coordinate = issue["first_difference"]
         self.assertEqual(coordinate["patch"], 3)
         self.assertEqual(coordinate["column"], 300)
-        self.assertEqual(coordinate["channel"], 1)
+        self.assertEqual(coordinate["channel"], 0)
+        self.assertEqual(coordinate["temporal_offset"], 1)
+        self.assertEqual(coordinate["patch_y"], 2)
+        self.assertEqual(coordinate["patch_x"], 12)
+        self.assertEqual(coordinate["grid_row"], 0)
+        self.assertEqual(coordinate["grid_t"], 0)
+        self.assertEqual(coordinate["grid_y"], 1)
+        self.assertEqual(coordinate["grid_x"], 1)
+        self.assertEqual(coordinate["input_index"], 7)
         self.assertEqual(coordinate["media_occurrence"], 0)
+        self.assertEqual(coordinate["source_occurrence"], 0)
         self.assertEqual(coordinate["request_index"], 0)
 
     def test_pixel_difference_inside_frozen_bound_passes(self) -> None:
@@ -83,6 +95,68 @@ class ComparatorTests(unittest.TestCase):
         report = compare_manifests(self.expected, actual)
 
         self.assertTrue(report.passed, report.to_dict())
+
+    def test_pixel_coordinate_localizes_a_later_grid_and_source_occurrence(self) -> None:
+        manifest = {
+            "provenance": {
+                "profile": {
+                    "visual": {
+                        "merge_size": 2,
+                        "patch_size": 16,
+                        "temporal_patch_size": 2,
+                    }
+                }
+            },
+            "input": {
+                "media": [
+                    {"kind": "video", "occurrence": 0},
+                    {"kind": "image", "occurrence": 1, "input_index": 4},
+                    {
+                        "kind": "image",
+                        "occurrence": 2,
+                        "input_index": 9,
+                        "request_index": 0,
+                        "message_index": 2,
+                        "content_index": 3,
+                    },
+                ]
+            },
+            "output": {
+                "arrays": {
+                    "image_grid_thw": {
+                        "storage": "inline_json",
+                        "dtype": "int64",
+                        "data": [[1, 4, 4], [1, 6, 4]],
+                    }
+                }
+            },
+        }
+
+        coordinate = _pixel_coordinate((39, 1535), name="pixel_values", manifest=manifest)
+
+        self.assertEqual(
+            coordinate,
+            {
+                "index": [39, 1535],
+                "patch": 39,
+                "column": 1535,
+                "channel": 2,
+                "temporal_offset": 1,
+                "patch_y": 15,
+                "patch_x": 15,
+                "grid_row": 1,
+                "media_occurrence": 1,
+                "patch_in_occurrence": 23,
+                "grid_t": 0,
+                "grid_y": 5,
+                "grid_x": 3,
+                "request_index": 0,
+                "message_index": 2,
+                "content_index": 3,
+                "source_occurrence": 2,
+                "input_index": 9,
+            },
+        )
 
     def test_mixed_lossless_and_lossy_images_get_per_occurrence_bounds(self) -> None:
         manifest = copy.deepcopy(self.expected)

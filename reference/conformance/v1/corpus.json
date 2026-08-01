@@ -45,6 +45,13 @@
       "tags": ["media.malformed", "errors.media_decode"]
     },
     {
+      "id": "phase-b-serial-image-path",
+      "tier": "golden",
+      "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "manifest_path": "reference/phase-b/v1/manifest.json",
+      "tags": ["chat.qwen3vl_template", "chat.qwen35_template", "chat.generation_prompt", "chat.vision_ids", "text.placeholder_count", "media.raw_strided_rgb", "media.jpeg", "media.png", "media.webp", "media.repeated", "media.interleaved", "batch.order"]
+    },
+    {
       "id": "pinned-rules",
       "tier": "rule",
       "profiles": ["qwen3-vl-8b", "qwen3.5-9b"],

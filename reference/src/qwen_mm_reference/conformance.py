@@ -176,14 +176,21 @@ def _pixel_coordinate(
         return coordinate
 
     patch, column = index
+    visual = manifest.get("provenance", {}).get("profile", {}).get("visual", {})
+    patch_size = int(visual.get("patch_size", 16))
+    temporal_patch_size = int(visual.get("temporal_patch_size", 2))
+    channel_elements = temporal_patch_size * patch_size * patch_size
+    temporal_elements = patch_size * patch_size
+    within_channel = column % channel_elements
+    within_temporal = within_channel % temporal_elements
     coordinate.update(
         {
             "patch": patch,
             "column": column,
-            "temporal_offset": column // (3 * 16 * 16),
-            "channel": (column // (16 * 16)) % 3,
-            "patch_y": (column // 16) % 16,
-            "patch_x": column % 16,
+            "channel": column // channel_elements,
+            "temporal_offset": within_channel // temporal_elements,
+            "patch_y": within_temporal // patch_size,
+            "patch_x": within_temporal % patch_size,
         }
     )
     grid_name = "image_grid_thw" if name == "pixel_values" else "video_grid_thw"
@@ -197,8 +204,31 @@ def _pixel_coordinate(
     for occurrence, row in enumerate(grid):
         patch_count = int(np.prod(row, dtype=np.int64))
         if patch < offset + patch_count:
+            patch_in_occurrence = patch - offset
+            coordinate["grid_row"] = occurrence
             coordinate["media_occurrence"] = occurrence
-            coordinate["patch_in_occurrence"] = patch - offset
+            coordinate["patch_in_occurrence"] = patch_in_occurrence
+            if len(row) == 3:
+                grid_t, grid_height, grid_width = (int(value) for value in row)
+                merge_size = int(visual.get("merge_size", 2))
+                spatial_patches = grid_height * grid_width
+                if spatial_patches > 0:
+                    coordinate["grid_t"] = patch_in_occurrence // spatial_patches
+                    spatial_patch = patch_in_occurrence % spatial_patches
+                    if (
+                        merge_size > 0
+                        and grid_height % merge_size == 0
+                        and grid_width % merge_size == 0
+                        and coordinate["grid_t"] < grid_t
+                    ):
+                        block, within_block = divmod(spatial_patch, merge_size * merge_size)
+                        outer_width = grid_width // merge_size
+                        coordinate["grid_y"] = (
+                            block // outer_width * merge_size + within_block // merge_size
+                        )
+                        coordinate["grid_x"] = (
+                            block % outer_width * merge_size + within_block % merge_size
+                        )
             kind = "image" if name == "pixel_values" else "video"
             media = [
                 item
@@ -206,9 +236,15 @@ def _pixel_coordinate(
                 if item.get("kind") == kind
             ]
             if occurrence < len(media):
-                coordinate["request_index"] = media[occurrence].get("request_index")
-                coordinate["message_index"] = media[occurrence].get("message_index")
-                coordinate["content_index"] = media[occurrence].get("content_index")
+                source = media[occurrence]
+                coordinate["request_index"] = source.get("request_index")
+                coordinate["message_index"] = source.get("message_index")
+                coordinate["content_index"] = source.get("content_index")
+                if "occurrence" in source:
+                    coordinate["source_occurrence"] = source["occurrence"]
+                for input_field in ("input_index", "source_index"):
+                    if input_field in source:
+                        coordinate[input_field] = source[input_field]
             break
         offset += patch_count
     return coordinate

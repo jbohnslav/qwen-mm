@@ -121,6 +121,12 @@ pub struct TextProcessor {
     tokenizer: Tokenizer,
 }
 
+pub(crate) struct SingleTextPlan {
+    pending: PendingTextRequest,
+    token_row: EncodedTokenRow,
+    additional_output_bytes: u64,
+}
+
 impl TextProcessor {
     /// Loads only local model assets and binds them to an immutable profile.
     ///
@@ -177,6 +183,18 @@ impl TextProcessor {
         &self.profile
     }
 
+    /// Renders once and proves that the resulting visual-marker sequence is
+    /// exactly the request's media-occurrence sequence.
+    pub(crate) fn render_validated_request(
+        &self,
+        request: &Request<'_>,
+        request_index: usize,
+    ) -> Result<String> {
+        let rendered = render_chat(&self.profile, request, request_index)?;
+        validate_rendered_visual_sequence(request, &rendered, request_index)?;
+        Ok(rendered)
+    }
+
     /// Renders, expands, tokenizes, and right-pads a homogeneous-profile batch.
     ///
     /// Visual work is deliberately not performed here. Each supplied visual
@@ -193,6 +211,17 @@ impl TextProcessor {
         batch: &[PlannedTextRequest<'_>],
         limits: ResourceLimits,
     ) -> Result<PreparedTextBatch> {
+        self.prepare_batch_with_additional_output_bytes(batch, limits, 0)
+    }
+
+    /// Prepares text while reserving part of the materialized-output budget
+    /// for arrays produced by another composed stage.
+    pub(crate) fn prepare_batch_with_additional_output_bytes(
+        &self,
+        batch: &[PlannedTextRequest<'_>],
+        limits: ResourceLimits,
+        additional_output_bytes: u64,
+    ) -> Result<PreparedTextBatch> {
         let registry = ProfileRegistry::bundled()?;
         let profiled = batch
             .iter()
@@ -204,7 +233,57 @@ impl TextProcessor {
         preflight_batch(&registry, &profiled, limits)?;
         let unpadded = self.prepare_unpadded(batch)?;
         limits.check_rendered_tokens(&unpadded.token_counts)?;
-        self.materialize_text_batch(unpadded.pending, unpadded.token_rows, limits)
+        self.materialize_text_batch(
+            unpadded.pending,
+            unpadded.token_rows,
+            limits,
+            additional_output_bytes,
+        )
+    }
+
+    /// Expands/tokenizes one already-rendered request and checks its complete
+    /// composed output capacity without materializing official matrices.
+    pub(crate) fn plan_single_from_rendered(
+        &self,
+        request: Request<'_>,
+        visuals: &[VisualExpansion<'_>],
+        rendered_prompt: String,
+        limits: ResourceLimits,
+        additional_output_bytes: u64,
+    ) -> Result<SingleTextPlan> {
+        validate_visual_plan(&request, visuals, 0)?;
+        validate_rendered_visual_sequence(&request, &rendered_prompt, 0)?;
+        let (expanded_prompt, replacements) =
+            expand_visuals(&self.profile, &rendered_prompt, visuals, 0)?;
+        let token_row = self.encode_prompt_once(&expanded_prompt, 0)?;
+        let token_count = u64::try_from(token_row.ids.len())
+            .map_err(|_| arithmetic("rendered token count does not fit parity arithmetic"))?;
+        limits.check_rendered_tokens(&[token_count])?;
+        check_text_output_capacity(1, token_row.ids.len(), limits, additional_output_bytes)?;
+        Ok(SingleTextPlan {
+            pending: PendingTextRequest {
+                rendered_prompt,
+                expanded_prompt,
+                replacements,
+            },
+            token_row,
+            additional_output_bytes,
+        })
+    }
+
+    /// Materializes a previously checked single-request text plan without
+    /// rerendering, expanding, or tokenizing it.
+    pub(crate) fn execute_single_text_plan(
+        &self,
+        plan: SingleTextPlan,
+        limits: ResourceLimits,
+    ) -> Result<PreparedTextBatch> {
+        self.materialize_text_batch(
+            vec![plan.pending],
+            vec![plan.token_row],
+            limits,
+            plan.additional_output_bytes,
+        )
     }
 
     fn prepare_unpadded(&self, batch: &[PlannedTextRequest<'_>]) -> Result<UnpaddedTextBatch> {
@@ -213,21 +292,11 @@ impl TextProcessor {
         let mut token_counts = Vec::with_capacity(batch.len());
         for (request_index, item) in batch.iter().enumerate() {
             validate_visual_plan(&item.request, item.visuals, request_index)?;
-            let rendered_prompt = render_chat(&self.profile, &item.request, request_index)?;
+            let rendered_prompt = self.render_validated_request(&item.request, request_index)?;
             let (expanded_prompt, replacements) =
                 expand_visuals(&self.profile, &rendered_prompt, item.visuals, request_index)?;
-            let encoding = self
-                .tokenizer
-                .encode(expanded_prompt.clone(), true)
-                .map_err(|_| {
-                    QwenError::new(
-                        ErrorCategory::InternalInvariant,
-                        "pinned tokenizer failed to encode a validated prompt",
-                    )
-                    .with_context("request_index", request_index)
-                })?;
-            let ids = encoding.get_ids().to_vec();
-            let count = u64::try_from(ids.len()).map_err(|_| {
+            let token_row = self.encode_prompt_once(&expanded_prompt, request_index)?;
+            let count = u64::try_from(token_row.ids.len()).map_err(|_| {
                 arithmetic("rendered token count does not fit parity arithmetic")
                     .with_context("request_index", request_index)
             })?;
@@ -237,7 +306,7 @@ impl TextProcessor {
                 expanded_prompt,
                 replacements,
             });
-            token_rows.push(ids);
+            token_rows.push(token_row);
         }
         Ok(UnpaddedTextBatch {
             pending,
@@ -249,26 +318,22 @@ impl TextProcessor {
     fn materialize_text_batch(
         &self,
         pending: Vec<PendingTextRequest>,
-        token_rows: Vec<Vec<u32>>,
+        token_rows: Vec<EncodedTokenRow>,
         limits: ResourceLimits,
+        additional_output_bytes: u64,
     ) -> Result<PreparedTextBatch> {
-        let columns = token_rows.iter().map(Vec::len).max().ok_or_else(|| {
-            QwenError::new(
-                ErrorCategory::InternalInvariant,
-                "validated batch disappeared",
-            )
-        })?;
+        let columns = token_rows
+            .iter()
+            .map(|row| row.ids.len())
+            .max()
+            .ok_or_else(|| {
+                QwenError::new(
+                    ErrorCategory::InternalInvariant,
+                    "validated batch disappeared",
+                )
+            })?;
         let rows = token_rows.len();
-        let rows_u64 = u64::try_from(rows)
-            .map_err(|_| arithmetic("text batch rows do not fit parity arithmetic"))?;
-        let columns_u64 = u64::try_from(columns)
-            .map_err(|_| arithmetic("text batch columns do not fit parity arithmetic"))?;
-        let one_matrix = checked_capacity_bytes(rows_u64, columns_u64, 8)?;
-        limits.check_materialized_output_bytes(checked_mul(
-            "three text output matrices",
-            one_matrix,
-            3,
-        )?)?;
+        check_text_output_capacity(rows, columns, limits, additional_output_bytes)?;
 
         let capacity = rows.checked_mul(columns).ok_or_else(|| {
             arithmetic("text matrix element capacity overflowed")
@@ -283,9 +348,10 @@ impl TextProcessor {
         let video_id = self.profile.tokenizer.video_token_id;
         let mut prepared_requests = Vec::with_capacity(rows);
 
-        for (row_index, (ids, request)) in token_rows.into_iter().zip(pending).enumerate() {
+        for (row_index, (row, request)) in token_rows.into_iter().zip(pending).enumerate() {
             let replacements =
-                self.locate_replacement_tokens(&ids, request.replacements, row_index)?;
+                Self::locate_replacement_tokens(&row.offsets, request.replacements, row_index)?;
+            let ids = row.ids;
 
             for &id in &ids {
                 let id = i64::from(id);
@@ -319,24 +385,42 @@ impl TextProcessor {
     }
 
     fn locate_replacement_tokens(
-        &self,
-        ids: &[u32],
+        offsets: &[(usize, usize)],
         pending: Vec<PendingReplacement>,
         request_index: usize,
     ) -> Result<Vec<TextReplacement>> {
         let mut replacements = Vec::with_capacity(pending.len());
         let mut token_cursor = 0;
         for replacement in pending {
-            let replacement_encoding = self
-                .tokenizer
-                .encode(replacement.text, false)
-                .map_err(|_| invariant("tokenizer failed to encode a visual replacement"))?;
-            let replacement_ids = replacement_encoding.get_ids();
-            let (start, end) =
-                find_subsequence(ids, replacement_ids, token_cursor).ok_or_else(|| {
-                    invariant("expanded replacement was not found in tokenized prompt")
+            let start = offsets
+                .iter()
+                .enumerate()
+                .skip(token_cursor)
+                .find_map(|(index, &(start, end))| {
+                    (start == replacement.expanded_byte_start && end > start).then_some(index)
+                })
+                .ok_or_else(|| {
+                    invariant("expanded replacement start was not found in full-prompt offsets")
                         .with_context("request_index", request_index)
                 })?;
+            let end = offsets
+                .iter()
+                .enumerate()
+                .skip(start)
+                .take_while(|(_, (start, _))| *start < replacement.expanded_byte_end)
+                .filter(|(_, (start, end))| *end > *start && *end <= replacement.expanded_byte_end)
+                .map(|(index, _)| index + 1)
+                .last()
+                .ok_or_else(|| {
+                    invariant("expanded replacement end was not found in full-prompt offsets")
+                        .with_context("request_index", request_index)
+                })?;
+            if offsets[end - 1].1 != replacement.expanded_byte_end {
+                return Err(invariant(
+                    "full-prompt token offsets do not cover the visual replacement exactly",
+                )
+                .with_context("request_index", request_index));
+            }
             token_cursor = end;
             replacements.push(TextReplacement {
                 modality: replacement.modality,
@@ -350,12 +434,97 @@ impl TextProcessor {
         }
         Ok(replacements)
     }
+
+    fn encode_prompt_once(
+        &self,
+        expanded_prompt: &str,
+        request_index: usize,
+    ) -> Result<EncodedTokenRow> {
+        let encoding = self.tokenizer.encode(expanded_prompt, true).map_err(|_| {
+            QwenError::new(
+                ErrorCategory::InternalInvariant,
+                "pinned tokenizer failed to encode a validated prompt",
+            )
+            .with_context("request_index", request_index)
+        })?;
+        Ok(EncodedTokenRow {
+            ids: encoding.get_ids().to_vec(),
+            offsets: encoding.get_offsets().to_vec(),
+        })
+    }
+}
+
+fn check_text_output_capacity(
+    rows: usize,
+    columns: usize,
+    limits: ResourceLimits,
+    additional_output_bytes: u64,
+) -> Result<()> {
+    let rows_u64 = u64::try_from(rows)
+        .map_err(|_| arithmetic("text batch rows do not fit parity arithmetic"))?;
+    let columns_u64 = u64::try_from(columns)
+        .map_err(|_| arithmetic("text batch columns do not fit parity arithmetic"))?;
+    let one_matrix = checked_capacity_bytes(rows_u64, columns_u64, 8)?;
+    let text_bytes = checked_mul("three text output matrices", one_matrix, 3)?;
+    limits.check_materialized_output_bytes(crate::limits::checked_add(
+        "composed materialized output bytes",
+        text_bytes,
+        additional_output_bytes,
+    )?)
+}
+
+fn validate_rendered_visual_sequence(
+    request: &Request<'_>,
+    rendered: &str,
+    request_index: usize,
+) -> Result<()> {
+    let mut expected = Vec::new();
+    for message in request.messages {
+        if let MessageContent::Items(items) = message.content {
+            for item in items {
+                match item {
+                    ContentItem::Image(_) => expected.push(VisualModality::Image),
+                    ContentItem::Video(_) => expected.push(VisualModality::Video),
+                    ContentItem::Text(_) => {}
+                }
+            }
+        }
+    }
+
+    let mut observed = rendered
+        .match_indices(IMAGE_TOKEN)
+        .map(|(offset, _)| (offset, VisualModality::Image))
+        .chain(
+            rendered
+                .match_indices(VIDEO_TOKEN)
+                .map(|(offset, _)| (offset, VisualModality::Video)),
+        )
+        .collect::<Vec<_>>();
+    observed.sort_by_key(|(offset, _)| *offset);
+    if observed.len() != expected.len() {
+        return Err(
+            invalid("rendered placeholder count does not match media occurrences")
+                .with_context("request_index", request_index)
+                .with_context("expected", expected.len())
+                .with_context("actual", observed.len()),
+        );
+    }
+    for (occurrence, (expected, (_, actual))) in expected.iter().zip(&observed).enumerate() {
+        if expected != actual {
+            return Err(
+                invalid("rendered placeholder order does not match media traversal")
+                    .with_context("request_index", request_index)
+                    .with_context("occurrence", occurrence),
+            );
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
 struct UnpaddedTextBatch {
     pending: Vec<PendingTextRequest>,
-    token_rows: Vec<Vec<u32>>,
+    token_rows: Vec<EncodedTokenRow>,
     token_counts: Vec<u64>,
 }
 
@@ -371,7 +540,14 @@ struct PendingReplacement {
     modality: VisualModality,
     rendered_code_points: CoordinateRange,
     expanded_code_points: CoordinateRange,
-    text: String,
+    expanded_byte_start: usize,
+    expanded_byte_end: usize,
+}
+
+#[derive(Debug)]
+struct EncodedTokenRow {
+    ids: Vec<u32>,
+    offsets: Vec<(usize, usize)>,
 }
 
 fn validate_asset(profile: &Profile, directory: &Path, name: &'static str) -> Result<()> {
@@ -896,8 +1072,10 @@ fn expand_visuals(
         let byte_end = byte_start + token.len();
         expanded.push_str(&rendered[last_byte..byte_start]);
         let replacement = visual_replacement(profile, visual, request_index, occurrence)?;
+        let expanded_byte_start = expanded.len();
         let expanded_start = expanded.chars().count();
         expanded.push_str(&replacement);
+        let expanded_byte_end = expanded.len();
         let expanded_end = expanded.chars().count();
         replacements.push(PendingReplacement {
             modality,
@@ -912,7 +1090,8 @@ fn expand_visuals(
                 start: usize_to_i64(expanded_start, "expanded span start")?,
                 end: usize_to_i64(expanded_end, "expanded span end")?,
             },
-            text: replacement,
+            expanded_byte_start,
+            expanded_byte_end,
         });
         last_byte = byte_end;
     }
@@ -1004,19 +1183,6 @@ fn visual_replacement(
 fn checked_grid_product(grid: [u64; 3]) -> Result<u64> {
     let temporal_height = checked_mul("visual temporal-height grid", grid[0], grid[1])?;
     checked_mul("visual grid patch count", temporal_height, grid[2])
-}
-
-fn find_subsequence(haystack: &[u32], needle: &[u32], start: usize) -> Option<(usize, usize)> {
-    if needle.is_empty() || needle.len() > haystack.len() {
-        return None;
-    }
-    let final_start = haystack.len() - needle.len();
-    for index in start..=final_start {
-        if haystack[index..index + needle.len()] == *needle {
-            return Some((index, index + needle.len()));
-        }
-    }
-    None
 }
 
 #[derive(Clone, Debug, PartialEq)]

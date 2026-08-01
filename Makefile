@@ -1,7 +1,8 @@
 .PHONY: benchmark-v2-self-test benchmark-v2-smoke chat-conformance check conformance-full \
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
-	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke
+	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
+	phase-b-conformance phase-b-conformance-regenerate
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -14,6 +15,8 @@ BENCHMARK_OUTPUT ?= /tmp/qwen-mm-benchmark-v2.json
 BENCHMARK_REPORT ?= /tmp/qwen-mm-benchmark-v2.md
 RESIZE_REPORT_OUTPUT ?= reference/resize/v1/results/macos-arm64-native.json
 MEDIA_REPORT_OUTPUT ?= reference/media/v1/results/macos-arm64-native.json
+PHASE_B_ASSETS_ROOT ?= reference/.cache/huggingface
+PHASE_B_REPORT_OUTPUT ?= /tmp/qwen-mm-phase-b-report.json
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -66,6 +69,15 @@ media-conformance-regenerate:
 media-report-macos: media-conformance
 	$(CARGO_CMD) run --locked --package qwen-mm-core --example media_stage_report -- \
 		--output "$(MEDIA_REPORT_OUTPUT)" --host-id macos-arm64-native --execution native
+
+phase-b-conformance:
+	$(CARGO_CMD) run --locked --offline --package qwen-mm-core --example phase_b_conformance -- \
+		--assets-root "$(PHASE_B_ASSETS_ROOT)" --output "$(PHASE_B_REPORT_OUTPUT)"
+
+phase-b-conformance-regenerate:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference \
+		python -m qwen_mm_reference.phase_b_conformance
+	$(MAKE) phase-b-conformance
 
 reference-smoke:
 	$(UV_CMD) sync --locked --inexact --package qwen-mm-reference

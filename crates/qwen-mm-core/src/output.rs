@@ -285,10 +285,10 @@ impl PreparedBatch {
     }
 }
 
-fn validate_modality<T>(
+fn validate_modality(
     name: &'static str,
     pixels: Option<&Matrix<f32>>,
-    grid: Option<&Matrix<T>>,
+    grid: Option<&Matrix<i64>>,
     sidecar_len: usize,
 ) -> Result<()> {
     match (pixels, grid) {
@@ -316,6 +316,36 @@ fn validate_modality<T>(
                     .with_context("modality", name)
                     .with_context("grid_rows", grid.rows())
                     .with_context("sidecar_entries", sidecar_len));
+            }
+            let mut expected_pixel_rows = 0_u64;
+            for (row_index, row) in grid.as_slice().chunks_exact(3).enumerate() {
+                if row.iter().any(|&value| value <= 0) {
+                    return Err(invariant("grid dimensions must be positive")
+                        .with_context("modality", name)
+                        .with_context("grid_row", row_index));
+                }
+                let temporal = u64::try_from(row[0])
+                    .map_err(|_| invariant("grid temporal dimension is invalid"))?;
+                let height = u64::try_from(row[1])
+                    .map_err(|_| invariant("grid height dimension is invalid"))?;
+                let width = u64::try_from(row[2])
+                    .map_err(|_| invariant("grid width dimension is invalid"))?;
+                let rows = checked_mul("grid temporal-height product", temporal, height)?;
+                let rows = checked_mul("grid patch-row product", rows, width)?;
+                expected_pixel_rows =
+                    crate::limits::checked_add("grid patch-row sum", expected_pixel_rows, rows)?;
+            }
+            let actual_pixel_rows = u64::try_from(pixels.rows()).map_err(|_| {
+                QwenError::new(
+                    ErrorCategory::ArithmeticOverflow,
+                    "pixel row count does not fit grid arithmetic",
+                )
+            })?;
+            if actual_pixel_rows != expected_pixel_rows {
+                return Err(invariant("pixel rows do not equal summed grid products")
+                    .with_context("modality", name)
+                    .with_context("expected_rows", expected_pixel_rows)
+                    .with_context("actual_rows", actual_pixel_rows));
             }
             Ok(())
         }
@@ -470,7 +500,7 @@ mod tests {
     #[test]
     fn image_outputs_are_f32_i64_contiguous_and_ordered() {
         let mut arrays = text_arrays();
-        arrays.pixel_values = Some(Matrix::new(2, 1536, vec![0.0_f32; 2 * 1536]).expect("pixels"));
+        arrays.pixel_values = Some(Matrix::new(4, 1536, vec![0.0_f32; 4 * 1536]).expect("pixels"));
         arrays.image_grid_thw = Some(Matrix::new(1, 3, vec![1_i64, 2, 2]).expect("grid"));
         let sidecar = IntegrationSidecar {
             images: vec![ImageSidecar {
@@ -517,7 +547,7 @@ mod tests {
     fn video_outputs_retain_every_adapter_sidecar_field() {
         let mut arrays = text_arrays();
         arrays.pixel_values_videos =
-            Some(Matrix::new(1, 1536, vec![0.0_f32; 1536]).expect("video pixels"));
+            Some(Matrix::new(2, 1536, vec![0.0_f32; 2 * 1536]).expect("video pixels"));
         arrays.video_grid_thw = Some(Matrix::new(1, 3, vec![2_i64, 1, 1]).expect("video grid"));
         let sidecar = IntegrationSidecar {
             images: vec![],
@@ -595,5 +625,45 @@ mod tests {
     fn matrix_shape_is_checked_before_storage_is_used() {
         let error = Matrix::new(2, 3, vec![0_i64; 5]).expect_err("wrong capacity");
         assert_eq!(error.category(), ErrorCategory::InternalInvariant);
+    }
+
+    #[test]
+    fn grid_products_must_match_pixel_rows_and_use_checked_arithmetic() {
+        let mut arrays = text_arrays();
+        arrays.pixel_values = Some(Matrix::new(1, 1536, vec![0.0_f32; 1536]).expect("pixels"));
+        arrays.image_grid_thw = Some(Matrix::new(1, 3, vec![1_i64, 2, 2]).expect("grid"));
+        let sidecar = IntegrationSidecar {
+            images: vec![ImageSidecar {
+                request_index: 0,
+                grid_row: 0,
+                replacement: range(),
+            }],
+            videos: vec![],
+        };
+        assert_eq!(
+            PreparedBatch::new(arrays, sidecar)
+                .expect_err("one row cannot represent a four-row grid")
+                .category(),
+            ErrorCategory::InternalInvariant
+        );
+
+        let mut arrays = text_arrays();
+        arrays.pixel_values = Some(Matrix::new(1, 1536, vec![0.0_f32; 1536]).expect("pixels"));
+        arrays.image_grid_thw =
+            Some(Matrix::new(1, 3, vec![i64::MAX, i64::MAX, i64::MAX]).expect("grid"));
+        let sidecar = IntegrationSidecar {
+            images: vec![ImageSidecar {
+                request_index: 0,
+                grid_row: 0,
+                replacement: range(),
+            }],
+            videos: vec![],
+        };
+        assert_eq!(
+            PreparedBatch::new(arrays, sidecar)
+                .expect_err("grid product must be checked")
+                .category(),
+            ErrorCategory::ArithmeticOverflow
+        );
     }
 }

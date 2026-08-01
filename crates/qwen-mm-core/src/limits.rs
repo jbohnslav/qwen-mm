@@ -295,6 +295,22 @@ pub fn preflight_batch(
     batch: &[ProfiledRequest<'_>],
     limits: ResourceLimits,
 ) -> Result<PreflightSummary> {
+    let summary = preflight_batch_through_resources(registry, batch, limits)?;
+    for (request_index, item) in batch.iter().enumerate() {
+        validate_geometry(&item.request, request_index)?;
+    }
+    Ok(summary)
+}
+
+/// Runs the common validation prefix through resource preflight, stopping
+/// before media geometry. The composed image processor uses this boundary so
+/// recognized corrupt media wins over later geometry/stage failures, as
+/// required by [`crate::ValidationStage::ORDER`].
+pub(crate) fn preflight_batch_through_resources(
+    registry: &ProfileRegistry,
+    batch: &[ProfiledRequest<'_>],
+    limits: ResourceLimits,
+) -> Result<PreflightSummary> {
     if batch.is_empty() {
         return Err(QwenError::new(
             ErrorCategory::InvalidRequest,
@@ -304,6 +320,15 @@ pub fn preflight_batch(
     for (request_index, item) in batch.iter().enumerate() {
         validate_request_structure(&item.request, request_index)?;
     }
+    preflight_batch_after_structure_through_resources(registry, batch, limits)
+}
+
+/// Continues preflight after request/render structure has already been proven.
+pub(crate) fn preflight_batch_after_structure_through_resources(
+    registry: &ProfileRegistry,
+    batch: &[ProfiledRequest<'_>],
+    limits: ResourceLimits,
+) -> Result<PreflightSummary> {
     for item in batch {
         registry.resolve(item.profile_alias)?;
     }
@@ -314,11 +339,7 @@ pub fn preflight_batch(
             request_index,
         )?;
     }
-    let summary = validate_resources(batch, limits)?;
-    for (request_index, item) in batch.iter().enumerate() {
-        validate_geometry(&item.request, request_index)?;
-    }
-    Ok(summary)
+    validate_resources(batch, limits)
 }
 
 /// Checked `u64` addition with a categorized overflow.

@@ -50,11 +50,187 @@ pub fn prepare_image_rgb8(
     options: ImageOptions,
     limits: ResourceLimits,
 ) -> Result<PreparedRgbImage> {
+    execute_image_plan(plan_image_rgb8(input, visual, options, limits)?)
+}
+
+/// A bounded, allocation-free image plan that has not performed full decode.
+pub(crate) struct ImagePreparationPlan<'a> {
+    source: PlannedSource<'a>,
+    geometry: Result<ImageGeometryPlan>,
+    limits: ResourceLimits,
+}
+
+impl ImagePreparationPlan<'_> {
+    pub(crate) fn geometry(&self) -> Result<ImageGeometryPlan> {
+        self.geometry.clone()
+    }
+}
+
+enum PlannedSource<'a> {
+    Encoded {
+        data: &'a [u8],
+        format: ImageFormat,
+        header: Header,
+    },
+    Raw {
+        raw: Rgb8<'a>,
+        height: u64,
+        width: u64,
+        stride: u64,
+        packed_stride: u64,
+        required: u64,
+    },
+}
+
+/// Performs byte/header/raw resource preflight and output planning without a
+/// full codec decode or RGB allocation. Geometry errors are retained so the
+/// composed processor can run every decode before selecting a later-stage
+/// geometry failure.
+pub(crate) fn plan_image_rgb8<'a>(
+    input: ImageInput<'a>,
+    visual: &VisualProfile,
+    options: ImageOptions,
+    limits: ResourceLimits,
+) -> Result<ImagePreparationPlan<'a>> {
     match input {
         ImageInput::Encoded { data, format } => {
-            prepare_encoded(data, format, visual, options, limits)
+            check_encoded_bytes(data, limits)?;
+            let header = probe_header(data, format)?;
+            check_source_resources(header.height, header.width, limits)?;
+            let geometry =
+                plan_and_check_output(visual, header.height, header.width, options, limits);
+            if let Err(error) = &geometry
+                && matches!(
+                    error.category(),
+                    ErrorCategory::ResourceLimit | ErrorCategory::ArithmeticOverflow
+                )
+            {
+                return Err(error.clone());
+            }
+            if header.animated {
+                return Err(unsupported(
+                    "animated media is outside the still-image contract",
+                ));
+            }
+            if matches!(header.mode, SourceMode::LumaAlpha | SourceMode::Other) {
+                return Err(
+                    unsupported("encoded image mode is outside compatibility contract v1")
+                        .with_context("mode", mode_name(header.mode)),
+                );
+            }
+            Ok(ImagePreparationPlan {
+                source: PlannedSource::Encoded {
+                    data,
+                    format,
+                    header,
+                },
+                geometry,
+                limits,
+            })
         }
-        ImageInput::Rgb8(rgb) => prepare_raw(rgb, visual, options, limits),
+        ImageInput::Rgb8(raw) => {
+            let height = u64::try_from(raw.height).map_err(|_| overflow("raw RGB height"))?;
+            let width = u64::try_from(raw.width).map_err(|_| overflow("raw RGB width"))?;
+            let stride =
+                u64::try_from(raw.row_stride).map_err(|_| overflow("raw RGB row stride"))?;
+            let pixels = checked_mul("decoded source pixels", height, width)?;
+            let packed_stride = checked_mul("packed raw RGB stride", width, RGB_CHANNELS)?;
+            let final_row =
+                checked_mul("raw RGB final row offset", height.saturating_sub(1), stride)?;
+            let required = checked_add("raw RGB readable byte span", final_row, packed_stride)?;
+            check_source_resource_values(height, width, pixels, limits)?;
+            let geometry = plan_and_check_output(visual, height, width, options, limits);
+            if let Err(error) = &geometry
+                && matches!(
+                    error.category(),
+                    ErrorCategory::ResourceLimit | ErrorCategory::ArithmeticOverflow
+                )
+            {
+                return Err(error.clone());
+            }
+            Ok(ImagePreparationPlan {
+                source: PlannedSource::Raw {
+                    raw,
+                    height,
+                    width,
+                    stride,
+                    packed_stride,
+                    required,
+                },
+                geometry,
+                limits,
+            })
+        }
+    }
+}
+
+/// Executes one image plan, performing full decode before deferred geometry.
+pub(crate) fn execute_image_plan(plan: ImagePreparationPlan<'_>) -> Result<PreparedRgbImage> {
+    match plan.source {
+        PlannedSource::Encoded {
+            data,
+            format,
+            header,
+        } => {
+            let decoded = decode_to_rgb(data, format, header, plan.limits)?;
+            let geometry = plan.geometry?;
+            let rgb = resize_image_rgb8(
+                &decoded,
+                header.height,
+                header.width,
+                checked_mul("decoded packed RGB stride", header.width, RGB_CHANNELS)?,
+                &geometry,
+            )?;
+            if u64::try_from(rgb.len()).map_err(|_| overflow("prepared RGB length"))?
+                != geometry.rgb_capacity_bytes
+            {
+                return Err(invariant(
+                    "prepared RGB capacity disagrees with its geometry",
+                ));
+            }
+            Ok(PreparedRgbImage {
+                source_height: header.height,
+                source_width: header.width,
+                geometry,
+                rgb,
+            })
+        }
+        PlannedSource::Raw {
+            raw,
+            height,
+            width,
+            stride,
+            packed_stride,
+            required,
+        } => {
+            if height == 0 || width == 0 {
+                return Err(geometry_error("raw RGB dimensions must be non-zero"));
+            }
+            if stride < packed_stride {
+                return Err(
+                    geometry_error("raw RGB stride is smaller than packed width")
+                        .with_context("stride", stride)
+                        .with_context("packed_stride", packed_stride),
+                );
+            }
+            let actual =
+                u64::try_from(raw.data.len()).map_err(|_| overflow("raw RGB buffer length"))?;
+            if actual < required {
+                return Err(geometry_error(
+                    "raw RGB buffer is shorter than its dimensions and stride",
+                )
+                .with_context("actual_bytes", actual)
+                .with_context("required_bytes", required));
+            }
+            let geometry = plan.geometry?;
+            let rgb = resize_image_rgb8(raw.data, height, width, stride, &geometry)?;
+            Ok(PreparedRgbImage {
+                source_height: height,
+                source_width: width,
+                geometry,
+                rgb,
+            })
+        }
     }
 }
 
@@ -74,115 +250,6 @@ struct Header {
     height: u64,
     mode: SourceMode,
     animated: bool,
-}
-
-fn prepare_encoded(
-    data: &[u8],
-    format: ImageFormat,
-    visual: &VisualProfile,
-    options: ImageOptions,
-    limits: ResourceLimits,
-) -> Result<PreparedRgbImage> {
-    check_encoded_bytes(data, limits)?;
-    let header = probe_header(data, format)?;
-    check_source_resources(header.height, header.width, limits)?;
-    let planned = plan_and_check_output(visual, header.height, header.width, options, limits);
-    if let Err(error) = &planned
-        && matches!(
-            error.category(),
-            ErrorCategory::ResourceLimit | ErrorCategory::ArithmeticOverflow
-        )
-    {
-        return Err(error.clone());
-    }
-    if header.animated {
-        return Err(unsupported(
-            "animated media is outside the still-image contract",
-        ));
-    }
-    if matches!(header.mode, SourceMode::LumaAlpha | SourceMode::Other) {
-        return Err(
-            unsupported("encoded image mode is outside compatibility contract v1")
-                .with_context("mode", mode_name(header.mode)),
-        );
-    }
-    let decoded = decode_to_rgb(data, format, header, limits)?;
-    let geometry = planned?;
-    let rgb = resize_image_rgb8(
-        &decoded,
-        header.height,
-        header.width,
-        checked_mul("decoded packed RGB stride", header.width, RGB_CHANNELS)?,
-        &geometry,
-    )?;
-    if u64::try_from(rgb.len()).map_err(|_| overflow("prepared RGB length"))?
-        != geometry.rgb_capacity_bytes
-    {
-        return Err(invariant(
-            "prepared RGB capacity disagrees with its geometry",
-        ));
-    }
-    Ok(PreparedRgbImage {
-        source_height: header.height,
-        source_width: header.width,
-        geometry,
-        rgb,
-    })
-}
-
-fn prepare_raw(
-    raw: Rgb8<'_>,
-    visual: &VisualProfile,
-    options: ImageOptions,
-    limits: ResourceLimits,
-) -> Result<PreparedRgbImage> {
-    let height = u64::try_from(raw.height).map_err(|_| overflow("raw RGB height"))?;
-    let width = u64::try_from(raw.width).map_err(|_| overflow("raw RGB width"))?;
-    let stride = u64::try_from(raw.row_stride).map_err(|_| overflow("raw RGB row stride"))?;
-
-    // Resource arithmetic intentionally precedes stride/extent geometry.
-    let pixels = checked_mul("decoded source pixels", height, width)?;
-    let packed_stride = checked_mul("packed raw RGB stride", width, RGB_CHANNELS)?;
-    let final_row = checked_mul("raw RGB final row offset", height.saturating_sub(1), stride)?;
-    let required = checked_add("raw RGB readable byte span", final_row, packed_stride)?;
-    check_source_resource_values(height, width, pixels, limits)?;
-    let planned = plan_and_check_output(visual, height, width, options, limits);
-    if let Err(error) = &planned
-        && matches!(
-            error.category(),
-            ErrorCategory::ResourceLimit | ErrorCategory::ArithmeticOverflow
-        )
-    {
-        return Err(error.clone());
-    }
-
-    if height == 0 || width == 0 {
-        return Err(geometry_error("raw RGB dimensions must be non-zero"));
-    }
-    if stride < packed_stride {
-        return Err(
-            geometry_error("raw RGB stride is smaller than packed width")
-                .with_context("stride", stride)
-                .with_context("packed_stride", packed_stride),
-        );
-    }
-    let actual = u64::try_from(raw.data.len()).map_err(|_| overflow("raw RGB buffer length"))?;
-    if actual < required {
-        return Err(
-            geometry_error("raw RGB buffer is shorter than its dimensions and stride")
-                .with_context("actual_bytes", actual)
-                .with_context("required_bytes", required),
-        );
-    }
-
-    let geometry = planned?;
-    let rgb = resize_image_rgb8(raw.data, height, width, stride, &geometry)?;
-    Ok(PreparedRgbImage {
-        source_height: height,
-        source_width: width,
-        geometry,
-        rgb,
-    })
 }
 
 fn check_encoded_bytes(data: &[u8], limits: ResourceLimits) -> Result<()> {

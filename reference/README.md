@@ -10,6 +10,11 @@ classes, and special-token/configuration values are recorded in
 output, tolerance, limit, and error contract is
 [`docs/compatibility-v1.md`](../docs/compatibility-v1.md).
 
+The dedicated Phase B serial text/image oracle and Rust-only report command are
+documented in
+[`docs/phase-b-image-parity-v1.md`](../docs/phase-b-image-parity-v1.md). Its
+self-authenticating both-profile corpus is under [`phase-b/v1/`](phase-b/v1/).
+
 ## Resize-stage conformance
 
 The B5 decision, source semantics, evaluated candidates, complete diagnostics,

@@ -17,6 +17,7 @@ pub mod limits;
 pub mod media;
 pub mod output;
 pub mod patchify;
+pub mod processor;
 pub mod profile;
 pub mod request;
 pub mod resize;
@@ -41,6 +42,10 @@ pub use output::{
     ReplacementRange, VideoSidecar,
 };
 pub use patchify::{ImagePatchifyPlan, PreparedImage, patchify_image_rgb8, plan_image_patchify};
+pub use processor::{
+    PreparedImageRequest, PreparedImageTrace, ProcessedImageOccurrence, QwenImageProcessor,
+    TracedPreparedImage,
+};
 pub use profile::{
     ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,
 };
