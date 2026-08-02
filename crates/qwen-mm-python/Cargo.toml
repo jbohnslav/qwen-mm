@@ -13,8 +13,10 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 extension-module = ["pyo3/extension-module"]
+test-hooks = []
 
 [dependencies]
+numpy.workspace = true
 pyo3.workspace = true
 qwen-mm-core.workspace = true
 

@@ -2,7 +2,7 @@
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
-	phase-b-conformance phase-b-conformance-regenerate
+	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check python-binding-test
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -112,3 +112,8 @@ benchmark-v2-smoke:
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh
+
+python-binding-test:
+	./scripts/test-python-binding.sh
+
+phase-c-binding-check: check phase-b-conformance python-binding-test
