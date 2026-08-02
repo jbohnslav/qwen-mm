@@ -2,7 +2,8 @@
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
-	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check python-binding-test
+	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
+	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -17,6 +18,7 @@ RESIZE_REPORT_OUTPUT ?= reference/resize/v1/results/macos-arm64-native.json
 MEDIA_REPORT_OUTPUT ?= reference/media/v1/results/macos-arm64-native.json
 PHASE_B_ASSETS_ROOT ?= reference/.cache/huggingface
 PHASE_B_REPORT_OUTPUT ?= /tmp/qwen-mm-phase-b-report.json
+PHASE_C_ASSETS_ROOT ?= reference/.cache/huggingface
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -117,3 +119,14 @@ python-binding-test:
 	./scripts/test-python-binding.sh
 
 phase-c-binding-check: check phase-b-conformance python-binding-test
+
+phase-c-conformance:
+	PHASE_C_ASSETS_ROOT="$(abspath $(PHASE_C_ASSETS_ROOT))" ./scripts/test-phase-c-conformance.sh
+
+phase-c-conformance-validate:
+	$(UV_CMD) run --locked --package qwen-mm-reference \
+		python -m qwen_mm_reference.phase_c_conformance validate \
+		--assets-root "$(PHASE_C_ASSETS_ROOT)" \
+		--report reference/phase-c/v1/report.json
+
+phase-c-release-check: phase-c-binding-check phase-c-conformance

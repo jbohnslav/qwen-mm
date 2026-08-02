@@ -4,7 +4,8 @@
   "type": "object",
   "required": [
     "schema_version", "schema_id", "created_at", "mode",
-    "architecture_family", "protocol", "workload", "pairs", "summaries"
+    "architecture_family", "protocol", "workload", "pairs", "summaries",
+    "release_eligibility"
   ],
   "properties": {
     "schema_version": {"const": 2},
@@ -15,7 +16,69 @@
     "protocol": {"type": "object"},
     "workload": {"type": "object"},
     "pairs": {"type": "array", "items": {"type": "object"}},
-    "summaries": {"type": "array", "items": {"type": "object"}}
+    "summaries": {"type": "array", "items": {"type": "object"}},
+    "release_eligibility": {
+      "type": "object",
+      "required": ["releasable", "performance_status", "phase_c"],
+      "properties": {
+        "releasable": {"const": false},
+        "performance_status": {"const": "diagnostic_only"},
+        "phase_c": {
+          "type": "object",
+          "required": ["status", "reason_codes"],
+          "properties": {
+            "status": {
+              "enum": [
+                "artifact_mismatch", "invalid", "missing", "not_applicable", "pass",
+                "stale"
+              ]
+            },
+            "reason_codes": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "report_path": {"type": "string"},
+            "assets_root": {"type": "string"},
+            "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "gate_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "evidence": {"type": "object"},
+            "detail": {"type": "string"},
+            "mode_note": {"type": "string"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"status": {"const": "pass"}}, "required": ["status"]},
+              "then": {
+                "required": [
+                  "report_path", "assets_root", "report_sha256", "gate_fingerprint", "evidence"
+                ],
+                "properties": {"reason_codes": {"maxItems": 0}}
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "enum": ["artifact_mismatch", "invalid", "missing", "stale"]
+                  }
+                },
+                "required": ["status"]
+              },
+              "then": {"properties": {"reason_codes": {"minItems": 1}}}
+            },
+            {
+              "if": {
+                "properties": {"status": {"const": "not_applicable"}},
+                "required": ["status"]
+              },
+              "then": {"properties": {"reason_codes": {"maxItems": 0}}}
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": true
 }

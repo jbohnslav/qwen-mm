@@ -5,6 +5,7 @@ description = "Pinned Python reference and baseline benchmark for qwen-mm"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
+    "jsonschema>=4.25,<5",
     "numpy>=2.0",
     "pillow>=11.0",
     "qwen-vl-utils==0.0.14",

@@ -117,6 +117,33 @@ RSS, transient live bytes, allocation/copy observations, cache support, and
 thread settings. Summaries contain p50/p90, p99 only at 100 or more samples,
 paired per-process speedups, and a seeded bootstrap 95% confidence interval.
 
+## Correctness prerequisite and release status
+
+Every benchmark result is `DIAGNOSTIC ONLY` and `releasable: false` until D4
+implements and passes the dedicated-host performance thresholds. For image
+workloads the harness also evaluates the current Phase C correctness report at
+`reference/phase-c/v1/report.json`. This is a necessary correctness
+prerequisite, never a performance certification.
+
+The harness computes eligibility rather than accepting a pass boolean. A Phase
+C prerequisite passes only when the versioned report covers both pinned
+profiles and its complete declared text/image case inventory without skips,
+contains no performance claims, still matches every content-addressed input,
+and identifies the exact qwen-mm package and native runtime imported by the
+benchmark. Result validation also re-hashes the selected benchmark adapter, so
+changing or removing either the adapter wrapper or runtime invalidates the
+recorded gate.
+
+Case and boundary labels are derived again from the authenticated workload path,
+workload/schema hashes, and deterministic input fingerprints. Protocol, pair,
+worker, and summary labels must all agree with those current definitions; an
+image measurement cannot be relabeled as text to bypass the Phase C prerequisite.
+
+Missing, malformed, stale, incomplete, synthetic, or artifact-mismatched
+evidence remains diagnostic. Use `--phase-c-report PATH` only to select another
+report location and `--phase-c-assets-root PATH` to locate its authenticated
+profile assets; neither option overrides validation.
+
 [`result-schema-v2.json`](result-schema-v2.json) is the versioned artifact
 schema. A result contains exactly one `architecture_family`; ARM and x86 data
 must remain in separate files and reports. The harness records performance but

@@ -38,13 +38,15 @@ model_inputs = prepared.arrays
 adapter_metadata = prepared.metadata
 ```
 
-`images` entries may also be aligned, C-contiguous `numpy.uint8[H, W, 3]`
-arrays. Inputs are validated and copied into GIL-independent native ownership
-before processing. Returned arrays are exact C-contiguous `int64`/`float32`
-outputs. Their Rust allocations are transferred into NumPy without copying,
-so they remain valid after the request, its media, and the processor are
-dropped. Adapter metadata is intentionally separate from `.arrays`; iteration
-over `.arrays` yields only the official conditional processor keys.
+`images` entries may also be aligned `numpy.uint8[H, W, 3]` arrays with packed
+RGB pixels and an optional positive row-padding stride. Negative, overlapping,
+and channel-sliced layouts are rejected. Inputs are validated and copied into
+GIL-independent native ownership before processing. Returned arrays are exact
+C-contiguous `int64`/`float32` outputs. Their Rust allocations are transferred
+into NumPy without copying, so they remain valid after the request, its media,
+and the processor are dropped. Adapter metadata is intentionally separate from
+`.arrays`; iteration over `.arrays` yields only the official conditional
+processor keys.
 
 Run the installed-wheel image1/image24, ownership, GIL-release, and failure
 suite (requires both pinned snapshots under `reference/.cache`) with:

@@ -1,0 +1,391 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qwen-mm-phase-c-conformance-report-v1",
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profileAsset": {
+      "type": "object",
+      "required": ["model_id", "revision", "fingerprint", "directory", "files"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "revision": {"type": "string", "minLength": 1},
+        "fingerprint": {"$ref": "#/$defs/sha256"},
+        "directory": {"type": "string", "minLength": 1, "pattern": "^[^/]"},
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": ["name", "sha256"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "boundaryRule": {
+      "type": "object",
+      "required": ["classification", "candidate_case_ids", "fixture_authentication_id"],
+      "properties": {
+        "classification": {"enum": ["installed-boundary", "intrinsic-helper-only"]},
+        "candidate_case_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "fixture_authentication_id": {"type": "string", "pattern": "^rule:"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": [
+    "schema_id",
+    "schema_version",
+    "contract_id",
+    "status",
+    "passed",
+    "created_at",
+    "scope",
+    "candidate",
+    "inputs",
+    "source_fingerprint",
+    "profile_assets",
+    "comparator",
+    "installed_boundary_rule_map",
+    "phase_e_exclusions",
+    "fixture_authentication",
+    "results",
+    "provenance"
+  ],
+  "properties": {
+    "schema_id": {"const": "qwen-mm-phase-c-conformance-report-v1"},
+    "schema_version": {"const": 1},
+    "contract_id": {"const": "qwen-mm-compat-v1"},
+    "status": {"enum": ["pass", "fail"]},
+    "passed": {"type": "boolean"},
+    "created_at": {"type": "string", "format": "date-time", "minLength": 1},
+    "scope": {
+      "type": "object",
+      "required": ["kind", "profiles", "declared_case_ids", "executed_case_ids", "skipped_case_ids"],
+      "properties": {
+        "kind": {"const": "text_image"},
+        "profiles": {
+          "type": "array",
+          "prefixItems": [{"const": "qwen3-vl-8b"}, {"const": "qwen3.5-9b"}],
+          "items": false,
+          "minItems": 2
+        },
+        "declared_case_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+        "executed_case_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "skipped_case_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["runtime_identity", "environment", "wheel", "gate_invocation_identity"],
+      "properties": {
+        "runtime_identity": {
+          "type": "object",
+          "required": ["package", "version", "package_artifact_sha256", "native_module", "native_artifact_sha256"],
+          "properties": {
+            "package": {"const": "qwen_mm"},
+            "version": {"type": "string", "minLength": 1},
+            "package_artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "native_module": {"const": "qwen_mm._native"},
+            "native_artifact_sha256": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        },
+        "environment": {
+          "type": "object",
+          "required": ["python", "implementation", "numpy", "abi_tag", "platform", "package_origin", "native_origin", "installed_origin"],
+          "properties": {
+            "python": {"type": "string", "minLength": 1},
+            "implementation": {"type": "string", "minLength": 1},
+            "numpy": {"type": "string", "minLength": 1},
+            "abi_tag": {"type": "string", "minLength": 1},
+            "platform": {"type": "string", "minLength": 1},
+            "package_origin": {"type": "string", "minLength": 1},
+            "native_origin": {"type": "string", "minLength": 1},
+            "installed_origin": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "wheel": {
+          "type": "object",
+          "required": ["filename", "sha256", "tag", "build_command", "bound_runtime_identity"],
+          "properties": {
+            "filename": {"type": "string", "pattern": "\\.whl$"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "tag": {"type": "string", "minLength": 1},
+            "build_command": {"const": "maturin build --locked"},
+            "bound_runtime_identity": {
+              "type": "object",
+              "required": ["package", "version", "package_artifact_sha256", "native_module", "native_artifact_sha256"],
+              "properties": {
+                "package": {"const": "qwen_mm"},
+                "version": {"type": "string", "minLength": 1},
+                "package_artifact_sha256": {"$ref": "#/$defs/sha256"},
+                "native_module": {"const": "qwen_mm._native"},
+                "native_artifact_sha256": {"$ref": "#/$defs/sha256"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "gate_invocation_identity": {
+          "type": "object",
+          "required": ["entrypoint", "python_isolated_mode", "forbidden_modules"],
+          "properties": {
+            "entrypoint": {"const": "qwen_mm:Processor"},
+            "python_isolated_mode": {"const": true},
+            "forbidden_modules": {
+              "type": "array",
+              "prefixItems": [
+                {"const": "PIL"},
+                {"const": "torch"},
+                {"const": "torchvision"},
+                {"const": "transformers"},
+                {"const": "qwen_vl_utils"}
+              ],
+              "items": false,
+              "minItems": 5
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "source_fingerprint": {"$ref": "#/$defs/sha256"},
+    "profile_assets": {
+      "type": "object",
+      "required": ["qwen3-vl-8b", "qwen3.5-9b"],
+      "properties": {
+        "qwen3-vl-8b": {"$ref": "#/$defs/profileAsset"},
+        "qwen3.5-9b": {"$ref": "#/$defs/profileAsset"}
+      },
+      "additionalProperties": false
+    },
+    "comparator": {
+      "type": "object",
+      "required": ["policy_id", "prepared_lossless_absolute_byte_error_max", "prepared_lossy_absolute_byte_error_max", "final_strict_atol", "final_lossy_atol", "diagnostic_fields"],
+      "properties": {
+        "policy_id": {"const": "qwen-mm-compat-v1-comparison"},
+        "prepared_lossless_absolute_byte_error_max": {"const": 0},
+        "prepared_lossy_absolute_byte_error_max": {"const": 1},
+        "final_strict_atol": {"const": 0.000001},
+        "final_lossy_atol": {"const": 0.007844090461730957},
+        "diagnostic_fields": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "maximum_absolute_error"},
+            {"const": "maximum_ulp_error"},
+            {"const": "rmse"},
+            {"const": "absolute_error_percentiles"},
+            {"const": "count_over_threshold"},
+            {"const": "first_difference"}
+          ],
+          "items": false,
+          "minItems": 6
+        }
+      },
+      "additionalProperties": false
+    },
+    "installed_boundary_rule_map": {
+      "type": "object",
+      "required": [
+        "aspect-ratio-200",
+        "aspect-ratio-over-200",
+        "checked-product-largest",
+        "checked-product-overflow",
+        "explicit-dimensions-paired",
+        "explicit-dimensions-unpaired",
+        "image-placeholder-count",
+        "resize-default-min-below",
+        "resize-default-min-edge",
+        "resize-exact-budget",
+        "resize-explicit-max",
+        "resize-explicit-min",
+        "round-half-0-even",
+        "round-half-2-even",
+        "round-half-2-even-down",
+        "round-half-4-even"
+      ],
+      "properties": {
+        "aspect-ratio-200": {"$ref": "#/$defs/boundaryRule"},
+        "aspect-ratio-over-200": {"$ref": "#/$defs/boundaryRule"},
+        "checked-product-largest": {"$ref": "#/$defs/boundaryRule"},
+        "checked-product-overflow": {"$ref": "#/$defs/boundaryRule"},
+        "explicit-dimensions-paired": {"$ref": "#/$defs/boundaryRule"},
+        "explicit-dimensions-unpaired": {"$ref": "#/$defs/boundaryRule"},
+        "image-placeholder-count": {"$ref": "#/$defs/boundaryRule"},
+        "resize-default-min-below": {"$ref": "#/$defs/boundaryRule"},
+        "resize-default-min-edge": {"$ref": "#/$defs/boundaryRule"},
+        "resize-exact-budget": {"$ref": "#/$defs/boundaryRule"},
+        "resize-explicit-max": {"$ref": "#/$defs/boundaryRule"},
+        "resize-explicit-min": {"$ref": "#/$defs/boundaryRule"},
+        "round-half-0-even": {"$ref": "#/$defs/boundaryRule"},
+        "round-half-2-even": {"$ref": "#/$defs/boundaryRule"},
+        "round-half-2-even-down": {"$ref": "#/$defs/boundaryRule"},
+        "round-half-4-even": {"$ref": "#/$defs/boundaryRule"}
+      },
+      "additionalProperties": false
+    },
+    "phase_e_exclusions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "fixture_authentication": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["case_id", "tier", "profile", "passed", "issues", "candidate_executed", "classification"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^rule:"},
+          "tier": {"const": "reference-fixture-authentication"},
+          "profile": {"const": "both"},
+          "passed": {"type": "boolean"},
+          "issues": {"type": "array"},
+          "candidate_executed": {"const": false},
+          "classification": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case_id", "tier", "profile", "passed", "issues", "candidate_executed"],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1},
+          "tier": {
+            "enum": [
+              "committed-golden",
+              "committed-phase-b",
+              "installed-geometry-rule",
+              "live-arithmetic",
+              "live-chat",
+              "live-heterogeneous-permutation",
+              "live-media",
+              "live-raw-layout",
+              "live-resource-boundary",
+              "live-schema-error",
+              "runner-failure"
+            ]
+          },
+          "profile": {"enum": ["qwen3-vl-8b", "qwen3.5-9b", "qwen-unknown", "both"]},
+          "passed": {"type": "boolean"},
+          "issues": {"type": "array"},
+          "candidate_executed": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["command", "git", "platform"],
+      "properties": {
+        "command": {"const": "make phase-c-conformance"},
+        "git": {
+          "type": "object",
+          "required": ["revision", "gate_inputs_clean", "gate_input_status"],
+          "properties": {
+            "revision": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+            "gate_inputs_clean": {"type": "boolean"},
+            "gate_input_status": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+          },
+          "additionalProperties": false
+        },
+        "platform": {
+          "type": "object",
+          "required": ["python", "implementation", "system", "release", "machine", "byte_order"],
+          "properties": {
+            "python": {"type": "string", "minLength": 1},
+            "implementation": {"type": "string", "minLength": 1},
+            "system": {"type": "string", "minLength": 1},
+            "release": {"type": "string", "minLength": 1},
+            "machine": {"type": "string", "minLength": 1},
+            "byte_order": {"enum": ["little", "big"]}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "pass"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "passed": {"const": true},
+          "scope": {"properties": {"skipped_case_ids": {"const": []}}},
+          "candidate": {
+            "properties": {
+              "environment": {
+                "properties": {
+                  "numpy": {"const": "2.4.6"},
+                  "installed_origin": {"const": true}
+                }
+              }
+            }
+          },
+          "provenance": {
+            "properties": {
+              "git": {
+                "properties": {
+                  "gate_inputs_clean": {"const": true},
+                  "gate_input_status": {"const": []}
+                }
+              }
+            }
+          },
+          "fixture_authentication": {
+            "items": {
+              "properties": {
+                "passed": {"const": true},
+                "issues": {"maxItems": 0}
+              }
+            }
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "passed": {"const": true},
+                "issues": {"maxItems": 0},
+                "candidate_executed": {"const": true}
+              }
+            }
+          }
+        }
+      },
+      "else": {"properties": {"passed": {"const": false}}}
+    }
+  ],
+  "additionalProperties": false
+}

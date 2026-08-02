@@ -219,6 +219,43 @@ def test_raw_aliasing_validation_and_output_lifetimes() -> None:
         assert value.flags.writeable
 
 
+def test_row_padded_raw_hwc_and_stride_rejections() -> None:
+    processor = _processor("qwen3-vl-8b")
+    packed = np.arange(28 * 28 * 3, dtype=np.uint8).reshape(28, 28, 3)
+    padded_owner = np.full((28, 33, 3), 255, dtype=np.uint8)
+    padded_owner[:, :28, :] = packed
+    padded = padded_owner[:, :28, :]
+    assert padded.shape == packed.shape
+    assert padded.strides == (33 * 3, 3, 1)
+    assert not padded.flags.c_contiguous
+
+    output = processor.prepare_batch(_request([padded, packed]))
+    assert output.metadata["images"][0]["cache_key"] == output.metadata["images"][1]["cache_key"]
+    patch_rows = output.arrays["pixel_values"].shape[0] // 2
+    assert patch_rows > 0
+    np.testing.assert_array_equal(
+        output.arrays["pixel_values"][:patch_rows],
+        output.arrays["pixel_values"][patch_rows:],
+    )
+    assert padded_owner.flags.writeable
+
+    channel_source = np.zeros((28, 28, 6), dtype=np.uint8)
+    invalid = [
+        packed[::-1, :, :],
+        np.transpose(packed, (1, 0, 2)),
+        channel_source[:, :, ::2],
+        np.lib.stride_tricks.as_strided(packed, shape=packed.shape, strides=(3, 3, 1)),
+    ]
+    for value in invalid:
+        try:
+            processor.prepare_batch(_request([value]))
+        except qwen_mm.MediaGeometryError as error:
+            assert error.category == qwen_mm.MediaGeometryError.category
+            assert isinstance(error.context, dict)
+        else:
+            raise AssertionError(f"invalid raw strides were accepted: {value.strides}")
+
+
 def _assert_reusable_after_failure(
     processor: qwen_mm.Processor,
     exception: type[BaseException],
@@ -403,6 +440,7 @@ def main() -> None:
     test_24_independent_request_order()
     test_exact_24_image_shape_and_gil_release()
     test_raw_aliasing_validation_and_output_lifetimes()
+    test_row_padded_raw_hwc_and_stride_rejections()
     test_typed_failures_have_no_partial_outputs()
     print("qwen-mm installed binding tests passed")
 

@@ -974,14 +974,6 @@ fn parse_rgb_array(
         .with_context("request_index", request_index)
         .with_context("image_index", image_index));
     }
-    if !array.is_c_contiguous() {
-        return Err(QwenError::new(
-            ErrorCategory::MediaGeometry,
-            "raw RGB array must be C-contiguous",
-        )
-        .with_context("request_index", request_index)
-        .with_context("image_index", image_index));
-    }
     if !array.is_aligned() {
         return Err(QwenError::new(
             ErrorCategory::MediaGeometry,
@@ -998,22 +990,48 @@ fn parse_rgb_array(
         .with_context("request_index", request_index)
         .with_context("image_index", image_index)
     })?;
+    let strides = array.strides();
+    if strides.iter().any(|stride| *stride <= 0)
+        || strides[1] != 3
+        || strides[2] != 1
+        || usize::try_from(strides[0]).map_or(true, |stride| stride < row_stride)
+    {
+        return Err(QwenError::new(
+            ErrorCategory::MediaGeometry,
+            "raw RGB array must use positive HWC strides with packed RGB pixels and optional row padding",
+        )
+        .with_context("request_index", request_index)
+        .with_context("image_index", image_index));
+    }
+    let data_len = shape[0].checked_mul(row_stride).ok_or_else(|| {
+        QwenError::new(
+            ErrorCategory::ArithmeticOverflow,
+            "raw RGB byte length overflowed",
+        )
+        .with_context("request_index", request_index)
+        .with_context("image_index", image_index)
+    })?;
     let readonly = array.try_readonly().map_err(|error| {
         invalid_request("raw RGB array is already mutably borrowed")
             .with_context("detail", error.to_string())
             .with_context("request_index", request_index)
             .with_context("image_index", image_index)
     })?;
-    let source = readonly.as_slice().map_err(|error| {
-        invalid_request("raw RGB array does not expose one aligned C-contiguous span")
-            .with_context("detail", error.to_string())
+    let mut data = Vec::new();
+    data.try_reserve_exact(data_len)
+        .map_err(|_| input_allocation_error("raw RGB input", data_len))?;
+    for row in readonly.as_array().outer_iter() {
+        let source = row.as_slice().ok_or_else(|| {
+            QwenError::new(
+                ErrorCategory::MediaGeometry,
+                "raw RGB array does not expose packed logical rows",
+            )
             .with_context("request_index", request_index)
             .with_context("image_index", image_index)
-    })?;
-    let mut data = Vec::new();
-    data.try_reserve_exact(source.len())
-        .map_err(|_| input_allocation_error("raw RGB input", source.len()))?;
-    data.extend_from_slice(source);
+        })?;
+        data.extend_from_slice(source);
+    }
+    debug_assert_eq!(data.len(), data_len);
     Ok(OwnedImage::Rgb8 {
         data,
         height: shape[0],
@@ -1559,9 +1577,63 @@ mod tests {
         prelude::*,
         types::{PyDict, PyList, PyModule},
     };
-    use qwen_mm_core::ResourceLimits;
+    use qwen_mm_core::{ErrorCategory, ResourceLimits};
 
     use super::{OwnedImage, parse_requests};
+
+    fn parse_raw_image(
+        py: Python<'_>,
+        array: &Bound<'_, PyAny>,
+    ) -> super::BindingResult<OwnedImage> {
+        let message = PyDict::new(py);
+        message.set_item("role", "user").expect("role");
+        let image_item = PyDict::new(py);
+        image_item.set_item("type", "image").expect("type");
+        image_item.set_item("input_index", 0).expect("input index");
+        message
+            .set_item(
+                "content",
+                PyList::new(py, [image_item]).expect("content list"),
+            )
+            .expect("content");
+        let request = PyDict::new(py);
+        request
+            .set_item(
+                "messages",
+                PyList::new(py, [message]).expect("messages list"),
+            )
+            .expect("messages");
+        request.set_item("images", vec![array]).expect("images");
+        let requests = PyList::new(py, [request]).expect("requests list");
+        let mut parsed = parse_requests(
+            py,
+            requests.as_any(),
+            ResourceLimits::default(),
+            false,
+            "qwen3-vl-8b",
+        )?;
+        Ok(parsed.remove(0).images.remove(0))
+    }
+
+    fn as_strided<'py>(
+        numpy: &Bound<'py, PyModule>,
+        source: &Bound<'py, PyAny>,
+        shape: (usize, usize, usize),
+        strides: (isize, isize, isize),
+    ) -> Bound<'py, PyAny> {
+        let kwargs = PyDict::new(numpy.py());
+        kwargs.set_item("shape", shape).expect("shape");
+        kwargs.set_item("strides", strides).expect("strides");
+        numpy
+            .getattr("lib")
+            .expect("lib")
+            .getattr("stride_tricks")
+            .expect("stride tricks")
+            .getattr("as_strided")
+            .expect("as_strided")
+            .call((source,), Some(&kwargs))
+            .expect("strided array")
+    }
 
     #[test]
     #[ignore = "requires NumPy importable by embedded CPython"]
@@ -1578,40 +1650,13 @@ mod tests {
                 .expect("reshape")
                 .call_method1("astype", ("uint8",))
                 .expect("uint8");
-            let message = PyDict::new(py);
-            message.set_item("role", "user").expect("role");
-            let image_item = PyDict::new(py);
-            image_item.set_item("type", "image").expect("type");
-            image_item.set_item("input_index", 0).expect("input index");
-            message
-                .set_item(
-                    "content",
-                    PyList::new(py, [image_item]).expect("content list"),
-                )
-                .expect("content");
-            let request = PyDict::new(py);
-            request
-                .set_item(
-                    "messages",
-                    PyList::new(py, [message]).expect("messages list"),
-                )
-                .expect("messages");
-            request.set_item("images", vec![&array]).expect("images");
-            let requests = PyList::new(py, [request]).expect("requests list");
-            let parsed = parse_requests(
-                py,
-                requests.as_any(),
-                ResourceLimits::default(),
-                false,
-                "qwen3-vl-8b",
-            )
-            .expect("valid batch");
+            let parsed = parse_raw_image(py, &array).expect("valid raw image");
             let OwnedImage::Rgb8 {
                 data,
                 height,
                 width,
                 ..
-            } = &parsed[0].images[0]
+            } = &parsed
             else {
                 panic!("raw image")
             };
@@ -1622,6 +1667,88 @@ mod tests {
                     .expect("array")
                     .is_c_contiguous()
             );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires NumPy importable by embedded CPython"]
+    fn positive_row_padding_is_copied_into_packed_owned_memory() {
+        Python::initialize();
+        Python::attach(|py| {
+            let numpy = PyModule::import(py, "numpy").expect("numpy");
+            let base = numpy
+                .getattr("arange")
+                .expect("arange")
+                .call1((24,))
+                .expect("array")
+                .call_method1("reshape", ((2, 4, 3),))
+                .expect("reshape")
+                .call_method1("astype", ("uint8",))
+                .expect("uint8");
+            let padded = as_strided(&numpy, &base, (2, 2, 3), (12, 3, 1));
+            assert!(
+                !padded
+                    .cast::<numpy::PyArrayDyn<u8>>()
+                    .expect("array")
+                    .is_c_contiguous()
+            );
+
+            let image = parse_raw_image(py, &padded).expect("row-padded HWC image");
+            let OwnedImage::Rgb8 {
+                data,
+                height,
+                width,
+                row_stride,
+            } = image
+            else {
+                panic!("raw image")
+            };
+            assert_eq!((height, width, row_stride), (2, 2, 6));
+            assert_eq!(data.len(), 12);
+            assert_eq!(data, [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17]);
+        });
+    }
+
+    #[test]
+    #[ignore = "requires NumPy importable by embedded CPython"]
+    fn non_hwc_strides_remain_media_geometry_errors() {
+        Python::initialize();
+        Python::attach(|py| {
+            let numpy = PyModule::import(py, "numpy").expect("numpy");
+            let base = numpy
+                .getattr("arange")
+                .expect("arange")
+                .call1((24,))
+                .expect("array")
+                .call_method1("reshape", ((2, 4, 3),))
+                .expect("reshape")
+                .call_method1("astype", ("uint8",))
+                .expect("uint8");
+            let negative_rows = numpy
+                .getattr("flip")
+                .expect("flip")
+                .call1((&base, 0))
+                .expect("negative rows");
+            let transposed = numpy
+                .getattr("transpose")
+                .expect("transpose")
+                .call1((&base, (1, 0, 2)))
+                .expect("transposed");
+            let channel_source = numpy
+                .getattr("arange")
+                .expect("arange")
+                .call1((24,))
+                .expect("array")
+                .call_method1("reshape", ((2, 2, 6),))
+                .expect("reshape")
+                .call_method1("astype", ("uint8",))
+                .expect("uint8");
+            let channel_sliced = as_strided(&numpy, &channel_source, (2, 2, 3), (12, 6, 2));
+
+            for invalid in [&negative_rows, &transposed, &channel_sliced] {
+                let error = parse_raw_image(py, invalid).expect_err("invalid HWC strides");
+                assert_eq!(error.category(), ErrorCategory::MediaGeometry);
+            }
         });
     }
 }
