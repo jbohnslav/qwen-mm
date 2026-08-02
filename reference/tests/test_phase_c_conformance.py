@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import subprocess
 import tempfile
 import unittest
@@ -24,8 +25,11 @@ from qwen_mm_reference.phase_c_conformance import (
     _descriptor,
     _git_revision_is_ancestor,
     _git_revision_matches_inputs,
+    _golden_expected_sidecar,
     _has_forbidden_claim_string,
     _lexical_absolute,
+    _resource_boundary_axes,
+    _resource_probe_actual_value,
     _validate_report_schema,
     _validate_schema_contract,
     _wheel_runtime_identity,
@@ -239,6 +243,31 @@ class PhaseCConformanceTests(unittest.TestCase):
         _compare_exact_array(issues, "input_ids", expected, actual)
         self.assertTrue(any(issue["path"] == "input_ids.shape" for issue in issues))
 
+    def test_committed_image24_sidecar_uses_rendered_codepoints_and_expanded_tokens(self) -> None:
+        manifest_path = repository_root() / "reference/goldens/v1/qwen3-vl-8b/image24/manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        replacements = manifest["stages"]["replacement_offsets"]
+        observed = _golden_expected_sidecar(replacements)
+
+        self.assertEqual(len(replacements), 1)
+        self.assertEqual(len(replacements[0]), 24)
+        self.assertEqual(len(observed), 24)
+        for grid_row, (actual, expected) in enumerate(zip(observed, replacements[0], strict=True)):
+            self.assertEqual(actual["request_index"], 0)
+            self.assertEqual(actual["grid_row"], grid_row)
+            self.assertEqual(
+                actual["replacement"]["code_points"],
+                expected["original_codepoint_span"],
+            )
+            self.assertEqual(
+                actual["replacement"]["tokens"],
+                expected["expanded_token_span"],
+            )
+            self.assertNotEqual(
+                actual["replacement"]["code_points"],
+                expected["expanded_codepoint_span"],
+            )
+
     def test_source_inventory_ignores_pyc_and_cache_directories(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -275,6 +304,45 @@ class PhaseCConformanceTests(unittest.TestCase):
         )
         self.assertEqual(calls[0][0], ("p", "a"))
         self.assertEqual(calls[0][1], {"limits": {"requests_per_batch": 1}})
+
+    def test_resource_boundaries_use_public_limit_names_and_longest_raw_edge(self) -> None:
+        axes = _resource_boundary_axes(
+            {"height": 65, "width": 97},
+            {"kind": "encoded"},
+        )
+        edge_limit, _, edge_actual = axes["edge_length"]
+        output_limit, _, output_actual = axes["output_bytes"]
+        self.assertEqual(edge_limit, "decoded_edge_length")
+        self.assertEqual(edge_actual, 97)
+        self.assertEqual(output_limit, "materialized_output_bytes_per_batch")
+        self.assertIsNone(output_actual)
+
+    def test_resource_probe_uses_authoritative_edge_value_and_requires_resource_category(
+        self,
+    ) -> None:
+        edge_probe = {
+            "status": "expected_error",
+            "error": {"category": "resource_limit", "context": {"actual": 65}},
+        }
+        actual, issue = _resource_probe_actual_value(edge_probe, 97)
+        self.assertEqual(actual, 97)
+        self.assertIsNone(issue)
+
+        output_probe = {
+            "status": "expected_error",
+            "error": {"category": "resource_limit", "context": {"actual": 12_288}},
+        }
+        actual, issue = _resource_probe_actual_value(output_probe, None)
+        self.assertEqual(actual, 12_288)
+        self.assertIsNone(issue)
+
+        invalid_probe = {
+            "status": "expected_error",
+            "error": {"category": "invalid_request", "context": {"actual": 65}},
+        }
+        actual, issue = _resource_probe_actual_value(invalid_probe, 97)
+        self.assertEqual(actual, 97)
+        self.assertEqual(issue["kind"], "zero_limit_probe_failed")
 
     def test_lexical_absolute_preserves_virtualenv_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

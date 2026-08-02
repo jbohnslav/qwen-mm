@@ -1322,6 +1322,30 @@ def _candidate_requests_from_golden_case(case: Mapping[str, Any]) -> list[dict[s
     return requests
 
 
+def _golden_expected_sidecar(
+    replacements_by_request: Sequence[Sequence[Mapping[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Translate golden replacement metadata into the public sidecar contract."""
+    sidecar: list[dict[str, Any]] = []
+    grid_row = 0
+    for request_index, replacements in enumerate(replacements_by_request):
+        for replacement in replacements:
+            if replacement["type"] != "image":
+                continue
+            sidecar.append(
+                {
+                    "request_index": request_index,
+                    "grid_row": grid_row,
+                    "replacement": {
+                        "code_points": replacement["original_codepoint_span"],
+                        "tokens": replacement["expanded_token_span"],
+                    },
+                }
+            )
+            grid_row += 1
+    return sidecar
+
+
 def _compare_golden_result(
     expected: Mapping[str, Any], expected_root: Path, actual: Mapping[str, Any], actual_root: Path
 ) -> list[dict[str, Any]]:
@@ -1439,7 +1463,7 @@ def _compare_golden_result(
         grid_cursor = 0
         pixel_cursor = 0
         expected_request_layouts = []
-        expected_sidecar = []
+        expected_sidecar = _golden_expected_sidecar(simplified_expected_replacements)
         for request_index, replacements in enumerate(simplified_expected_replacements):
             token_count = int(attention[request_index].sum())
             request_grid_start = grid_cursor
@@ -1448,16 +1472,6 @@ def _compare_golden_result(
                 if replacement["type"] != "image":
                     continue
                 patch_rows = int(np.prod(grids[grid_cursor], dtype=np.int64))
-                expected_sidecar.append(
-                    {
-                        "request_index": request_index,
-                        "grid_row": grid_cursor,
-                        "replacement": {
-                            "code_points": replacement["expanded_codepoint_span"],
-                            "tokens": replacement["expanded_token_span"],
-                        },
-                    }
-                )
                 grid_cursor += 1
                 pixel_cursor += patch_rows
             expected_request_layouts.append(
@@ -1777,14 +1791,9 @@ def run_rules() -> tuple[list[dict[str, Any]], list[str]]:
     return results, declared
 
 
-def run_resource_boundaries(
-    candidate_python: Path, assets_root: Path, output: Path
-) -> tuple[list[dict[str, Any]], list[str]]:
-    root = repository_root()
-    phase_b = _json(root / "reference/phase-b/v1/manifest.json")
-    sources_path = root / "reference/phase-b/v1/sources.bin"
-    raw_spec = _image_spec_from_phase_b(phase_b["sources"]["raw-a"], sources_path)
-    encoded_spec = _image_spec_from_phase_b(phase_b["sources"]["jpeg"], sources_path)
+def _resource_boundary_axes(
+    raw_spec: Mapping[str, Any], encoded_spec: Mapping[str, Any]
+) -> dict[str, tuple[str, list[dict[str, Any]], int | None]]:
     text_request = {
         "messages": [{"role": "user", "content": "x"}],
         "options": {"add_generation_prompt": True},
@@ -1814,26 +1823,63 @@ def run_resource_boundaries(
         "options": {},
         "images": [encoded_spec],
     }
-    axes = {
-        "requests": ("requests_per_batch", [text_request]),
-        "messages": ("messages_per_request", [text_request]),
-        "content_items": ("content_items_per_request", [content_request]),
-        "text_bytes": ("text_bytes_per_request", [text_request]),
-        "media_occurrences_request": ("media_per_request", [raw_request]),
-        "media_occurrences_batch": ("media_per_batch", [raw_request]),
-        "encoded_bytes_item": ("encoded_bytes_per_item", [encoded_request]),
-        "encoded_bytes_batch": ("encoded_bytes_per_batch", [encoded_request]),
-        "decoded_pixels": ("decoded_pixels_per_image_or_frame", [raw_request]),
-        "edge_length": ("decoded_edge_length", [raw_request]),
-        "prepared_pixels": ("prepared_image_pixels_per_occurrence", [raw_request]),
-        "tokens_request": ("rendered_tokens_per_request", [text_request]),
-        "tokens_batch": ("rendered_tokens_per_batch", [text_request]),
-        "output_bytes": ("output_bytes_per_batch", [text_request]),
+    return {
+        "requests": ("requests_per_batch", [text_request], None),
+        "messages": ("messages_per_request", [text_request], None),
+        "content_items": ("content_items_per_request", [content_request], None),
+        "text_bytes": ("text_bytes_per_request", [text_request], None),
+        "media_occurrences_request": ("media_per_request", [raw_request], None),
+        "media_occurrences_batch": ("media_per_batch", [raw_request], None),
+        "encoded_bytes_item": ("encoded_bytes_per_item", [encoded_request], None),
+        "encoded_bytes_batch": ("encoded_bytes_per_batch", [encoded_request], None),
+        "decoded_pixels": ("decoded_pixels_per_image_or_frame", [raw_request], None),
+        # The zero-limit preflight reports the first checked edge (height), while
+        # the public limit applies independently to both height and width.
+        "edge_length": (
+            "decoded_edge_length",
+            [raw_request],
+            max(int(raw_spec["height"]), int(raw_spec["width"])),
+        ),
+        "prepared_pixels": ("prepared_image_pixels_per_occurrence", [raw_request], None),
+        "tokens_request": ("rendered_tokens_per_request", [text_request], None),
+        "tokens_batch": ("rendered_tokens_per_batch", [text_request], None),
+        "output_bytes": ("materialized_output_bytes_per_batch", [text_request], None),
     }
+
+
+def _resource_probe_actual_value(
+    probe: Mapping[str, Any], authoritative_actual: int | None
+) -> tuple[int, dict[str, Any] | None]:
+    if (
+        probe.get("status") == "expected_error"
+        and probe.get("error", {}).get("category") == "resource_limit"
+    ):
+        try:
+            probed_actual = int(probe["error"]["context"]["actual"])
+        except (KeyError, TypeError, ValueError):
+            pass
+        else:
+            return authoritative_actual or probed_actual, None
+    return authoritative_actual or 1, {
+        "stage": "resource",
+        "kind": "zero_limit_probe_failed",
+        "actual": probe,
+    }
+
+
+def run_resource_boundaries(
+    candidate_python: Path, assets_root: Path, output: Path
+) -> tuple[list[dict[str, Any]], list[str]]:
+    root = repository_root()
+    phase_b = _json(root / "reference/phase-b/v1/manifest.json")
+    sources_path = root / "reference/phase-b/v1/sources.bin"
+    raw_spec = _image_spec_from_phase_b(phase_b["sources"]["raw-a"], sources_path)
+    encoded_spec = _image_spec_from_phase_b(phase_b["sources"]["jpeg"], sources_path)
+    axes = _resource_boundary_axes(raw_spec, encoded_spec)
     results: list[dict[str, Any]] = []
     declared: list[str] = []
     for profile in PROFILES:
-        for axis, (limit_name, requests) in axes.items():
+        for axis, (limit_name, requests, authoritative_actual) in axes.items():
             base = {
                 "profile": profile,
                 "assets_directory": str(_assets_directory(assets_root, profile)),
@@ -1844,19 +1890,7 @@ def run_resource_boundaries(
                 {**base, "limits": {limit_name: 0}},
                 output / "resources" / profile / axis / "probe",
             )
-            if (
-                probe.get("status") != "expected_error"
-                or probe.get("error", {}).get("category") != "resource_limit"
-            ):
-                actual_value = 1
-                probe_issue = {
-                    "stage": "resource",
-                    "kind": "zero_limit_probe_failed",
-                    "actual": probe,
-                }
-            else:
-                actual_value = int(probe["error"]["context"]["actual"])
-                probe_issue = None
+            actual_value, probe_issue = _resource_probe_actual_value(probe, authoritative_actual)
             observed_success: dict[str, dict[str, np.ndarray]] = {}
             for position, limit, expectation in (
                 ("one-below", max(0, actual_value - 1), "resource_limit"),

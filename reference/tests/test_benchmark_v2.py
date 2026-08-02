@@ -573,36 +573,39 @@ class ProtocolTests(unittest.TestCase):
             self.assertGreater(path.stat().st_size, 0)
 
     def test_synthetic_image_smoke_is_usable_but_never_release_evidence(self) -> None:
-        result = run_benchmark(
-            workload_path=WORKLOAD_PATH,
-            mode="smoke",
-            reference_adapter="synthetic",
-            candidate_adapter="synthetic",
-            profiles=["qwen3-vl-8b"],
-            case_ids=["image1"],
-            process_repetitions=1,
-            warmups=0,
-            minimum_samples=1,
-            minimum_seconds=0.0,
-            seed=19,
-        )
+        with tempfile.TemporaryDirectory() as temporary:
+            missing_report = Path(temporary) / "missing-phase-c-report.json"
+            result = run_benchmark(
+                workload_path=WORKLOAD_PATH,
+                mode="smoke",
+                reference_adapter="synthetic",
+                candidate_adapter="synthetic",
+                profiles=["qwen3-vl-8b"],
+                case_ids=["image1"],
+                process_repetitions=1,
+                warmups=0,
+                minimum_samples=1,
+                minimum_seconds=0.0,
+                seed=19,
+                phase_c_report_path=missing_report,
+            )
 
-        validate_result(result)
-        eligibility = result["release_eligibility"]
-        self.assertEqual(eligibility["phase_c"]["status"], "missing")
-        self.assertFalse(eligibility["releasable"])
-        self.assertIn("DIAGNOSTIC ONLY", render_report(result))
+            validate_result(result)
+            eligibility = result["release_eligibility"]
+            self.assertEqual(eligibility["phase_c"]["status"], "missing")
+            self.assertFalse(eligibility["releasable"])
+            self.assertIn("DIAGNOSTIC ONLY", render_report(result))
 
-        forged = copy.deepcopy(result)
-        forged["release_eligibility"]["phase_c"].update(
-            status="pass",
-            reason_codes=[],
-            report_sha256="a" * 64,
-            gate_fingerprint="b" * 64,
-            evidence={},
-        )
-        with self.assertRaisesRegex(BenchmarkProtocolError, "stale or has been tampered"):
-            validate_result(forged)
+            forged = copy.deepcopy(result)
+            forged["release_eligibility"]["phase_c"].update(
+                status="pass",
+                reason_codes=[],
+                report_sha256="a" * 64,
+                gate_fingerprint="b" * 64,
+                evidence={},
+            )
+            with self.assertRaisesRegex(BenchmarkProtocolError, "stale or has been tampered"):
+                validate_result(forged)
 
     def test_result_validation_binds_workload_protocol_pairs_and_workers(self) -> None:
         result = run_benchmark(
