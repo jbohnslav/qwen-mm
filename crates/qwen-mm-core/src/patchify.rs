@@ -254,16 +254,49 @@ pub fn patchify_image_rgb8(
     })?;
     values.resize(output_elements, 0.0_f32);
 
-    let height = usize::try_from(geometry.height)
-        .map_err(|_| overflow("patchify height does not fit usize"))?;
-    let width = usize::try_from(geometry.width)
-        .map_err(|_| overflow("patchify width does not fit usize"))?;
-    let patch = usize::try_from(visual.patch_size)
-        .map_err(|_| overflow("patch size does not fit usize"))?;
+    let mut grid = [0_i64; 3];
+    execute_image_patchify_plan_into(plan, visual, rgb, &mut values, &mut grid);
+
+    let rows = usize::try_from(geometry.patch_rows)
+        .map_err(|_| overflow("patch row count does not fit usize"))?;
+    let columns = usize::try_from(visual.patch_width)
+        .map_err(|_| overflow("patch width does not fit usize"))?;
+    let pixel_values = Matrix::new(rows, columns, values)?;
+    let image_grid_thw = Matrix::new(1, 3, grid.to_vec())?;
+
+    Ok(PreparedImage {
+        pixel_values,
+        image_grid_thw,
+    })
+}
+
+/// Executes a previously validated patch plan directly into exact or oversized
+/// caller storage. All dimensions, conversions, and readable/writable offsets
+/// were proved by [`plan_image_patchify`], making this write phase infallible.
+pub(crate) fn execute_image_patchify_plan_into(
+    plan: ImagePatchifyPlan,
+    visual: &VisualProfile,
+    rgb: &[u8],
+    values: &mut [f32],
+    grid: &mut [i64],
+) {
+    let geometry = plan.geometry;
+    let output_elements = usize::try_from(plan.output_elements)
+        .expect("validated patch output element count must fit usize");
+    debug_assert_eq!(
+        rgb.len(),
+        usize::try_from(plan.input_bytes).expect("validated input")
+    );
+    debug_assert!(values.len() >= output_elements);
+    debug_assert!(grid.len() >= 3);
+
+    let height =
+        usize::try_from(geometry.height).expect("validated patchify height must fit usize");
+    let width = usize::try_from(geometry.width).expect("validated patchify width must fit usize");
+    let patch = usize::try_from(visual.patch_size).expect("validated patch size must fit usize");
     let temporal = usize::try_from(visual.temporal_patch_size)
-        .map_err(|_| overflow("temporal patch size does not fit usize"))?;
-    let merge = usize::try_from(visual.merge_size)
-        .map_err(|_| overflow("merge size does not fit usize"))?;
+        .expect("validated temporal patch size must fit usize");
+    let merge = usize::try_from(visual.merge_size).expect("validated merge size must fit usize");
     let grid_height = height / patch;
     let grid_width = width / patch;
     let outer_height = grid_height / merge;
@@ -295,29 +328,9 @@ pub fn patchify_image_rgb8(
         }
     }
     debug_assert_eq!(destination, output_elements);
-
-    let rows = usize::try_from(geometry.patch_rows)
-        .map_err(|_| overflow("patch row count does not fit usize"))?;
-    let columns = usize::try_from(visual.patch_width)
-        .map_err(|_| overflow("patch width does not fit usize"))?;
-    let pixel_values = Matrix::new(rows, columns, values)?;
-    let image_grid_thw = Matrix::new(
-        1,
-        3,
-        geometry
-            .image_grid_thw
-            .map(|value| {
-                i64::try_from(value)
-                    .map_err(|_| overflow("image grid value does not fit int64 output"))
-            })
-            .into_iter()
-            .collect::<Result<Vec<_>>>()?,
-    )?;
-
-    Ok(PreparedImage {
-        pixel_values,
-        image_grid_thw,
-    })
+    for (destination, value) in grid.iter_mut().zip(geometry.image_grid_thw) {
+        *destination = i64::try_from(value).expect("validated image grid value must fit int64");
+    }
 }
 
 #[allow(clippy::cast_possible_truncation)]

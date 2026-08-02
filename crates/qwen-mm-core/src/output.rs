@@ -133,6 +133,72 @@ impl<T> Matrix<T> {
     }
 }
 
+/// One borrowed, C-contiguous two-dimensional array.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MatrixView<'a, T> {
+    rows: usize,
+    columns: usize,
+    data: &'a [T],
+}
+
+impl<'a, T> MatrixView<'a, T> {
+    pub(crate) const fn from_validated(rows: usize, columns: usize, data: &'a [T]) -> Self {
+        Self {
+            rows,
+            columns,
+            data,
+        }
+    }
+
+    /// Returns `[rows, columns]`.
+    #[must_use]
+    pub const fn shape(self) -> [usize; 2] {
+        [self.rows, self.columns]
+    }
+
+    /// Returns the row count.
+    #[must_use]
+    pub const fn rows(self) -> usize {
+        self.rows
+    }
+
+    /// Returns the column count.
+    #[must_use]
+    pub const fn columns(self) -> usize {
+        self.columns
+    }
+
+    /// Returns the borrowed row-major elements.
+    #[must_use]
+    pub const fn as_slice(self) -> &'a [T] {
+        self.data
+    }
+
+    /// Returns byte strides `[row_stride, element_stride]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `arithmetic_overflow` when a stride is not representable.
+    pub fn byte_strides(self) -> Result<[u64; 2]> {
+        let element_bytes = u64::try_from(mem::size_of::<T>()).map_err(|_| {
+            QwenError::new(
+                ErrorCategory::ArithmeticOverflow,
+                "element size does not fit parity stride arithmetic",
+            )
+        })?;
+        let columns = u64::try_from(self.columns).map_err(|_| {
+            QwenError::new(
+                ErrorCategory::ArithmeticOverflow,
+                "column count does not fit parity stride arithmetic",
+            )
+        })?;
+        Ok([
+            checked_mul("matrix view row byte stride", columns, element_bytes)?,
+            element_bytes,
+        ])
+    }
+}
+
 /// Half-open coordinates in one parity-facing `i64` coordinate space.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CoordinateRange {
@@ -213,6 +279,25 @@ pub struct PreparedArrays {
     pub pixel_values_videos: Option<Matrix<f32>>,
     /// `int64 [video_occurrences, 3]`, only when videos are present.
     pub video_grid_thw: Option<Matrix<i64>>,
+}
+
+/// Borrowed official model-input arrays backed by caller-owned destinations.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PreparedArrayViews<'a> {
+    /// `int64 [batch, sequence]`.
+    pub input_ids: MatrixView<'a, i64>,
+    /// `int64 [batch, sequence]`.
+    pub attention_mask: MatrixView<'a, i64>,
+    /// `int64 [batch, sequence]`.
+    pub mm_token_type_ids: MatrixView<'a, i64>,
+    /// `float32 [image_patches, 1536]`, only when images are present.
+    pub pixel_values: Option<MatrixView<'a, f32>>,
+    /// `int64 [image_occurrences, 3]`, only when images are present.
+    pub image_grid_thw: Option<MatrixView<'a, i64>>,
+    /// Reserved conditional video output; absent in the image batch path.
+    pub pixel_values_videos: Option<MatrixView<'a, f32>>,
+    /// Reserved conditional video grid; absent in the image batch path.
+    pub video_grid_thw: Option<MatrixView<'a, i64>>,
 }
 
 /// A complete owned parity result with the official conditional key set.

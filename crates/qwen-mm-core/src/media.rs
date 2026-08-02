@@ -54,6 +54,7 @@ pub fn prepare_image_rgb8(
 }
 
 /// A bounded, allocation-free image plan that has not performed full decode.
+#[derive(Clone, Debug)]
 pub(crate) struct ImagePreparationPlan<'a> {
     source: PlannedSource<'a>,
     geometry: Result<ImageGeometryPlan>,
@@ -66,6 +67,7 @@ impl ImagePreparationPlan<'_> {
     }
 }
 
+#[derive(Clone, Debug)]
 enum PlannedSource<'a> {
     Encoded {
         data: &'a [u8],

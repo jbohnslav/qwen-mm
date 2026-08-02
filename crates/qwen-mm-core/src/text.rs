@@ -127,6 +127,41 @@ pub(crate) struct SingleTextPlan {
     additional_output_bytes: u64,
 }
 
+/// Reusable token and metadata plan for a homogeneous-profile batch.
+#[derive(Clone, Debug)]
+pub(crate) struct BatchTextPlan {
+    requests: Vec<PreparedTextRequest>,
+    token_rows: Vec<Vec<u32>>,
+    rows: usize,
+    columns: usize,
+}
+
+impl BatchTextPlan {
+    pub(crate) const fn rows(&self) -> usize {
+        self.rows
+    }
+
+    pub(crate) const fn columns(&self) -> usize {
+        self.columns
+    }
+
+    pub(crate) fn requests(&self) -> &[PreparedTextRequest] {
+        &self.requests
+    }
+
+    pub(crate) fn token_count(&self, request_index: usize) -> usize {
+        self.token_rows[request_index].len()
+    }
+
+    pub(crate) fn count_token(&self, token_id: i64) -> usize {
+        self.token_rows
+            .iter()
+            .flatten()
+            .filter(|&&value| i64::from(value) == token_id)
+            .count()
+    }
+}
+
 impl TextProcessor {
     /// Loads only local model assets and binds them to an immutable profile.
     ///
@@ -284,6 +319,113 @@ impl TextProcessor {
             limits,
             plan.additional_output_bytes,
         )
+    }
+
+    /// Expands and tokenizes already-rendered image requests without creating
+    /// any official output matrix. The returned plan can be written into more
+    /// than one caller-owned destination set.
+    pub(crate) fn plan_batch_from_rendered<'a>(
+        &self,
+        requests: &[Request<'a>],
+        visuals: &[Vec<VisualExpansion<'a>>],
+        rendered_prompts: Vec<String>,
+        limits: ResourceLimits,
+        additional_output_bytes: u64,
+    ) -> Result<BatchTextPlan> {
+        if requests.len() != visuals.len() || requests.len() != rendered_prompts.len() {
+            return Err(invariant(
+                "batch text planning inputs have inconsistent request counts",
+            ));
+        }
+
+        let mut prepared_requests = Vec::with_capacity(requests.len());
+        let mut token_rows = Vec::with_capacity(requests.len());
+        let mut token_counts = Vec::with_capacity(requests.len());
+        for (request_index, ((request, visual_plan), rendered_prompt)) in requests
+            .iter()
+            .zip(visuals)
+            .zip(rendered_prompts)
+            .enumerate()
+        {
+            validate_visual_plan(request, visual_plan, request_index)?;
+            validate_rendered_visual_sequence(request, &rendered_prompt, request_index)?;
+            let (expanded_prompt, replacements) =
+                expand_visuals(&self.profile, &rendered_prompt, visual_plan, request_index)?;
+            let token_row = self.encode_prompt_once(&expanded_prompt, request_index)?;
+            let count = u64::try_from(token_row.ids.len()).map_err(|_| {
+                arithmetic("rendered token count does not fit parity arithmetic")
+                    .with_context("request_index", request_index)
+            })?;
+            let replacements =
+                Self::locate_replacement_tokens(&token_row.offsets, replacements, request_index)?;
+            prepared_requests.push(PreparedTextRequest {
+                rendered_prompt,
+                expanded_prompt,
+                replacements,
+            });
+            token_counts.push(count);
+            token_rows.push(token_row.ids);
+        }
+        limits.check_rendered_tokens(&token_counts)?;
+        let columns = token_rows
+            .iter()
+            .map(Vec::len)
+            .max()
+            .ok_or_else(|| invariant("validated batch disappeared"))?;
+        check_text_output_capacity(requests.len(), columns, limits, additional_output_bytes)?;
+        Ok(BatchTextPlan {
+            requests: prepared_requests,
+            token_rows,
+            rows: requests.len(),
+            columns,
+        })
+    }
+
+    /// Writes one prevalidated text plan into exact or oversized row-major
+    /// slices. The composed processor validates all destinations before this
+    /// method is called, so this operation itself is infallible.
+    pub(crate) fn write_batch_plan(
+        &self,
+        plan: &BatchTextPlan,
+        input_ids: &mut [i64],
+        attention_mask: &mut [i64],
+        mm_token_type_ids: &mut [i64],
+    ) {
+        let elements = plan.rows * plan.columns;
+        debug_assert!(input_ids.len() >= elements);
+        debug_assert!(attention_mask.len() >= elements);
+        debug_assert!(mm_token_type_ids.len() >= elements);
+        let pad_id = self.profile.tokenizer.pad_token_id;
+        let image_id = self.profile.tokenizer.image_token_id;
+        let video_id = self.profile.tokenizer.video_token_id;
+
+        for (row_index, ids) in plan.token_rows.iter().enumerate() {
+            let start = row_index * plan.columns;
+            let row_ids = &mut input_ids[start..start + plan.columns];
+            let row_attention = &mut attention_mask[start..start + plan.columns];
+            let row_modalities = &mut mm_token_type_ids[start..start + plan.columns];
+            for (column, &id) in ids.iter().enumerate() {
+                let id = i64::from(id);
+                row_ids[column] = id;
+                row_attention[column] = 1;
+                row_modalities[column] = if id == image_id {
+                    1
+                } else if id == video_id {
+                    2
+                } else {
+                    0
+                };
+            }
+            for column in ids.len()..plan.columns {
+                row_ids[column] = pad_id;
+                row_attention[column] = 0;
+                row_modalities[column] = 0;
+            }
+        }
+    }
+
+    pub(crate) fn image_token_count(&self, plan: &BatchTextPlan) -> usize {
+        plan.count_token(self.profile.tokenizer.image_token_id)
     }
 
     fn prepare_unpadded(&self, batch: &[PlannedTextRequest<'_>]) -> Result<UnpaddedTextBatch> {

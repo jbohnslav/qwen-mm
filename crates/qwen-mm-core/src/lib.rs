@@ -38,13 +38,15 @@ pub use limits::{
 };
 pub use media::{PreparedRgbImage, prepare_image_rgb8};
 pub use output::{
-    CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, PreparedArrays, PreparedBatch,
-    ReplacementRange, VideoSidecar,
+    CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, MatrixView, PreparedArrayViews,
+    PreparedArrays, PreparedBatch, ReplacementRange, VideoSidecar,
 };
 pub use patchify::{ImagePatchifyPlan, PreparedImage, patchify_image_rgb8, plan_image_patchify};
 pub use processor::{
-    PreparedImageRequest, PreparedImageTrace, ProcessedImageOccurrence, QwenImageProcessor,
-    TracedPreparedImage,
+    ArrayCapacity, BatchCapacities, BatchDestinations, BatchImageLayout, BatchOutputRange,
+    BatchPlan, BatchRequestLayout, PreparedBatchView, PreparedImageBatch, PreparedImageRequest,
+    PreparedImageTrace, ProcessedBatchImageOccurrence, ProcessedImageOccurrence,
+    QwenImageProcessor, TracedPreparedImage,
 };
 pub use profile::{
     ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,
