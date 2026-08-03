@@ -1,0 +1,7 @@
+$ /usr/bin/sample 60870 1 10 -mayDie -file /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-sample-preflight-4ygaqcn7/sample.txt
+Sampling process 60870 for 1 second with 10 milliseconds of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 60870 written to file /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-sample-preflight-4ygaqcn7/sample.txt
+
+worker stdout: 
+worker stderr: 

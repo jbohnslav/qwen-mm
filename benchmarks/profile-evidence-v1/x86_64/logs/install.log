@@ -1,0 +1,7 @@
+$ uv pip install --python /workspace/qwen-mm/.venv/bin/python --reinstall --no-deps /tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/artifacts/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl
+Resolved 1 package in 5ms
+Prepared 1 package in 121ms
+Uninstalled 1 package in 2ms
+Installed 1 package in 2ms
+ - qwen-mm==0.1.0 (from file:///workspace/qwen-mm)
+ + qwen-mm==0.1.0 (from file:///tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/artifacts/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl)

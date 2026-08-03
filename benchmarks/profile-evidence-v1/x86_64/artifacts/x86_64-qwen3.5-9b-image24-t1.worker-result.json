@@ -1,0 +1,170 @@
+{
+  "after_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "2139aaa254e96816eee65c0083e81a237369c1621dd5f41f7978d3b357448a7a",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "image_grid_thw": {
+      "dtype": "int64",
+      "nbytes": 576,
+      "sha256": "df3ae4ae29033a4cc3ee829fddf97992e5134c2b75e4592bf1c50661b55ed869",
+      "shape": [
+        24,
+        3
+      ],
+      "strides": [
+        24,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "dc3503dab27588e1bb03a61f9ed1eccc08637d944f0d9fa97308417658dc98d4",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "42222a566de91ff88e02f70dcd52bee3f2df800faec09bf3fdc2d485d7baeb7c",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "pixel_values": {
+      "dtype": "float32",
+      "nbytes": 452984832,
+      "sha256": "45fa4c11aae23e8166bb35ae8a798ad221aea05bab1177317b3e3ecab819be8a",
+      "shape": [
+        73728,
+        1536
+      ],
+      "strides": [
+        6144,
+        4
+      ]
+    }
+  },
+  "before_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "2139aaa254e96816eee65c0083e81a237369c1621dd5f41f7978d3b357448a7a",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "image_grid_thw": {
+      "dtype": "int64",
+      "nbytes": 576,
+      "sha256": "df3ae4ae29033a4cc3ee829fddf97992e5134c2b75e4592bf1c50661b55ed869",
+      "shape": [
+        24,
+        3
+      ],
+      "strides": [
+        24,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "dc3503dab27588e1bb03a61f9ed1eccc08637d944f0d9fa97308417658dc98d4",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 147960,
+      "sha256": "42222a566de91ff88e02f70dcd52bee3f2df800faec09bf3fdc2d485d7baeb7c",
+      "shape": [
+        1,
+        18495
+      ],
+      "strides": [
+        147960,
+        8
+      ]
+    },
+    "pixel_values": {
+      "dtype": "float32",
+      "nbytes": 452984832,
+      "sha256": "45fa4c11aae23e8166bb35ae8a798ad221aea05bab1177317b3e3ecab819be8a",
+      "shape": [
+        73728,
+        1536
+      ],
+      "strides": [
+        6144,
+        4
+      ]
+    }
+  },
+  "case_id": "image24",
+  "input_fingerprint": "da858698c67783fe59e9cdde28d8478a09b6267642d275293c3089820cbfd24a",
+  "iterations": 3,
+  "logical_input_fingerprint": "da858698c67783fe59e9cdde28d8478a09b6267642d275293c3089820cbfd24a",
+  "measurement_window": {
+    "completed_ns": 1077299465309,
+    "deadline_ns": 1077140058484,
+    "final_iteration_started_ns": 1076591010490,
+    "postcheck_completed_ns": 1078012723795,
+    "requested_duration_ns": 2000000000,
+    "started_ns": 1075140058484
+  },
+  "pid": 7048,
+  "profile_alias": "qwen3.5-9b",
+  "runtime_identity": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "thread_budget": 1,
+  "thread_settings": {
+    "budget": 1,
+    "environment": {
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "RAYON_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "torch": {}
+  }
+}

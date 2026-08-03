@@ -1,0 +1,9 @@
+$ env CARGO_PROFILE_RELEASE_DEBUG=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=3 CARGO_PROFILE_RELEASE_STRIP=none RUSTFLAGS=-Cforce-frame-pointers=yes uv run --locked --no-sync maturin build --release --locked --interpreter /Users/jim/code/qwen-mm/.venv/bin/python --out /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/jim/code/qwen-mm/.venv/bin/python
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.03s
+📦 Built wheel for abi3 Python ≥ 3.11 to /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl

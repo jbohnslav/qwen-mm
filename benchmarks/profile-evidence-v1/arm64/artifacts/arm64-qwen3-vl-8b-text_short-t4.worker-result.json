@@ -1,0 +1,110 @@
+{
+  "after_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "cb9cb8229f3a322017b0d7644744ea14809f2f738decf88632f232fd5a12bb9c",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "b7794c8996b6e18f26340be50e84178ecc9096a8bfcefe6afe02123ea783e060",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    }
+  },
+  "before_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "cb9cb8229f3a322017b0d7644744ea14809f2f738decf88632f232fd5a12bb9c",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "b7794c8996b6e18f26340be50e84178ecc9096a8bfcefe6afe02123ea783e060",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 128,
+      "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+      "shape": [
+        1,
+        16
+      ],
+      "strides": [
+        128,
+        8
+      ]
+    }
+  },
+  "case_id": "text_short",
+  "input_fingerprint": "f3c0718698112d520c081fd9e15c62e8b7cebb82ead9d20cf8c257dc488bab1a",
+  "iterations": 20689,
+  "logical_input_fingerprint": "f3c0718698112d520c081fd9e15c62e8b7cebb82ead9d20cf8c257dc488bab1a",
+  "pid": 62643,
+  "profile_alias": "qwen3-vl-8b",
+  "runtime_identity": {
+    "native_artifact_sha256": "a9d19ed6e97c14fbd8bec4283378ed3950732429ad8e2063f366505f8de39fde",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "thread_budget": 4,
+  "thread_settings": {
+    "budget": 4,
+    "environment": {
+      "MKL_NUM_THREADS": "4",
+      "NUMEXPR_NUM_THREADS": "4",
+      "OMP_NUM_THREADS": "4",
+      "OPENBLAS_NUM_THREADS": "4",
+      "RAYON_NUM_THREADS": "4",
+      "VECLIB_MAXIMUM_THREADS": "4"
+    },
+    "torch": {}
+  }
+}

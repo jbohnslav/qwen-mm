@@ -1,0 +1,8 @@
+$ /workspace/qwen-mm/.venv/bin/py-spy record --rate 99 --format raw -o /tmp/qwen-mm-py-spy-preflight-pcckmhe3/preflight.raw -- /workspace/qwen-mm/.venv/bin/python -c 'import json, os, pathlib, qwen_mm._native, sys, time; deadline=time.monotonic()+1.0; value=0; exec('"'"'while time.monotonic() < deadline:\n value += 1'"'"'); pathlib.Path(sys.argv[1]).write_text(json.dumps({'"'"'pid'"'"': os.getpid()})); exec('"'"'while True:\n time.sleep(60)'"'"')' /tmp/qwen-mm-py-spy-preflight-pcckmhe3/result.json
+py-spy> Sampling process 99 times a second. Press Control-C to exit.
+
+
+py-spy> Stopped sampling because Control-C pressed
+py-spy> Wrote raw flamegraph data to '/tmp/qwen-mm-py-spy-preflight-pcckmhe3/preflight.raw'. Samples: 88 Errors: 0
+py-spy> You can use the flamegraph.pl script from https://github.com/brendangregg/flamegraph to generate a SVG
+

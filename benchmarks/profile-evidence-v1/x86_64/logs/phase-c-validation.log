@@ -1,0 +1,2 @@
+$ /workspace/qwen-mm/.venv/bin/python -m qwen_mm_reference.phase_c_conformance validate --assets-root /workspace/qwen-mm/reference/.cache/huggingface --report /tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/phase-c/report.json
+valid Phase C report: /tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/phase-c/report.json

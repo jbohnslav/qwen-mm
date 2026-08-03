@@ -1,0 +1,162 @@
+{
+  "after_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "cd93c96185823662a283ef7dc96f4ad5cded7400358c6a23c3aa8ddeecf3338c",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "image_grid_thw": {
+      "dtype": "int64",
+      "nbytes": 576,
+      "sha256": "57f2446ee4a76f2c7e9fcf9e2ea742b721606b00d6fbcb30a18034041ce32bad",
+      "shape": [
+        24,
+        3
+      ],
+      "strides": [
+        24,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "75e7770ce542013d559260d01000cc62bd43ce2acf5a7c2de5e544570e204b7c",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "689a556395cb99a95342429dcafab4e014bb79a15e12ed2a115148c569f54a92",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "pixel_values": {
+      "dtype": "float32",
+      "nbytes": 289406976,
+      "sha256": "cfe81c9f2e13c6782c0522d5b7c81020ff645f8024eb5229c15bb8e417c7f4e6",
+      "shape": [
+        47104,
+        1536
+      ],
+      "strides": [
+        6144,
+        4
+      ]
+    }
+  },
+  "before_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "cd93c96185823662a283ef7dc96f4ad5cded7400358c6a23c3aa8ddeecf3338c",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "image_grid_thw": {
+      "dtype": "int64",
+      "nbytes": 576,
+      "sha256": "57f2446ee4a76f2c7e9fcf9e2ea742b721606b00d6fbcb30a18034041ce32bad",
+      "shape": [
+        24,
+        3
+      ],
+      "strides": [
+        24,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "75e7770ce542013d559260d01000cc62bd43ce2acf5a7c2de5e544570e204b7c",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 94696,
+      "sha256": "689a556395cb99a95342429dcafab4e014bb79a15e12ed2a115148c569f54a92",
+      "shape": [
+        1,
+        11837
+      ],
+      "strides": [
+        94696,
+        8
+      ]
+    },
+    "pixel_values": {
+      "dtype": "float32",
+      "nbytes": 289406976,
+      "sha256": "cfe81c9f2e13c6782c0522d5b7c81020ff645f8024eb5229c15bb8e417c7f4e6",
+      "shape": [
+        47104,
+        1536
+      ],
+      "strides": [
+        6144,
+        4
+      ]
+    }
+  },
+  "case_id": "rgb24",
+  "input_fingerprint": "528ea3816841552b0f903c09664ee4233aea852cb8198d0ffeedf04d192fdb85",
+  "iterations": 12,
+  "logical_input_fingerprint": "528ea3816841552b0f903c09664ee4233aea852cb8198d0ffeedf04d192fdb85",
+  "pid": 62672,
+  "profile_alias": "qwen3-vl-8b",
+  "runtime_identity": {
+    "native_artifact_sha256": "a9d19ed6e97c14fbd8bec4283378ed3950732429ad8e2063f366505f8de39fde",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "thread_budget": 1,
+  "thread_settings": {
+    "budget": 1,
+    "environment": {
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "RAYON_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "torch": {}
+  }
+}

@@ -1,0 +1,391 @@
+{
+  "assets": {
+    "entries": [
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/0e2df614c5fe1ad2b6b540c8625bebf2d7ec43ca.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/1081bacf1af7c7c6de4a585ce02cd0fd34e382da.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/2ea84a437d448ff71b08df68fdd949d5cc4ebb64.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/4783fe10ac3adce15ac8f358ef5462739852c569.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/c6cc1014128b19d1fc46b1d30a23e3b1d35db421.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3-VL-8B-Instruct/d3d3763207692c78780f4bf42d4dadf49a5c8012.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/0aa0ce0658d60ac4a5d609f4eadb0e8e43514176.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/273ce437e01baf96a07cd9eb3d5f48bac8d7c657.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/2ea84a437d448ff71b08df68fdd949d5cc4ebb64.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/a494e019ca1502219fd0128658b979e5f05ae8e8.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/a585dec894e63da457d9440ec6aa7caa16d20860.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": ".locks/models--Qwen--Qwen3.5-9B/eda48d3e75a8e59a8479ee4ec8b37f76e711d9c1.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 191,
+        "path": "CACHEDIR.TAG",
+        "sha256": "f6572428f6d5e1575e73a1502895a8731f10757dfbb634909c6e154b849af91d"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/.no_exist/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/added_tokens.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/.no_exist/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/audio_tokenizer_config.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/.no_exist/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/chat_template.jinja",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/.no_exist/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/processor_config.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/.no_exist/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/special_tokens_map.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 1474,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/0e2df614c5fe1ad2b6b540c8625bebf2d7ec43ca",
+        "sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661"
+      },
+      {
+        "bytes": 5499,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/1081bacf1af7c7c6de4a585ce02cd0fd34e382da",
+        "sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce"
+      },
+      {
+        "bytes": 1671839,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      {
+        "bytes": 390,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "bytes": 385,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "bytes": 2776833,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/4783fe10ac3adce15ac8f358ef5462739852c569",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      {
+        "bytes": 7032403,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/c6cc1014128b19d1fc46b1d30a23e3b1d35db421",
+        "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
+      },
+      {
+        "bytes": 10868,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/blobs/d3d3763207692c78780f4bf42d4dadf49a5c8012",
+        "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+      },
+      {
+        "bytes": 5499,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/chat_template.json",
+        "sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce"
+      },
+      {
+        "bytes": 1474,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/config.json",
+        "sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661"
+      },
+      {
+        "bytes": 1671839,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/merges.txt",
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      {
+        "bytes": 390,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/preprocessor_config.json",
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "bytes": 7032403,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/tokenizer.json",
+        "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
+      },
+      {
+        "bytes": 10868,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/tokenizer_config.json",
+        "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+      },
+      {
+        "bytes": 385,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/video_preprocessor_config.json",
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "bytes": 2776833,
+        "path": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/vocab.json",
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3.5-9B/.no_exist/c202236235762e1c871ad0ccb60c8ee5ba337b9a/added_tokens.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3.5-9B/.no_exist/c202236235762e1c871ad0ccb60c8ee5ba337b9a/audio_tokenizer_config.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3.5-9B/.no_exist/c202236235762e1c871ad0ccb60c8ee5ba337b9a/chat_template.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3.5-9B/.no_exist/c202236235762e1c871ad0ccb60c8ee5ba337b9a/processor_config.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 0,
+        "path": "models--Qwen--Qwen3.5-9B/.no_exist/c202236235762e1c871ad0ccb60c8ee5ba337b9a/special_tokens_map.json",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 6722759,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+      },
+      {
+        "bytes": 3126,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/273ce437e01baf96a07cd9eb3d5f48bac8d7c657",
+        "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+      },
+      {
+        "bytes": 390,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "bytes": 385,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "bytes": 12807982,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+      },
+      {
+        "bytes": 3353259,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/a494e019ca1502219fd0128658b979e5f05ae8e8",
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+      },
+      {
+        "bytes": 7756,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/a585dec894e63da457d9440ec6aa7caa16d20860",
+        "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+      },
+      {
+        "bytes": 16710,
+        "path": "models--Qwen--Qwen3.5-9B/blobs/eda48d3e75a8e59a8479ee4ec8b37f76e711d9c1",
+        "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+      },
+      {
+        "bytes": 7756,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/chat_template.jinja",
+        "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+      },
+      {
+        "bytes": 3126,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json",
+        "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+      },
+      {
+        "bytes": 3353259,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/merges.txt",
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+      },
+      {
+        "bytes": 390,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/preprocessor_config.json",
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "bytes": 12807982,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/tokenizer.json",
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+      },
+      {
+        "bytes": 16710,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/tokenizer_config.json",
+        "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+      },
+      {
+        "bytes": 385,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/video_preprocessor_config.json",
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "bytes": 6722759,
+        "path": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a/vocab.json",
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+      }
+    ],
+    "entry_count": 59,
+    "logical_bytes": 68824307,
+    "schema_id": "qwen-mm-logical-directory-identity-v2",
+    "schema_version": 2,
+    "tree_sha256": "93efc0b9f30928c76d3b3213237a124583f13ee23d5f9e011f68a8af508feeaf"
+  },
+  "build": {
+    "command": "env CARGO_PROFILE_RELEASE_DEBUG=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=3 CARGO_PROFILE_RELEASE_STRIP=none RUSTFLAGS=-Cforce-frame-pointers=yes uv run --locked --no-sync maturin build --release --locked --interpreter /Users/jim/code/qwen-mm/.venv/bin/python --out /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts",
+    "log": {
+      "bytes": 1068,
+      "path": "benchmarks/profile-evidence-v1/arm64/build/build.log",
+      "sha256": "555b2a29c33bca4e8c58a747863b9c983af6d805863357ae89f81004512eeeba"
+    },
+    "native_module_file": "Mach-O 64-bit dynamically linked shared library arm64",
+    "wheel": {
+      "bytes": 2528977,
+      "path": "benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+      "sha256": "da3932744e07e087d74cdd1115f233406d1db02c2113ec3382c20c2633d72577"
+    }
+  },
+  "commands": [
+    "env CARGO_PROFILE_RELEASE_DEBUG=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=3 CARGO_PROFILE_RELEASE_STRIP=none RUSTFLAGS=-Cforce-frame-pointers=yes uv run --locked --no-sync maturin build --release --locked --interpreter /Users/jim/code/qwen-mm/.venv/bin/python --out /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts",
+    "uv pip install --python /Users/jim/code/qwen-mm/.venv/bin/python --reinstall --no-deps /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.phase_c_conformance run --candidate-python /Users/jim/code/qwen-mm/.venv/bin/python --wheel /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl --assets-root /Users/jim/code/qwen-mm/reference/.cache/huggingface --output /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-phase-c-scratch-j_8bbork/evidence --report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json --summary /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/summary.md",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.phase_c_conformance validate --assets-root /Users/jim/code/qwen-mm/reference/.cache/huggingface --report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.benchmark_v2 run --workload /Users/jim/code/qwen-mm/benchmarks/workloads-v2.json --mode smoke --reference-adapter official --candidate-adapter qwen_mm.benchmark:create_adapter --profiles qwen3-vl-8b,qwen3.5-9b --cases text_short,text_long,image1,image24,ragged24,rgb24 --process-repetitions 1 --warmups 1 --minimum-samples 3 --minimum-seconds 0 --thread-regimes one,production --build-labels profiled-release --production-thread-budget 4 --phase-c-report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json --phase-c-assets-root /Users/jim/code/qwen-mm/reference/.cache/huggingface --output /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/benchmark/result.json --report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/benchmark/report.md --phase-c-publish-report benchmarks/profile-evidence-v1/arm64/phase-c/report.json",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.benchmark_v2 validate /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/benchmark/result.json --phase-c-source-report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.profile_v1 capture --workload /Users/jim/code/qwen-mm/benchmarks/workloads-v2.json --benchmark-result /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/benchmark/result.json --profiles qwen3-vl-8b,qwen3.5-9b --cases text_short,text_long,image1,image24,ragged24,rgb24 --thread-budgets 1,4 --repetitions 3 --event-capacity 4096 --build-command 'env CARGO_PROFILE_RELEASE_DEBUG=1 CARGO_PROFILE_RELEASE_OPT_LEVEL=3 CARGO_PROFILE_RELEASE_STRIP=none RUSTFLAGS=-Cforce-frame-pointers=yes uv run --locked --no-sync maturin build --release --locked --interpreter /Users/jim/code/qwen-mm/.venv/bin/python --out /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts' --build-log /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/build/build.log --wheel /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl --phase-c-report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json --artifact-directory /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts --artifact-publish-directory benchmarks/profile-evidence-v1/arm64/artifacts --py-spy py-spy --sampler-rate-hz 99 --sampler-duration-seconds 2 --source-revision 7434eef6d81a71ec479f1246f6a5b1ab29a3fc2c --source-digest 8a0e3379baa338cd2648d9270249b6f2ba8e46107e3c2e10d23258ac2b222367 --source-clean --output /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/profile/bundle.json --benchmark-phase-c-source-report /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/phase-c/report.json",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.profile_v1 validate --allow-single-architecture /Users/jim/code/qwen-mm/benchmarks/profile-evidence-v1/arm64/profile/bundle.json",
+    "/Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.profile_v1 report /Users/jim/code/qwen-mm/benchmarks/profile-evidence-v1/arm64/profile/bundle.json --output /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/profile/report.md"
+  ],
+  "completed_at": "2026-08-03T14:31:59.482155+00:00",
+  "execution": "local_native_macos_arm_profile_v1",
+  "host": {
+    "cpu_description": "Apple M4",
+    "hostname": "mini.localdomain",
+    "logical_cpu_count": 10,
+    "machine": "arm64",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "system": "Darwin",
+    "uname": {
+      "machine": "arm64",
+      "node": "mini.localdomain",
+      "processor": "arm",
+      "release": "25.5.0",
+      "system": "Darwin",
+      "version": "Darwin Kernel Version 25.5.0: Tue Jun  9 22:26:22 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8132"
+    }
+  },
+  "image": {
+    "python_version": "3.11.15",
+    "sample_version": "PROGRAM:sample  PROJECT:SamplingTools-64575.39.1"
+  },
+  "protocol": {
+    "build_label": "profiled-release",
+    "cases": [
+      "text_short",
+      "text_long",
+      "image1",
+      "image24",
+      "ragged24",
+      "rgb24"
+    ],
+    "observation_repetitions": 3,
+    "observed_coordinates": 24,
+    "profiles": [
+      "qwen3-vl-8b",
+      "qwen3.5-9b"
+    ],
+    "sampler": {
+      "duration_seconds": 2,
+      "interval_ms": 1,
+      "name": "sample",
+      "native": true
+    },
+    "thread_budgets": [
+      1,
+      4
+    ]
+  },
+  "schema_id": "qwen-mm-modal-profile-provenance-v1",
+  "schema_version": 1,
+  "source": {
+    "bytes": 19846802,
+    "clean": true,
+    "file_count": 161,
+    "git_status": "",
+    "revision": "7434eef6d81a71ec479f1246f6a5b1ab29a3fc2c",
+    "tree_sha256": "8a0e3379baa338cd2648d9270249b6f2ba8e46107e3c2e10d23258ac2b222367"
+  },
+  "started_at": "2026-08-03T14:24:47.419599+00:00"
+}

@@ -1,0 +1,1 @@
+$ /workspace/qwen-mm/.venv/bin/python -m qwen_mm_reference.benchmark_v2 validate /tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/benchmark/result.json --phase-c-source-report /tmp/qwen-mm-d1-x86-capture-cbwcn9ib/benchmarks/profile-evidence-v1/x86_64/phase-c/report.json

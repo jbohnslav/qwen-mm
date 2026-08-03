@@ -1,0 +1,1 @@
+$ /workspace/qwen-mm/.venv/bin/python -m qwen_mm_reference.profile_v1 validate --allow-single-architecture /workspace/qwen-mm/benchmarks/profile-evidence-v1/x86_64/profile/bundle.json

@@ -1,0 +1,54 @@
+{
+  "all_runtime_identities_equal": true,
+  "benchmark_runtime_identity": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "installed_candidate": {
+    "adapter_spec": "qwen_mm.benchmark:create_adapter",
+    "artifact_sha256": "09ef61a2c96b11333c151e223f429a1ef3fadae8fa507708fccbb26db67c9621",
+    "distributions": {
+      "qwen-mm": "0.1.0"
+    },
+    "kind": "module",
+    "module": "qwen_mm.benchmark",
+    "origin": "/workspace/qwen-mm/.venv/lib/python3.11/site-packages/qwen_mm/benchmark.py",
+    "resolved": true,
+    "runtime_identity": {
+      "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+      "native_module": "qwen_mm._native",
+      "package": "qwen_mm",
+      "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+      "version": "0.1.0"
+    }
+  },
+  "native_module_file": "ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=fd175f70cb99a768424576f3318ade7cfc6ee10f, with debug_info, not stripped",
+  "phase_c_runtime_identity": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "profile_runtime_identity": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "wheel_contents": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_bytes": 60793432,
+    "native_member": "qwen_mm/_native.abi3.so",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "package_member": "qwen_mm/__init__.py",
+    "wheel": {
+      "bytes": 14002943,
+      "sha256": "ec1ae587e38526c42370201dc924b4bf11e063b3a8dc7bee5e6735fcd908f52c"
+    }
+  }
+}

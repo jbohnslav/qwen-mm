@@ -1,0 +1,7 @@
+$ uv pip install --python /Users/jim/code/qwen-mm/.venv/bin/python --reinstall --no-deps /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl
+Resolved 1 package in 0.63ms
+Prepared 1 package in 10ms
+Uninstalled 1 package in 0.52ms
+Installed 1 package in 0.98ms
+ - qwen-mm==0.1.0 (from file:///Users/jim/code/qwen-mm)
+ + qwen-mm==0.1.0 (from file:///var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-d1-arm-capture-mqk9t1kd/benchmarks/profile-evidence-v1/arm64/artifacts/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl)

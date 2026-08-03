@@ -1,0 +1,118 @@
+{
+  "after_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "0c13ac9a17fd053db6b40d80f8d56e3b299985ff525a81030ca94b271b68bffb",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "d5da7e761ad77c117b2c8a1ce8c570bc7b9fab0ae2e83d7628f05c7c75810361",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "b707241545a346265aab1ffb32ff64b55bf8f8dc1b56a46ef33ce3d15db11d33",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    }
+  },
+  "before_signature": {
+    "attention_mask": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "0c13ac9a17fd053db6b40d80f8d56e3b299985ff525a81030ca94b271b68bffb",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    },
+    "input_ids": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "d5da7e761ad77c117b2c8a1ce8c570bc7b9fab0ae2e83d7628f05c7c75810361",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "nbytes": 136,
+      "sha256": "b707241545a346265aab1ffb32ff64b55bf8f8dc1b56a46ef33ce3d15db11d33",
+      "shape": [
+        1,
+        17
+      ],
+      "strides": [
+        136,
+        8
+      ]
+    }
+  },
+  "case_id": "text_short",
+  "input_fingerprint": "f3c0718698112d520c081fd9e15c62e8b7cebb82ead9d20cf8c257dc488bab1a",
+  "iterations": 9416,
+  "logical_input_fingerprint": "f3c0718698112d520c081fd9e15c62e8b7cebb82ead9d20cf8c257dc488bab1a",
+  "measurement_window": {
+    "completed_ns": 1053217685976,
+    "deadline_ns": 1053217564250,
+    "final_iteration_started_ns": 1053217489848,
+    "postcheck_completed_ns": 1053217933315,
+    "requested_duration_ns": 2000000000,
+    "started_ns": 1051217564250
+  },
+  "pid": 7000,
+  "profile_alias": "qwen3.5-9b",
+  "runtime_identity": {
+    "native_artifact_sha256": "7140f91b06ea41d9612160fe213c4338d1ff7b064eadef848ca633fcdd1f719c",
+    "native_module": "qwen_mm._native",
+    "package": "qwen_mm",
+    "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+    "version": "0.1.0"
+  },
+  "thread_budget": 1,
+  "thread_settings": {
+    "budget": 1,
+    "environment": {
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "RAYON_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "torch": {}
+  }
+}
