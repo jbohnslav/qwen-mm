@@ -3,7 +3,8 @@
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
-	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test
+	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test \
+	modal-benchmark-test
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -111,6 +112,9 @@ benchmark-v2-smoke:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.benchmark_v2 run \
 		--mode smoke --candidate-adapter "$(BENCHMARK_CANDIDATE)" \
 		--output "$(BENCHMARK_OUTPUT)" --report "$(BENCHMARK_REPORT)"
+
+modal-benchmark-test:
+	$(UV_CMD) run --locked python -m unittest discover -s scripts/tests -p 'test_modal_benchmark.py'
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh
