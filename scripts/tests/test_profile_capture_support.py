@@ -24,6 +24,14 @@ assert LOCAL_SPEC is not None and LOCAL_SPEC.loader is not None
 local_runner = importlib.util.module_from_spec(LOCAL_SPEC)
 LOCAL_SPEC.loader.exec_module(local_runner)
 
+EVIDENCE_PATH = Path(__file__).resolve().parents[1] / "profile_evidence.py"
+EVIDENCE_SPEC = importlib.util.spec_from_file_location(
+    "profile_evidence_test_module", EVIDENCE_PATH
+)
+assert EVIDENCE_SPEC is not None and EVIDENCE_SPEC.loader is not None
+evidence = importlib.util.module_from_spec(EVIDENCE_SPEC)
+EVIDENCE_SPEC.loader.exec_module(evidence)
+
 
 def _required_files() -> dict[str, bytes]:
     return {name: f"evidence:{name}\n".encode() for name in support.REQUIRED_ARTIFACT_FILES}
@@ -250,6 +258,16 @@ class CommandConstructionTests(unittest.TestCase):
         self.assertIn('"py-spy==0.4.1"', (root / "pyproject.toml").read_text(encoding="utf-8"))
         lock = (root / "uv.lock").read_text(encoding="utf-8")
         self.assertIn('name = "py-spy"\nversion = "0.4.1"', lock)
+
+    def test_profile_evidence_preserves_virtualenv_interpreter_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            interpreter = root / "managed-python"
+            interpreter.touch()
+            virtualenv_python = root / ".venv/bin/python"
+            virtualenv_python.parent.mkdir(parents=True)
+            virtualenv_python.symlink_to(interpreter)
+            self.assertEqual(evidence._absolute_python(virtualenv_python), virtualenv_python)
 
     def test_final_host_paths_are_committable_and_architecture_separated(self) -> None:
         arm = support.host_paths("arm64")

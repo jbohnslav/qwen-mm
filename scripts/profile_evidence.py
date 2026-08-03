@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -41,6 +42,12 @@ def _read_archive(path: Path) -> bytes:
     return path.read_bytes()
 
 
+def _absolute_python(path: Path) -> Path:
+    """Make the interpreter path absolute without resolving a virtualenv symlink."""
+
+    return Path(os.path.abspath(path))
+
+
 def main() -> None:
     args = _parser().parse_args()
     try:
@@ -51,7 +58,7 @@ def main() -> None:
                     "x86_64": _read_archive(args.x86_archive),
                 },
                 repository_root=ROOT,
-                python=args.python.resolve(),
+                python=_absolute_python(args.python),
                 assets_root=args.assets_root.resolve(),
             )
             revisions = {value["provenance"]["source"]["revision"] for value in validated.values()}
@@ -67,7 +74,7 @@ def main() -> None:
             validated = support.ingest_profile_artifact(
                 _read_archive(args.archive),
                 repository_root=ROOT,
-                python=args.python.resolve(),
+                python=_absolute_python(args.python),
                 assets_root=args.assets_root.resolve(),
                 architecture=args.architecture,
             )
@@ -79,7 +86,7 @@ def main() -> None:
         elif args.command == "merge":
             support.merge_profile_evidence(
                 repository_root=ROOT,
-                python=args.python.resolve(),
+                python=_absolute_python(args.python),
                 assets_root=args.assets_root.resolve(),
             )
             print(f"wrote and validated {support.FINAL_PROFILE_BUNDLE}")
@@ -88,12 +95,12 @@ def main() -> None:
             for architecture in ("arm64", "x86_64"):
                 support.canonical_validate_installed_host(
                     repository_root=ROOT,
-                    python=args.python.resolve(),
+                    python=_absolute_python(args.python),
                     assets_root=args.assets_root.resolve(),
                     architecture=architecture,
                 )
             support.validate_final_profile_evidence(
-                repository_root=ROOT, python=args.python.resolve()
+                repository_root=ROOT, python=_absolute_python(args.python)
             )
             print("canonical Phase C, benchmark, and profile validation passed for both hosts")
     except support.ProfileCaptureArtifactError as error:

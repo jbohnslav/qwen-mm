@@ -169,7 +169,7 @@
     "operation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile_alias", "case_id", "release_name", "boundary", "thread_budget", "thread_regime", "thread_settings", "repetition", "media_count", "input_fingerprint", "output_signature", "observation"],
+      "required": ["profile_alias", "case_id", "release_name", "boundary", "thread_budget", "thread_regime", "thread_settings", "repetition", "media_count", "input_fingerprint", "logical_input_fingerprint", "output_signature", "observation"],
       "properties": {
         "profile_alias": {"type": "string"},
         "case_id": {"type": "string"},
@@ -181,6 +181,7 @@
         "repetition": {"$ref": "#/$defs/nonnegativeInteger"},
         "media_count": {"$ref": "#/$defs/nonnegativeInteger"},
         "input_fingerprint": {"$ref": "#/$defs/sha256"},
+        "logical_input_fingerprint": {"$ref": "#/$defs/sha256"},
         "output_signature": {"type": "object"},
         "observation": {"$ref": "#/$defs/observation"}
       }
@@ -210,7 +211,7 @@
     "sampledProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile_alias", "architecture_family", "case_id", "thread_budget", "thread_regime", "input_fingerprint", "before_signature", "after_signature", "iterations", "whole_boundary_marker", "worker", "sampler", "artifacts", "rankings"],
+      "required": ["profile_alias", "architecture_family", "case_id", "thread_budget", "thread_regime", "input_fingerprint", "logical_input_fingerprint", "before_signature", "after_signature", "iterations", "whole_boundary_marker", "worker", "sampler", "artifacts", "rankings"],
       "properties": {
         "profile_alias": {"type": "string", "minLength": 1},
         "architecture_family": {"enum": ["arm64", "x86_64"]},
@@ -218,6 +219,7 @@
         "thread_budget": {"enum": [1, 4]},
         "thread_regime": {"enum": ["one", "production"]},
         "input_fingerprint": {"$ref": "#/$defs/sha256"},
+        "logical_input_fingerprint": {"$ref": "#/$defs/sha256"},
         "before_signature": {"type": "object"},
         "after_signature": {"type": "object"},
         "iterations": {"type": "integer", "minimum": 1},

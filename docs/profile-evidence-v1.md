@@ -77,6 +77,17 @@ extension happens to be installed in the validation environment. Capture-time
 validation remains live against the exact profiled wheel and scratch Phase C
 report.
 
+Every operation, sampled worker, and paired benchmark records two input
+identities. `input_fingerprint` binds the exact bytes used on the capture host.
+`logical_input_fingerprint` normally has the same value, but for
+`generated_encoded` cases it binds the authenticated generator declaration,
+ordered formats, messages, and deterministic pre-encode RGB content. When an
+archive comes from the other architecture, portable validation locally
+recomputes that logical identity and requires the recorded exact identity to be
+a consistent SHA-256 across observations, sampled-worker evidence, and both
+paired implementations; it does not pretend architecture-dependent codec bytes
+can be regenerated exactly. Live capture validation still recomputes both.
+
 The committed layout is:
 
 ```text

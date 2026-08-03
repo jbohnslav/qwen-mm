@@ -15,6 +15,7 @@ from typing import Any
 from unittest import mock
 
 import numpy as np
+import qwen_mm_reference.benchmark_protocol as benchmark_protocol
 import qwen_mm_reference.benchmark_v2 as benchmark_v2
 from qwen_mm_reference.benchmark_protocol import (
     BenchmarkProtocolError,
@@ -36,6 +37,7 @@ from qwen_mm_reference.benchmark_v2 import (
     run_benchmark,
     validate_result,
     validate_result_authenticated_portable,
+    validate_result_portable,
 )
 from qwen_mm_reference.fixtures import repository_root
 
@@ -290,6 +292,75 @@ class WorkloadTests(unittest.TestCase):
                             tampered, expected_runtime_identity=foreign_runtime
                         )
 
+    def test_generated_encoded_portability_keeps_exact_and_logical_bindings(self) -> None:
+        workload = load_workload(WORKLOAD_PATH)
+        case = select_cases(workload, case_ids=["ragged24"])[0]
+        case["source"].update(count=2, formats=["JPEG", "PNG"], shapes=[[7, 11]], seed=47)
+        workload["cases"] = [case]
+        with tempfile.TemporaryDirectory(prefix=".logical-input-", dir=repository_root()) as value:
+            workload_path = Path(value) / "workload.json"
+            workload_path.write_text(json.dumps(workload), encoding="utf-8")
+            result = run_benchmark(
+                workload_path=workload_path,
+                mode="smoke",
+                reference_adapter="synthetic",
+                candidate_adapter="synthetic",
+                profiles=["qwen3-vl-8b"],
+                case_ids=["ragged24"],
+                process_repetitions=1,
+                warmups=0,
+                minimum_samples=1,
+                minimum_seconds=0.0,
+                thread_regimes=["one"],
+                build_labels=["profiled-release"],
+                seed=47,
+            )
+            exact = {
+                implementation["input_fingerprint"]
+                for implementation in result["pairs"][0]["implementations"].values()
+            }
+            logical = {
+                implementation["logical_input_fingerprint"]
+                for implementation in result["pairs"][0]["implementations"].values()
+            }
+            self.assertEqual(len(exact), 1)
+            self.assertEqual(len(logical), 1)
+
+            exact_mutation = copy.deepcopy(result)
+            for implementation in exact_mutation["pairs"][0]["implementations"].values():
+                implementation["input_fingerprint"] = "e" * 64
+            with self.assertRaisesRegex(BenchmarkProtocolError, "relabeled"):
+                validate_result(exact_mutation)
+
+            foreign = copy.deepcopy(exact_mutation)
+            foreign["architecture_family"] = (
+                "x86_64" if benchmark_v2.architecture_family() == "arm64" else "arm64"
+            )
+            for implementation in foreign["pairs"][0]["implementations"].values():
+                implementation["environment"]["architecture_family"] = foreign[
+                    "architecture_family"
+                ]
+            validate_result_portable(foreign)
+
+            mismatched_exact = copy.deepcopy(foreign)
+            mismatched_exact["pairs"][0]["implementations"]["candidate"]["input_fingerprint"] = (
+                "f" * 64
+            )
+            with self.assertRaisesRegex(BenchmarkProtocolError, "different inputs"):
+                validate_result_portable(mismatched_exact)
+
+            invalid_exact = copy.deepcopy(foreign)
+            for implementation in invalid_exact["pairs"][0]["implementations"].values():
+                implementation["input_fingerprint"] = "not-a-sha256"
+            with self.assertRaisesRegex(BenchmarkProtocolError, "not SHA-256"):
+                validate_result_portable(invalid_exact)
+
+            changed_logical = copy.deepcopy(foreign)
+            for implementation in changed_logical["pairs"][0]["implementations"].values():
+                implementation["logical_input_fingerprint"] = "a" * 64
+            with self.assertRaisesRegex(BenchmarkProtocolError, "relabeled"):
+                validate_result_portable(changed_logical)
+
     def test_result_schema_closes_phase_c_release_states(self) -> None:
         schema = json.loads(RESULT_SCHEMA_PATH.read_text(encoding="utf-8"))
         eligibility = schema["properties"]["release_eligibility"]
@@ -338,6 +409,7 @@ class WorkloadTests(unittest.TestCase):
         second = materialize_case(case)
 
         self.assertEqual(first.input_fingerprint, second.input_fingerprint)
+        self.assertEqual(first.input_fingerprint, first.logical_input_fingerprint)
         self.assertEqual(first.messages, second.messages)
         self.assertEqual(first.buffers[0].value, second.buffers[0].value)
         self.assertEqual(first.boundary, "encoded_to_numpy")
@@ -353,6 +425,70 @@ class WorkloadTests(unittest.TestCase):
         self.assertEqual([media.format for media in payload.buffers], ["JPEG", "PNG", "WEBP"])
         self.assertEqual(len({media.value for media in payload.buffers}), 3)
 
+    def test_generated_encoded_fingerprint_binds_logical_source_not_codec_bytes(self) -> None:
+        workload = load_workload(WORKLOAD_PATH)
+        case = select_cases(workload, case_ids=["ragged24"])[0]
+        case["source"] = copy.deepcopy(case["source"])
+        case["source"].update(count=2, formats=["JPEG", "PNG"], shapes=[[7, 11]], seed=17)
+
+        with mock.patch.object(benchmark_protocol, "_encode_rgb", return_value=b"codec-a"):
+            first = materialize_case(case)
+        with mock.patch.object(benchmark_protocol, "_encode_rgb", return_value=b"codec-b"):
+            second = materialize_case(case)
+
+        self.assertNotEqual(first.buffers[0].value, second.buffers[0].value)
+        self.assertNotEqual(first.input_fingerprint, second.input_fingerprint)
+        self.assertEqual(first.logical_input_fingerprint, second.logical_input_fingerprint)
+
+        original_generated_rgb = benchmark_protocol._generated_rgb
+
+        def changed_rgb(height: int, width: int, seed: int) -> np.ndarray:
+            value = original_generated_rgb(height, width, seed).copy()
+            value[0, 0, 0] ^= np.uint8(1)
+            value.setflags(write=False)
+            return value
+
+        mutations = {
+            "logical-source": None,
+            "format": {"formats": ["WEBP", "PNG"]},
+            "shape": {"shapes": [[11, 7]]},
+            "seed": {"seed": 18},
+        }
+        for name, source_update in mutations.items():
+            with self.subTest(name=name):
+                changed_case = copy.deepcopy(case)
+                if source_update is not None:
+                    changed_case["source"].update(source_update)
+                patches = [mock.patch.object(benchmark_protocol, "_encode_rgb", return_value=b"x")]
+                if name == "logical-source":
+                    patches.append(
+                        mock.patch.object(benchmark_protocol, "_generated_rgb", changed_rgb)
+                    )
+                with ExitStack() as stack:
+                    for patch in patches:
+                        stack.enter_context(patch)
+                    changed = materialize_case(changed_case)
+                self.assertNotEqual(
+                    first.logical_input_fingerprint, changed.logical_input_fingerprint
+                )
+
+    def test_fixture_encoded_fingerprint_still_binds_raw_bytes(self) -> None:
+        workload = load_workload(WORKLOAD_PATH)
+        case = select_cases(workload, case_ids=["image1"])[0]
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "fixture.jpg"
+            with mock.patch.object(
+                benchmark_protocol, "fixture_directory", return_value=Path(directory)
+            ):
+                fixture.write_bytes(b"fixture-a")
+                first = materialize_case(case)
+                fixture.write_bytes(b"fixture-b")
+                second = materialize_case(case)
+
+        self.assertNotEqual(first.input_fingerprint, second.input_fingerprint)
+        self.assertEqual(first.input_fingerprint, first.logical_input_fingerprint)
+        self.assertEqual(second.input_fingerprint, second.logical_input_fingerprint)
+
     def test_raw_rgb_payload_is_caller_owned_read_only_uint8(self) -> None:
         workload = load_workload(WORKLOAD_PATH)
         case = select_cases(workload, case_ids=["rgb24"])[0]
@@ -362,6 +498,7 @@ class WorkloadTests(unittest.TestCase):
         payload = materialize_case(case)
 
         self.assertEqual(payload.boundary, "rgb_to_vllm_ready")
+        self.assertEqual(payload.input_fingerprint, payload.logical_input_fingerprint)
         for media in payload.buffers:
             self.assertIsInstance(media.value, np.ndarray)
             self.assertEqual(media.value.dtype, np.uint8)

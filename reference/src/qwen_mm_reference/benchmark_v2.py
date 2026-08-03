@@ -744,6 +744,8 @@ def _validate_case_bindings(
     result: Mapping[str, Any],
     pairs: Sequence[Mapping[str, Any]],
     summaries: Sequence[Mapping[str, Any]],
+    *,
+    portable: bool,
 ) -> dict[str, str]:
     workload = _authenticated_workload(result)
     by_id = {case["case_id"]: case for case in workload["cases"]}
@@ -807,19 +809,21 @@ def _validate_case_bindings(
             "benchmark pair inventory does not match the recorded protocol"
         )
 
-    fingerprints: dict[str, str] = {}
+    payloads: dict[str, Any] = {}
     for case_id in values["cases"]:
         try:
-            fingerprints[case_id] = materialize_case(by_id[case_id]).input_fingerprint
+            payloads[case_id] = materialize_case(by_id[case_id])
         except (KeyError, OSError, TypeError, ValueError) as error:
             raise BenchmarkProtocolError(
                 f"authenticated benchmark case cannot be materialized: {case_id}"
             ) from error
+    foreign_architecture = portable and result.get("architecture_family") != architecture_family()
     for pair in pairs:
         case_id = pair.get("case_id")
-        if not isinstance(case_id, str) or case_id not in fingerprints:
+        if not isinstance(case_id, str) or case_id not in payloads:
             raise BenchmarkProtocolError("benchmark pair references an undeclared workload case")
         case = by_id[case_id]
+        payload = payloads[case_id]
         for field, expected in (
             ("boundary", case["boundary"]),
             ("cache_mode", case["cache_mode"]),
@@ -861,7 +865,7 @@ def _validate_case_bindings(
             expected_adapter = protocol.get(
                 "reference_adapter" if implementation_name == "reference" else "candidate_adapter"
             )
-            expected_fields = (
+            expected_fields = [
                 ("implementation", implementation_name),
                 ("adapter_spec", expected_adapter),
                 ("oracle_adapter_spec", protocol.get("reference_adapter")),
@@ -871,8 +875,12 @@ def _validate_case_bindings(
                 ("boundary", case["boundary"]),
                 ("cache_mode", case["cache_mode"]),
                 ("release_name", case.get("release_name")),
-                ("input_fingerprint", fingerprints[case_id]),
-            )
+                ("logical_input_fingerprint", payload.logical_input_fingerprint),
+            ]
+            if not (
+                foreign_architecture and case.get("source", {}).get("kind") == "generated_encoded"
+            ):
+                expected_fields.append(("input_fingerprint", payload.input_fingerprint))
             if any(implementation.get(field) != expected for field, expected in expected_fields):
                 raise BenchmarkProtocolError(
                     f"benchmark {implementation_name} worker metadata was relabeled"
@@ -891,7 +899,7 @@ def _validate_case_bindings(
 
     if list(summaries) != summarize_pairs(pairs, seed=seed):
         raise BenchmarkProtocolError("benchmark summaries do not match the authenticated pairs")
-    return fingerprints
+    return {case_id: payload.input_fingerprint for case_id, payload in payloads.items()}
 
 
 def validate_result_portable(result: Mapping[str, Any]) -> None:
@@ -910,18 +918,26 @@ def validate_result_portable(result: Mapping[str, Any]) -> None:
     summaries = result.get("summaries")
     if not isinstance(pairs, list) or not pairs or not isinstance(summaries, list):
         raise BenchmarkProtocolError("benchmark result pairs and summaries must be arrays")
-    _validate_case_bindings(result, pairs, summaries)
+    _validate_case_bindings(result, pairs, summaries, portable=True)
     for pair in pairs:
         implementations = pair.get("implementations")
         if not isinstance(implementations, Mapping):
             raise BenchmarkProtocolError("benchmark pair lacks implementations")
         if set(implementations) != {"reference", "candidate"}:
             raise BenchmarkProtocolError("benchmark pair must contain reference and candidate")
-        fingerprints = {
-            implementation["input_fingerprint"] for implementation in implementations.values()
-        }
-        if len(fingerprints) != 1:
-            raise BenchmarkProtocolError("paired implementations received different inputs")
+        for field in ("input_fingerprint", "logical_input_fingerprint"):
+            fingerprints = {
+                implementation.get(field) for implementation in implementations.values()
+            }
+            if any(
+                not isinstance(fingerprint, str)
+                or len(fingerprint) != 64
+                or any(character not in "0123456789abcdef" for character in fingerprint)
+                for fingerprint in fingerprints
+            ):
+                raise BenchmarkProtocolError(f"benchmark worker {field} is not SHA-256")
+            if len(fingerprints) != 1:
+                raise BenchmarkProtocolError("paired implementations received different inputs")
         for implementation in implementations.values():
             if implementation.get("environment", {}).get("architecture_family") != family:
                 raise BenchmarkProtocolError("mixed architectures are not allowed in one result")
@@ -1011,6 +1027,12 @@ def validate_result(
     """Validate result evidence and re-authenticate the current local candidate runtime."""
 
     validate_result_portable(result)
+    _validate_case_bindings(
+        result,
+        result["pairs"],
+        result["summaries"],
+        portable=False,
+    )
     _validate_release_eligibility(
         result,
         verify_live_runtime=True,
@@ -1106,13 +1128,14 @@ def run_benchmark(
                                     case_id=case["case_id"],
                                     temporary_directory=temporary_directory,
                                 )
-                            fingerprints = {
-                                result["input_fingerprint"] for result in implementations.values()
-                            }
-                            if len(fingerprints) != 1:
-                                raise BenchmarkProtocolError(
-                                    f"{case['case_id']}: paired subprocess input mismatch"
-                                )
+                            for field in ("input_fingerprint", "logical_input_fingerprint"):
+                                fingerprints = {
+                                    result[field] for result in implementations.values()
+                                }
+                                if len(fingerprints) != 1:
+                                    raise BenchmarkProtocolError(
+                                        f"{case['case_id']}: paired subprocess input mismatch"
+                                    )
                             reference_p50 = implementations["reference"]["summary"]["wall_ms"][
                                 "p50"
                             ]

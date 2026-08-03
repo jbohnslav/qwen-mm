@@ -60,6 +60,7 @@ class CasePayload:
     buffers: tuple[MediaBuffer, ...]
     work_units: int
     input_fingerprint: str
+    logical_input_fingerprint: str
 
 
 @dataclass(frozen=True)
@@ -276,6 +277,39 @@ def _payload_fingerprint(
     return digest.hexdigest()
 
 
+def _logical_payload_fingerprint(
+    case: Mapping[str, Any],
+    messages: tuple[tuple[dict[str, Any], ...], ...],
+    buffers: Sequence[MediaBuffer],
+) -> str:
+    source = case["source"]
+    if source.get("kind") != "generated_encoded":
+        return _payload_fingerprint(case, messages, buffers)
+    digest = hashlib.sha256()
+    digest.update(_canonical_json({"case": case, "messages": messages}))
+    shapes = source["shapes"]
+    formats = source["formats"]
+    seed = int(source.get("seed", 0))
+    for index in range(len(buffers)):
+        height, width = shapes[index % len(shapes)]
+        image_format = str(formats[index % len(formats)]).upper()
+        rgb = _generated_rgb(height, width, seed + index)
+        digest.update(
+            _canonical_json(
+                {
+                    "kind": "generated_encoded",
+                    "index": index,
+                    "format": image_format,
+                    "lossless": image_format in {"PNG", "WEBP"},
+                    "dtype": str(rgb.dtype),
+                    "shape": list(rgb.shape),
+                }
+            )
+        )
+        digest.update(memoryview(np.ascontiguousarray(rgb)).cast("B"))
+    return digest.hexdigest()
+
+
 def materialize_case(case: Mapping[str, Any]) -> CasePayload:
     buffers = _materialize_buffers(case["source"])
     messages = _build_messages(case, len(buffers))
@@ -289,6 +323,7 @@ def materialize_case(case: Mapping[str, Any]) -> CasePayload:
         buffers=tuple(buffers),
         work_units=max(1, len(messages)),
         input_fingerprint=_payload_fingerprint(case, messages, buffers),
+        logical_input_fingerprint=_logical_payload_fingerprint(case, messages, buffers),
     )
 
 
@@ -746,6 +781,7 @@ def run_worker(config: Mapping[str, Any], case: Mapping[str, Any]) -> dict[str, 
         "boundary": payload.boundary,
         "cache_mode": payload.cache_mode,
         "input_fingerprint": payload.input_fingerprint,
+        "logical_input_fingerprint": payload.logical_input_fingerprint,
         "output_signature": output_signature(baseline),
         "conformance": {
             "pre_measurement": "pass",

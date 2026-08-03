@@ -14,6 +14,7 @@ from unittest.mock import call, patch
 
 from qwen_mm_reference.benchmark_protocol import (
     THREAD_ENVIRONMENT_NAMES,
+    architecture_family,
     load_workload,
     materialize_case,
     select_cases,
@@ -859,6 +860,7 @@ Total number in stack (recursive counted multiple, when >=5):
                 "pid": 123,
                 "iterations": 2,
                 "input_fingerprint": "b" * 64,
+                "logical_input_fingerprint": "b" * 64,
                 "before_signature": signature,
                 "after_signature": signature,
                 "profile_alias": "qwen3-vl-8b",
@@ -889,6 +891,7 @@ Total number in stack (recursive counted multiple, when >=5):
                 "thread_budget": 1,
                 "thread_regime": "one",
                 "input_fingerprint": "b" * 64,
+                "logical_input_fingerprint": "b" * 64,
                 "before_signature": signature,
                 "after_signature": signature,
                 "iterations": 2,
@@ -1156,6 +1159,7 @@ class BundleValidationTests(unittest.TestCase):
             observations = []
             signatures: dict[tuple[str, str, int], dict] = {}
             fingerprints: dict[tuple[str, str, int], str] = {}
+            logical_fingerprints: dict[tuple[str, str, int], str] = {}
             for profile in protocol["profiles"]:
                 for case in cases:
                     payload = payloads[case["case_id"]]
@@ -1164,6 +1168,7 @@ class BundleValidationTests(unittest.TestCase):
                         coordinate = (profile, case["case_id"], budget)
                         signatures[coordinate] = signature(coordinate)
                         fingerprints[coordinate] = payload.input_fingerprint
+                        logical_fingerprints[coordinate] = payload.logical_input_fingerprint
                         for repetition in range(3):
                             observations.append(
                                 {
@@ -1177,6 +1182,9 @@ class BundleValidationTests(unittest.TestCase):
                                     "repetition": repetition,
                                     "media_count": len(payload.buffers),
                                     "input_fingerprint": payload.input_fingerprint,
+                                    "logical_input_fingerprint": (
+                                        payload.logical_input_fingerprint
+                                    ),
                                     "output_signature": signatures[coordinate],
                                     "observation": complete_observation(
                                         scopes, len(payload.messages)
@@ -1229,6 +1237,7 @@ Total number in stack (recursive counted multiple, when >=5):
                     "pid": 123,
                     "iterations": 2,
                     "input_fingerprint": fingerprints[coordinate],
+                    "logical_input_fingerprint": logical_fingerprints[coordinate],
                     "before_signature": output,
                     "after_signature": output,
                     "profile_alias": profile,
@@ -1260,6 +1269,7 @@ Total number in stack (recursive counted multiple, when >=5):
                         "thread_budget": budget,
                         "thread_regime": "one" if budget == 1 else "production",
                         "input_fingerprint": fingerprints[coordinate],
+                        "logical_input_fingerprint": logical_fingerprints[coordinate],
                         "before_signature": output,
                         "after_signature": output,
                         "iterations": 2,
@@ -1307,6 +1317,7 @@ Total number in stack (recursive counted multiple, when >=5):
                                 "profile_alias": profile,
                                 "case_id": case_id,
                                 "input_fingerprint": fingerprints[coordinate],
+                                "logical_input_fingerprint": logical_fingerprints[coordinate],
                                 "output_signature": output,
                             },
                             "reference": {},
@@ -1486,7 +1497,8 @@ Total number in stack (recursive counted multiple, when >=5):
                 with self.assertRaisesRegex(ProfileArtifactError, "missing"):
                     _source_tree_digest_at_revision("0" * 40, set())
 
-    def test_portable_cross_arch_bundle_and_tamper_rejection(self) -> None:
+    @patch("qwen_mm_reference.benchmark_protocol._encode_rgb", return_value=b"encoded")
+    def test_portable_cross_arch_bundle_and_tamper_rejection(self, _encode_rgb) -> None:
         root = Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory(prefix=".profile-bundle-test-", dir=root) as temporary:
             bundle = self._bundle(Path(temporary))
@@ -1545,6 +1557,9 @@ Total number in stack (recursive counted multiple, when >=5):
                     "malformed_output_signature": lambda value: value["captures"][0][
                         "observations"
                     ][0].update(output_signature={"input_ids": None}),
+                    "logical_input_fingerprint": lambda value: value["captures"][0]["observations"][
+                        0
+                    ].update(logical_input_fingerprint="0" * 64),
                     "malformed_workload_identity": lambda value: value["protocol"].update(
                         workload={}
                     ),
@@ -1622,6 +1637,86 @@ Total number in stack (recursive counted multiple, when >=5):
             ):
                 with self.assertRaisesRegex(ProfileArtifactError, "semantically invalid"):
                     validate_bundle(bundle, require_arm_x86=True)
+
+    @patch("qwen_mm_reference.benchmark_protocol._encode_rgb", return_value=b"encoded")
+    def test_foreign_generated_encoded_exact_fingerprint_is_portable(self, _encode_rgb) -> None:
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory(prefix=".profile-portable-input-", dir=root) as temporary:
+            temporary_path = Path(temporary)
+            bundle = self._bundle(temporary_path)
+            foreign = next(
+                capture
+                for capture in bundle["captures"]
+                if capture["host"]["architecture_family"] != architecture_family()
+            )
+            foreign_exact = "e" * 64
+            for operation in foreign["observations"]:
+                if operation["case_id"] == "ragged24":
+                    operation["input_fingerprint"] = foreign_exact
+            for index, sampled in enumerate(foreign["sampled_profiles"]):
+                if sampled["case_id"] != "ragged24":
+                    continue
+                sampled["input_fingerprint"] = foreign_exact
+                result_path = root / sampled["worker"]["result"]["path"]
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                result["input_fingerprint"] = foreign_exact
+                portable_result_path = temporary_path / f"foreign-ragged-worker-{index}.json"
+                portable_result_path.write_text(json.dumps(result), encoding="utf-8")
+                sampled["worker"]["result"] = _artifact_identity(portable_result_path)
+
+            benchmark_path = root / foreign["paired_benchmark"]["path"]
+            benchmark = json.loads(benchmark_path.read_text(encoding="utf-8"))
+            for pair in benchmark["pairs"]:
+                candidate = pair["implementations"]["candidate"]
+                if candidate["case_id"] != "ragged24":
+                    continue
+                logical = candidate["logical_input_fingerprint"]
+                for implementation in pair["implementations"].values():
+                    implementation["input_fingerprint"] = foreign_exact
+                    implementation["logical_input_fingerprint"] = logical
+            portable_benchmark_path = temporary_path / "foreign-benchmark.json"
+            portable_benchmark_path.write_text(json.dumps(benchmark), encoding="utf-8")
+            foreign["paired_benchmark"].update(_artifact_identity(portable_benchmark_path))
+
+            source = bundle["captures"][0]["source"]
+            source_tuple = (
+                source["tree_sha256"],
+                source["file_count"],
+                source["total_bytes"],
+            )
+            with (
+                patch("qwen_mm_reference.profile_v1.validate_result_portable"),
+                patch("qwen_mm_reference.profile_v1.validate_phase_c_report"),
+                patch("qwen_mm_reference.profile_v1._git_output", side_effect=self._git_output),
+                patch(
+                    "qwen_mm_reference.profile_v1._source_tree_digest_at_revision",
+                    return_value=source_tuple,
+                ),
+            ):
+                validate_bundle(bundle, require_arm_x86=True)
+
+                mismatched = copy.deepcopy(bundle)
+                mismatched_foreign = next(
+                    capture
+                    for capture in mismatched["captures"]
+                    if capture["host"]["architecture_family"] != architecture_family()
+                )
+                sampled = next(
+                    item
+                    for item in mismatched_foreign["sampled_profiles"]
+                    if item["case_id"] == "ragged24"
+                )
+                sampled["input_fingerprint"] = "f" * 64
+                result_path = root / sampled["worker"]["result"]["path"]
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                result["input_fingerprint"] = "f" * 64
+                mismatched_result_path = temporary_path / "mismatched-ragged-worker.json"
+                mismatched_result_path.write_text(json.dumps(result), encoding="utf-8")
+                sampled["worker"]["result"] = _artifact_identity(mismatched_result_path)
+                with self.assertRaisesRegex(
+                    ProfileArtifactError, "sampled and observed input fingerprints differ"
+                ):
+                    validate_bundle(mismatched, require_arm_x86=True)
 
 
 if __name__ == "__main__":

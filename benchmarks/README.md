@@ -10,8 +10,11 @@ is not evidence for a reference-versus-candidate speedup claim.
 implementations. A worker materializes its structured messages and immutable
 encoded or caller-owned RGB buffers before timing, records a SHA-256 fingerprint
 over both, then gives the same payload to the reference oracle and selected
-implementation. Paired subprocess results are rejected if their fingerprints
-differ.
+implementation. `input_fingerprint` binds the exact bytes delivered on that
+host. `logical_input_fingerprint` is identical for ordinary fixtures, raw RGB,
+and text; for `generated_encoded` media it instead binds the generator
+declaration, messages, ordered formats, and deterministic pre-encode RGB bytes.
+Paired subprocess results are rejected if either fingerprint differs.
 
 Every worker:
 
@@ -48,8 +51,13 @@ image scaling.
 
 Generated media is deterministic from the recorded seed. It is materialized
 outside the timer, and the exact bytes or RGB values are covered by each
-worker's input fingerprint. Package versions and host data remain result
-provenance.
+worker's `input_fingerprint`. Lossless and lossy codec output can differ across
+architectures even with the same pinned Pillow version, so the separate logical
+fingerprint makes generated encoded inputs comparable without claiming their
+compressed bytes are identical. Live validation recomputes both fingerprints.
+Foreign-architecture portable validation recomputes the logical fingerprint and
+requires the exact fingerprints to be valid SHA-256 values that agree between
+the paired workers. Package versions and host data remain result provenance.
 
 ## Adapters
 

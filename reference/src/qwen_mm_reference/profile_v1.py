@@ -705,6 +705,7 @@ def _sample_worker(args: argparse.Namespace) -> None:
     ready = {
         "pid": os.getpid(),
         "input_fingerprint": payload.input_fingerprint,
+        "logical_input_fingerprint": payload.logical_input_fingerprint,
         "before_signature": before_signature,
     }
     Path(config["ready_path"]).write_text(json.dumps(ready), encoding="utf-8")
@@ -746,6 +747,7 @@ def _sample_worker(args: argparse.Namespace) -> None:
         "pid": os.getpid(),
         "iterations": iterations,
         "input_fingerprint": payload.input_fingerprint,
+        "logical_input_fingerprint": payload.logical_input_fingerprint,
         "before_signature": before_signature,
         "after_signature": output_signature(after),
         "profile_alias": config["profile_alias"],
@@ -1133,6 +1135,7 @@ def capture_sampled_profile(
         "thread_budget": thread_budget,
         "thread_regime": "one" if thread_budget == 1 else "production",
         "input_fingerprint": result["input_fingerprint"],
+        "logical_input_fingerprint": result["logical_input_fingerprint"],
         "before_signature": result["before_signature"],
         "after_signature": result["after_signature"],
         "iterations": result["iterations"],
@@ -1664,6 +1667,7 @@ def validate_sampled_profile(
         "pid": worker["target_pid"],
         "iterations": sampled["iterations"],
         "input_fingerprint": sampled["input_fingerprint"],
+        "logical_input_fingerprint": sampled["logical_input_fingerprint"],
         "before_signature": sampled["before_signature"],
         "after_signature": sampled["after_signature"],
         "profile_alias": sampled["profile_alias"],
@@ -1894,9 +1898,11 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
         expected_payloads[case["case_id"]] = {
             "boundary": case["boundary"],
             "release_name": case.get("release_name"),
+            "source_kind": case["source"].get("kind"),
             "media_count": len(payload.buffers),
             "request_count": len(payload.messages),
             "input_fingerprint": payload.input_fingerprint,
+            "logical_input_fingerprint": payload.logical_input_fingerprint,
             "media_scopes": _expected_media_scopes(payload),
         }
     if protocol["thread_budgets"] != [1, 4] or protocol["thread_regimes"] != {
@@ -1963,6 +1969,8 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
         observed_coordinates: set[tuple[str, str, int, int]] = set()
         observed_signatures: dict[tuple[str, str, int], Mapping[str, Any]] = {}
         observed_fingerprints: dict[tuple[str, str, int], str] = {}
+        observed_logical_fingerprints: dict[tuple[str, str, int], str] = {}
+        foreign_architecture = host["architecture_family"] != architecture_family()
         for operation in capture["observations"]:
             coordinate = (
                 operation["profile_alias"],
@@ -1976,10 +1984,24 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             expected_payload = expected_payloads[operation["case_id"]]
             if any(
                 operation.get(field) != expected_payload[field]
-                for field in ("boundary", "release_name", "media_count", "input_fingerprint")
+                for field in (
+                    "boundary",
+                    "release_name",
+                    "media_count",
+                    "logical_input_fingerprint",
+                )
             ):
                 raise ProfileArtifactError(
                     "observed operation is relabeled from its workload payload"
+                )
+            if (
+                not (
+                    foreign_architecture and expected_payload["source_kind"] == "generated_encoded"
+                )
+                and operation.get("input_fingerprint") != expected_payload["input_fingerprint"]
+            ):
+                raise ProfileArtifactError(
+                    "observed operation exact input differs from its workload payload"
                 )
             sample_coordinate = coordinate[:3]
             prior_signature = observed_signatures.setdefault(
@@ -1992,6 +2014,13 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             )
             if prior_fingerprint != operation["input_fingerprint"]:
                 raise ProfileArtifactError("observed input fingerprint changed across repetitions")
+            prior_logical_fingerprint = observed_logical_fingerprints.setdefault(
+                sample_coordinate, operation["logical_input_fingerprint"]
+            )
+            if prior_logical_fingerprint != operation["logical_input_fingerprint"]:
+                raise ProfileArtifactError(
+                    "observed logical input fingerprint changed across repetitions"
+                )
             expected_regime = "one" if operation["thread_budget"] == 1 else "production"
             if operation["thread_regime"] != expected_regime:
                 raise ProfileArtifactError("operation thread regime is relabeled")
@@ -2064,6 +2093,11 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             )
             if sampled["input_fingerprint"] != observed_fingerprints[sampled_coordinate]:
                 raise ProfileArtifactError("sampled and observed input fingerprints differ")
+            if (
+                sampled["logical_input_fingerprint"]
+                != observed_logical_fingerprints[sampled_coordinate]
+            ):
+                raise ProfileArtifactError("sampled and observed logical input fingerprints differ")
         benchmark = capture["paired_benchmark"]
         _, benchmark_bytes = _read_authenticated_artifact(benchmark)
         try:
@@ -2154,6 +2188,12 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             paired_coordinates.add(coordinate)
             if candidate["input_fingerprint"] != observed_fingerprints.get(coordinate):
                 raise ProfileArtifactError("paired candidate input differs from profile workload")
+            if candidate["logical_input_fingerprint"] != observed_logical_fingerprints.get(
+                coordinate
+            ):
+                raise ProfileArtifactError(
+                    "paired candidate logical input differs from profile workload"
+                )
             if candidate["output_signature"] != observed_signatures.get(coordinate):
                 raise ProfileArtifactError("paired candidate output differs from profile output")
         if paired_coordinates != _sample_coordinates(protocol):
@@ -2238,6 +2278,7 @@ def _capture_operation(
         "repetition": repetition,
         "media_count": len(payload.buffers),
         "input_fingerprint": payload.input_fingerprint,
+        "logical_input_fingerprint": payload.logical_input_fingerprint,
         "output_signature": signature,
         "observation": report,
     }
