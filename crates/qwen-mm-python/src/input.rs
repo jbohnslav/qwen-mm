@@ -7,8 +7,9 @@ use pyo3::{
     types::{PyAny, PyBool, PyDict, PyList, PyString},
 };
 use qwen_mm_core::{
-    ErrorCategory, ExcludedOptions, ImageFormat, ImageOptions, LimitOverrides, QwenError,
-    RequestOptions, ResourceLimits, Role, checked_add, checked_mul,
+    BufferClass, ErrorCategory, ExcludedOptions, ImageFormat, ImageOptions, LimitOverrides,
+    ObservationRecorder, ObservationScope, QwenError, RequestOptions, ResourceLimits, Role,
+    checked_add, checked_mul,
 };
 
 use crate::errors::{input_allocation_error, invalid_request, py_detail, type_name};
@@ -20,6 +21,41 @@ pub(crate) struct OwnedRequest {
     pub(crate) messages: Vec<OwnedMessage>,
     pub(crate) images: Vec<OwnedImage>,
     pub(crate) options: OwnedRequestOptions,
+}
+
+pub(crate) fn drop_owned_media(requests: Vec<OwnedRequest>, recorder: &mut ObservationRecorder) {
+    let releases = requests
+        .iter()
+        .enumerate()
+        .flat_map(|(request_index, request)| {
+            request
+                .images
+                .iter()
+                .enumerate()
+                .map(move |(input_index, image)| {
+                    let bytes = match image {
+                        OwnedImage::Encoded { data, .. } | OwnedImage::Rgb8 { data, .. } => {
+                            data.len()
+                        }
+                    };
+                    (request_index, input_index, bytes)
+                })
+        })
+        .collect::<Vec<_>>();
+    drop(requests);
+    for (request_index, input_index, bytes) in releases {
+        recorder.release_transient(
+            "binding.owned_media",
+            ObservationScope {
+                request_index: Some(request_index),
+                message_index: None,
+                content_item_index: None,
+                media_index: None,
+                input_index: Some(input_index),
+            },
+            u64::try_from(bytes).unwrap_or(u64::MAX),
+        );
+    }
 }
 
 #[derive(Debug)]
@@ -125,6 +161,35 @@ pub(crate) fn parse_requests(
     supports_thinking: bool,
     profile_alias: &str,
 ) -> BindingResult<Vec<OwnedRequest>> {
+    parse_requests_internal(py, value, limits, supports_thinking, profile_alias, None)
+}
+
+pub(crate) fn parse_requests_observed(
+    py: Python<'_>,
+    value: &Bound<'_, PyAny>,
+    limits: ResourceLimits,
+    supports_thinking: bool,
+    profile_alias: &str,
+    recorder: &mut ObservationRecorder,
+) -> BindingResult<Vec<OwnedRequest>> {
+    parse_requests_internal(
+        py,
+        value,
+        limits,
+        supports_thinking,
+        profile_alias,
+        Some(recorder),
+    )
+}
+
+fn parse_requests_internal(
+    py: Python<'_>,
+    value: &Bound<'_, PyAny>,
+    limits: ResourceLimits,
+    supports_thinking: bool,
+    profile_alias: &str,
+    mut recorder: Option<&mut ObservationRecorder>,
+) -> BindingResult<Vec<OwnedRequest>> {
     let list = as_list(value, "requests")?;
     if list.is_empty() {
         return Err(invalid_request("batch must contain at least one request"));
@@ -168,16 +233,40 @@ pub(crate) fn parse_requests(
     reject_video_items(&requests)?;
     for (request_index, (request, value)) in requests.iter_mut().zip(&values).enumerate() {
         let dict = as_dict(value, "request")?;
-        request.images = match optional(dict, "images")? {
-            Some(images) => as_list(&images, "request.images")?
-                .iter()
-                .enumerate()
-                .map(|(image_index, image)| parse_image(py, &image, request_index, image_index))
-                .collect::<BindingResult<Vec<_>>>()?,
-            None => Vec::new(),
-        };
+        let mut parsed = Vec::new();
+        if let Some(images) = optional(dict, "images")? {
+            for (image_index, image) in as_list(&images, "request.images")?.iter().enumerate() {
+                let image = parse_image(py, &image, request_index, image_index)?;
+                if let Some(recorder) = recorder.as_deref_mut() {
+                    record_owned_image(&image, request_index, image_index, recorder);
+                }
+                parsed.push(image);
+            }
+        }
+        request.images = parsed;
     }
     Ok(requests)
+}
+
+fn record_owned_image(
+    image: &OwnedImage,
+    request_index: usize,
+    input_index: usize,
+    recorder: &mut ObservationRecorder,
+) {
+    let bytes = match image {
+        OwnedImage::Encoded { data, .. } | OwnedImage::Rgb8 { data, .. } => data.len(),
+    };
+    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    let scope = ObservationScope {
+        request_index: Some(request_index),
+        message_index: None,
+        content_item_index: None,
+        media_index: None,
+        input_index: Some(input_index),
+    };
+    recorder.record_allocation("binding.owned_media", BufferClass::Transient, scope, bytes);
+    recorder.record_copy("binding.owned_media", scope, bytes);
 }
 
 fn parse_request_structure(

@@ -4,7 +4,9 @@
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
 	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test \
-	modal-benchmark-test
+	modal-benchmark-test profile-d1-arm-archive profile-d1-ingest profile-d1-ingest-arm \
+	profile-d1-ingest-x86 profile-d1-merge profile-d1-modal-archive profile-d1-test \
+	profile-d1-validate
 
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
@@ -20,6 +22,8 @@ MEDIA_REPORT_OUTPUT ?= reference/media/v1/results/macos-arm64-native.json
 PHASE_B_ASSETS_ROOT ?= reference/.cache/huggingface
 PHASE_B_REPORT_OUTPUT ?= /tmp/qwen-mm-phase-b-report.json
 PHASE_C_ASSETS_ROOT ?= reference/.cache/huggingface
+PROFILE_D1_ARM_ARCHIVE ?= /tmp/qwen-mm-arm-d1-profile.zip
+PROFILE_D1_X86_ARCHIVE ?= /tmp/qwen-mm-modal-d1-profile.zip
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -115,6 +119,34 @@ benchmark-v2-smoke:
 
 modal-benchmark-test:
 	$(UV_CMD) run --locked python -m unittest discover -s scripts/tests -p 'test_modal_benchmark.py'
+
+profile-d1-test:
+	$(UV_CMD) run --locked python -m unittest discover -s scripts/tests -p 'test_profile_capture_support.py'
+
+profile-d1-arm-archive:
+	$(UV_CMD) run --locked python scripts/local_profile.py "$(PROFILE_D1_ARM_ARCHIVE)"
+
+profile-d1-modal-archive:
+	modal run scripts/modal_profile.py --output "$(PROFILE_D1_X86_ARCHIVE)"
+
+profile-d1-ingest-arm:
+	$(UV_CMD) run --locked python scripts/profile_evidence.py ingest-host \
+		--architecture arm64 --archive "$(PROFILE_D1_ARM_ARCHIVE)"
+
+profile-d1-ingest-x86:
+	$(UV_CMD) run --locked python scripts/profile_evidence.py ingest-host \
+		--architecture x86_64 --archive "$(PROFILE_D1_X86_ARCHIVE)"
+
+profile-d1-ingest:
+	$(UV_CMD) run --locked python scripts/profile_evidence.py ingest \
+		--arm-archive "$(PROFILE_D1_ARM_ARCHIVE)" \
+		--x86-archive "$(PROFILE_D1_X86_ARCHIVE)"
+
+profile-d1-merge:
+	$(UV_CMD) run --locked python scripts/profile_evidence.py merge
+
+profile-d1-validate:
+	$(UV_CMD) run --locked python scripts/profile_evidence.py validate
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh

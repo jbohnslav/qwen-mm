@@ -4,6 +4,7 @@ import copy
 import hashlib
 import importlib
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -34,6 +35,7 @@ from qwen_mm_reference.benchmark_v2 import (
     render_report,
     run_benchmark,
     validate_result,
+    validate_result_authenticated_portable,
 )
 from qwen_mm_reference.fixtures import repository_root
 
@@ -116,6 +118,178 @@ def write_phase_c_report(
 
 
 class WorkloadTests(unittest.TestCase):
+    @staticmethod
+    def _foreign_candidate_result(result: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        adapter = "qwen_mm.benchmark:create_adapter"
+        identity = candidate_artifact_identity(adapter)
+        if identity.get("resolved") is not True:
+            raise AssertionError("portable regression requires the built qwen-mm adapter wrapper")
+        foreign_runtime = {
+            "package": "qwen_mm",
+            "version": "0.1.0",
+            "package_artifact_sha256": "a" * 64,
+            "native_module": "qwen_mm._native",
+            "native_artifact_sha256": "b" * 64,
+        }
+        identity["runtime_identity"] = foreign_runtime
+        result["architecture_family"] = "x86_64"
+        result["protocol"]["candidate_adapter"] = adapter
+        result["protocol"]["candidate_identity"] = identity
+        for pair in result["pairs"]:
+            for implementation in pair["implementations"].values():
+                implementation["environment"]["architecture_family"] = "x86_64"
+            pair["implementations"]["candidate"]["adapter_spec"] = adapter
+        return result, foreign_runtime
+
+    def test_authenticated_portable_validation_accepts_foreign_runtime_and_rejects_tampering(
+        self,
+    ) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["text_short"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            thread_regimes=["one"],
+            build_labels=["profiled-release"],
+            seed=41,
+        )
+        result, foreign_runtime = self._foreign_candidate_result(result)
+
+        validate_result_authenticated_portable(result, expected_runtime_identity=foreign_runtime)
+        same_architecture = copy.deepcopy(result)
+        same_architecture["architecture_family"] = benchmark_v2.architecture_family()
+        for pair in same_architecture["pairs"]:
+            for implementation in pair["implementations"].values():
+                implementation["environment"]["architecture_family"] = same_architecture[
+                    "architecture_family"
+                ]
+        validate_result_authenticated_portable(
+            same_architecture, expected_runtime_identity=foreign_runtime
+        )
+
+        mutations = {
+            "adapter": lambda value: value["protocol"]["candidate_identity"].update(
+                artifact_sha256="0" * 64
+            ),
+            "runtime": lambda value: value["protocol"]["candidate_identity"][
+                "runtime_identity"
+            ].update(native_artifact_sha256="0" * 64),
+            "workload": lambda value: value["workload"].update(sha256="0" * 64),
+            "thread": lambda value: value["pairs"][0]["implementations"]["candidate"][
+                "thread_settings"
+            ]["environment"].update(OMP_NUM_THREADS="9"),
+            "pair": lambda value: value["pairs"][0]["implementations"]["candidate"].update(
+                input_fingerprint="tampered"
+            ),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                tampered = copy.deepcopy(result)
+                mutate(tampered)
+                with self.assertRaises(BenchmarkProtocolError):
+                    validate_result_authenticated_portable(
+                        tampered, expected_runtime_identity=foreign_runtime
+                    )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result_path = root / "result.json"
+            authentication_path = root / "runtime.json"
+            result_path.write_text(json.dumps(result), encoding="utf-8")
+            authentication_path.write_text(
+                json.dumps({"benchmark_runtime_identity": foreign_runtime}), encoding="utf-8"
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "qwen_mm_reference.benchmark_v2",
+                    "validate-portable",
+                    str(result_path),
+                    "--runtime-authentication",
+                    str(authentication_path),
+                ],
+                cwd=repository_root(),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout)
+
+    def test_authenticated_portable_validation_binds_durable_phase_c_path_and_hash(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["image1"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            thread_regimes=["one"],
+            build_labels=["profiled-release"],
+            seed=43,
+        )
+        result, foreign_runtime = self._foreign_candidate_result(result)
+        root = repository_root()
+        with tempfile.TemporaryDirectory(prefix=".portable-phase-c-", dir=root) as directory:
+            report = Path(directory) / "report.json"
+            report.write_text('{"status":"pass"}\n', encoding="utf-8")
+            relative = report.relative_to(root).as_posix()
+            report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+            evidence = {"candidate_runtime_identity": foreign_runtime}
+            fingerprint = hashlib.sha256(
+                json.dumps(
+                    {"report_sha256": report_sha256, "evidence": evidence},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+            result["release_eligibility"]["phase_c"] = {
+                "status": "pass",
+                "reason_codes": [],
+                "report_path": relative,
+                "assets_root": "reference/.cache/huggingface",
+                "mode_note": "smoke measurement is never release evidence",
+                "report_sha256": report_sha256,
+                "gate_fingerprint": fingerprint,
+                "evidence": evidence,
+            }
+            validate_result_authenticated_portable(
+                result, expected_runtime_identity=foreign_runtime
+            )
+            mutations = {
+                "temporary-path": lambda value: value["release_eligibility"]["phase_c"].update(
+                    report_path="/tmp/vanished-phase-c.json"
+                ),
+                "relabel": lambda value: value["release_eligibility"]["phase_c"].update(
+                    report_path="benchmarks/workloads-v2.json"
+                ),
+                "hash": lambda value: value["release_eligibility"]["phase_c"].update(
+                    report_sha256="0" * 64
+                ),
+                "fingerprint": lambda value: value["release_eligibility"]["phase_c"].update(
+                    gate_fingerprint="0" * 64
+                ),
+            }
+            for name, mutate in mutations.items():
+                with self.subTest(name=name):
+                    tampered = copy.deepcopy(result)
+                    mutate(tampered)
+                    with self.assertRaises(BenchmarkProtocolError):
+                        validate_result_authenticated_portable(
+                            tampered, expected_runtime_identity=foreign_runtime
+                        )
+
     def test_result_schema_closes_phase_c_release_states(self) -> None:
         schema = json.loads(RESULT_SCHEMA_PATH.read_text(encoding="utf-8"))
         eligibility = schema["properties"]["release_eligibility"]
@@ -648,6 +822,20 @@ class ProtocolTests(unittest.TestCase):
         def summary_relabel(value: dict[str, Any]) -> None:
             value["summaries"][0]["case_id"] = "text_short"
 
+        def pair_budget_relabel(value: dict[str, Any]) -> None:
+            pair = value["pairs"][0]
+            pair["thread_budget"] = 2
+            for implementation in pair["implementations"].values():
+                implementation["thread_settings"]["budget"] = 2
+                implementation["thread_settings"]["environment"] = {
+                    name: "2" for name in implementation["thread_settings"]["environment"]
+                }
+
+        def worker_thread_environment_relabel(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["candidate"]["thread_settings"]["environment"][
+                "OMP_NUM_THREADS"
+            ] = "99"
+
         mutations = {
             "gate-bypass": gate_bypass,
             "pair": pair_relabel,
@@ -656,6 +844,8 @@ class ProtocolTests(unittest.TestCase):
             "workload-hash": workload_hash_relabel,
             "workload-path": workload_path_relabel,
             "summary": summary_relabel,
+            "pair-budget": pair_budget_relabel,
+            "worker-thread-environment": worker_thread_environment_relabel,
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -102,6 +103,58 @@ class ModalBenchmarkSupportTests(unittest.TestCase):
             self.assertEqual(first, support.source_tree_digest(root))
             (root / "src/lib.rs").write_text("two", encoding="utf-8")
             self.assertNotEqual(first, support.source_tree_digest(root))
+
+    def test_committed_source_digest_ignores_gitignored_worktree_noise(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "--quiet"], cwd=root, check=True)
+            (root / ".gitignore").write_text(
+                ".DS_Store\nreference/results/conformance-local/\n", encoding="utf-8"
+            )
+            (root / "src").mkdir()
+            (root / "src/lib.rs").write_text("recorded\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=Digest Test",
+                    "-c",
+                    "user.email=digest@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "recorded",
+                ],
+                cwd=root,
+                check=True,
+            )
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            recorded = support.committed_source_tree_digest(root, revision)
+            self.assertEqual(recorded, support.source_tree_digest(root))
+
+            (root / ".DS_Store").write_bytes(b"ignored metadata")
+            generated = root / "reference/results/conformance-local/result.json"
+            generated.parent.mkdir(parents=True)
+            generated.write_text("{}\n", encoding="utf-8")
+            status = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=all"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertEqual(status, "")
+            self.assertEqual(support.committed_source_tree_digest(root, revision), recorded)
+            self.assertNotEqual(support.source_tree_digest(root), recorded)
+            with self.assertRaisesRegex(support.ModalBenchmarkArtifactError, "missing"):
+                support.committed_source_tree_digest(root, "0" * 40)
 
     def test_native_architecture_validation_rejects_wrong_or_emulated_hosts(self) -> None:
         support.assert_native_linux_x86(

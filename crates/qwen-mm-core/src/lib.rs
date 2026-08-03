@@ -15,6 +15,7 @@ pub mod error;
 pub mod geometry;
 pub mod limits;
 pub mod media;
+pub mod observability;
 pub mod output;
 pub mod patchify;
 pub mod processor;
@@ -37,6 +38,11 @@ pub use limits::{
     checked_capacity_bytes, checked_mul, preflight_batch,
 };
 pub use media::{PreparedRgbImage, prepare_image_rgb8};
+pub use observability::{
+    AllocationCounters, BufferClass, BufferEvent, CallCounters, CopyEvent,
+    DEFAULT_OBSERVATION_EVENT_CAPACITY, OBSERVATION_SCHEMA_VERSION, ObservationRecorder,
+    ObservationReport, ObservationScope, Observed, StageOutcome, StageSpan,
+};
 pub use output::{
     CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, MatrixView, PreparedArrayViews,
     PreparedArrays, PreparedBatch, ReplacementRange, VideoSidecar,

@@ -24,6 +24,7 @@ import numpy as np
 from .benchmark_protocol import (
     RESULT_SCHEMA_ID,
     RESULT_SCHEMA_VERSION,
+    THREAD_ENVIRONMENT_NAMES,
     BenchmarkProtocolError,
     architecture_family,
     environment_metadata,
@@ -220,6 +221,62 @@ def _stable_candidate_identity(identity: Mapping[str, Any]) -> dict[str, Any]:
     """Drop host-specific paths while retaining artifact and package identity."""
 
     return {key: value for key, value in identity.items() if key not in {"native_origin", "origin"}}
+
+
+def _portable_candidate_identity(identity: Mapping[str, Any]) -> dict[str, Any]:
+    """Retain architecture-independent adapter identity for foreign-host validation."""
+
+    return {
+        key: identity.get(key)
+        for key in ("adapter_spec", "kind", "resolved", "module", "artifact_sha256")
+    }
+
+
+def _current_portable_candidate_identity(adapter_spec: str) -> dict[str, Any]:
+    """Hash the repository adapter wrapper without importing qwen-mm or its extension."""
+
+    if adapter_spec != "qwen_mm.benchmark:create_adapter":
+        raise BenchmarkProtocolError(
+            "authenticated portable validation requires the frozen qwen-mm benchmark adapter"
+        )
+    adapter_path = (
+        repository_root() / "crates/qwen-mm-python/python/qwen_mm/benchmark.py"
+    ).resolve()
+    try:
+        artifact_sha256 = _sha256_path(adapter_path)
+    except OSError as error:
+        raise BenchmarkProtocolError("qwen-mm benchmark adapter wrapper is missing") from error
+    return {
+        "adapter_spec": adapter_spec,
+        "kind": "module",
+        "resolved": True,
+        "module": "qwen_mm.benchmark",
+        "artifact_sha256": artifact_sha256,
+    }
+
+
+def _validate_runtime_identity(value: Any) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "package",
+        "version",
+        "package_artifact_sha256",
+        "native_module",
+        "native_artifact_sha256",
+    }:
+        raise BenchmarkProtocolError("benchmark candidate runtime identity is incomplete")
+    if value.get("package") != "qwen_mm" or value.get("native_module") != "qwen_mm._native":
+        raise BenchmarkProtocolError("benchmark candidate runtime identity names are invalid")
+    if not isinstance(value.get("version"), str) or not value["version"]:
+        raise BenchmarkProtocolError("benchmark candidate runtime version is invalid")
+    for field in ("package_artifact_sha256", "native_artifact_sha256"):
+        digest = value.get(field)
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise BenchmarkProtocolError(f"benchmark candidate runtime {field} is invalid")
+    return value
 
 
 def _phase_c_has_performance_claim(value: Any) -> bool:
@@ -419,11 +476,11 @@ def bootstrap_confidence_interval(
     }
 
 
-def _thread_budget(regime: str) -> int:
+def _thread_budget(regime: str, *, production_thread_budget: int | None = None) -> int:
     if regime == "one":
         return 1
     if regime == "production":
-        return physical_cpu_count()
+        return production_thread_budget or physical_cpu_count()
     try:
         value = int(regime)
     except ValueError as error:
@@ -562,7 +619,12 @@ def summarize_pairs(pairs: Sequence[Mapping[str, Any]], *, seed: int) -> list[di
     return summaries
 
 
-def _validate_release_eligibility(result: Mapping[str, Any]) -> None:
+def _validate_release_eligibility(
+    result: Mapping[str, Any],
+    *,
+    verify_live_runtime: bool = True,
+    phase_c_report_override: Path | None = None,
+) -> None:
     eligibility = result.get("release_eligibility")
     if not isinstance(eligibility, Mapping):
         raise BenchmarkProtocolError("benchmark result lacks release eligibility metadata")
@@ -594,13 +656,15 @@ def _validate_release_eligibility(result: Mapping[str, Any]) -> None:
         recorded_candidate_identity, Mapping
     ):
         raise BenchmarkProtocolError("benchmark result lacks candidate artifact identity")
-    current_candidate_identity = candidate_artifact_identity(candidate_adapter)
-    if _stable_candidate_identity(current_candidate_identity) != _stable_candidate_identity(
-        recorded_candidate_identity
-    ):
-        raise BenchmarkProtocolError(
-            "benchmark candidate adapter or runtime artifact changed after measurement"
-        )
+    current_candidate_identity = recorded_candidate_identity
+    if verify_live_runtime:
+        current_candidate_identity = candidate_artifact_identity(candidate_adapter)
+        if _stable_candidate_identity(current_candidate_identity) != _stable_candidate_identity(
+            recorded_candidate_identity
+        ):
+            raise BenchmarkProtocolError(
+                "benchmark candidate adapter or runtime artifact changed after measurement"
+            )
     boundaries = protocol.get("case_boundaries")
     if not isinstance(boundaries, Mapping):
         raise BenchmarkProtocolError("benchmark protocol lacks case boundary metadata")
@@ -612,7 +676,7 @@ def _validate_release_eligibility(result: Mapping[str, Any]) -> None:
     if phase_c.get("status") == "not_applicable":
         raise BenchmarkProtocolError("image benchmark cannot mark Phase C not_applicable")
 
-    if phase_c.get("status") == "pass":
+    if phase_c.get("status") == "pass" and verify_live_runtime:
         report_path = phase_c.get("report_path")
         assets_root = phase_c.get("assets_root")
         if not isinstance(report_path, str) or not isinstance(assets_root, str):
@@ -622,9 +686,15 @@ def _validate_release_eligibility(result: Mapping[str, Any]) -> None:
             mode=str(result.get("mode")),
             selected_cases=selected_cases,
             candidate_identity=current_candidate_identity,
-            phase_c_report_path=Path(report_path),
+            phase_c_report_path=(
+                phase_c_report_override
+                if phase_c_report_override is not None
+                else Path(report_path)
+            ),
             phase_c_assets_root=Path(assets_root),
         )
+        if phase_c_report_override is not None:
+            recomputed["phase_c"]["report_path"] = report_path
         if recomputed != eligibility:
             raise BenchmarkProtocolError("Phase C gate is stale or has been tampered with")
 
@@ -693,6 +763,16 @@ def _validate_case_bindings(
         ):
             raise BenchmarkProtocolError(f"benchmark protocol {field} inventory is invalid")
         values[field] = raw
+    thread_mapping = protocol.get("thread_budget_mapping")
+    if (
+        not isinstance(thread_mapping, Mapping)
+        or set(thread_mapping) != set(values["thread_regimes"])
+        or any(
+            not isinstance(budget, int) or isinstance(budget, bool) or budget <= 0
+            for budget in thread_mapping.values()
+        )
+    ):
+        raise BenchmarkProtocolError("benchmark protocol thread budget mapping is invalid")
     unknown_cases = sorted(set(values["cases"]) - by_id.keys())
     if unknown_cases:
         raise BenchmarkProtocolError(
@@ -759,8 +839,12 @@ def _validate_case_bindings(
             not isinstance(thread_budget, int)
             or isinstance(thread_budget, bool)
             or thread_budget <= 0
+            or regime not in thread_mapping
+            or thread_budget != thread_mapping[regime]
         ):
-            raise BenchmarkProtocolError("benchmark pair thread budget is invalid")
+            raise BenchmarkProtocolError(
+                "benchmark pair thread budget differs from its protocol regime mapping"
+            )
         implementations = pair.get("implementations")
         if not isinstance(implementations, Mapping) or set(implementations) != {
             "reference",
@@ -799,13 +883,20 @@ def _validate_case_bindings(
                 or thread_settings.get("budget") != thread_budget
             ):
                 raise BenchmarkProtocolError("benchmark worker thread budget differs from its pair")
+            expected_environment = {name: str(thread_budget) for name in THREAD_ENVIRONMENT_NAMES}
+            if thread_settings.get("environment") != expected_environment:
+                raise BenchmarkProtocolError(
+                    "benchmark worker thread environment is not exactly budget-pinned"
+                )
 
     if list(summaries) != summarize_pairs(pairs, seed=seed):
         raise BenchmarkProtocolError("benchmark summaries do not match the authenticated pairs")
     return fingerprints
 
 
-def validate_result(result: Mapping[str, Any]) -> None:
+def validate_result_portable(result: Mapping[str, Any]) -> None:
+    """Validate immutable result evidence without importing the measured native wheel."""
+
     if result.get("schema_version") != RESULT_SCHEMA_VERSION:
         raise BenchmarkProtocolError("unsupported benchmark result schema version")
     if result.get("schema_id") != RESULT_SCHEMA_ID:
@@ -841,7 +932,90 @@ def validate_result(result: Mapping[str, Any]) -> None:
                 raise BenchmarkProtocolError("post-measurement conformance did not pass")
             if conformance.get("all_measured_iterations_stable") is not True:
                 raise BenchmarkProtocolError("measured outputs were not stable")
-    _validate_release_eligibility(result)
+    _validate_release_eligibility(result, verify_live_runtime=False)
+
+
+def validate_result_authenticated_portable(
+    result: Mapping[str, Any], *, expected_runtime_identity: Mapping[str, Any]
+) -> None:
+    """Validate foreign-architecture evidence against an authenticated runtime.
+
+    The adapter wrapper is re-hashed from the current source checkout, while the
+    native runtime is compared with the wheel-authenticated identity supplied by
+    the containing host evidence. This deliberately never imports or compares
+    the local machine's native extension with the foreign measured runtime.
+    """
+
+    validate_result_portable(result)
+    protocol = result.get("protocol")
+    if not isinstance(protocol, Mapping):
+        raise BenchmarkProtocolError("benchmark result lacks protocol metadata")
+    adapter = protocol.get("candidate_adapter")
+    recorded = protocol.get("candidate_identity")
+    if not isinstance(adapter, str) or not isinstance(recorded, Mapping):
+        raise BenchmarkProtocolError("benchmark result lacks candidate artifact identity")
+    current = _current_portable_candidate_identity(adapter)
+    if _portable_candidate_identity(current) != _portable_candidate_identity(recorded):
+        raise BenchmarkProtocolError(
+            "benchmark candidate adapter artifact changed after foreign-host measurement"
+        )
+    expected_runtime = _validate_runtime_identity(expected_runtime_identity)
+    recorded_runtime = _validate_runtime_identity(recorded.get("runtime_identity"))
+    if dict(recorded_runtime) != dict(expected_runtime):
+        raise BenchmarkProtocolError(
+            "benchmark candidate runtime differs from authenticated host evidence"
+        )
+    phase_c = result.get("release_eligibility", {}).get("phase_c", {})
+    if isinstance(phase_c, Mapping) and phase_c.get("status") == "pass":
+        evidence = phase_c.get("evidence")
+        if (
+            not isinstance(evidence, Mapping)
+            or evidence.get("candidate_runtime_identity") != expected_runtime
+        ):
+            raise BenchmarkProtocolError(
+                "benchmark Phase C runtime differs from authenticated host evidence"
+            )
+        report_path = phase_c.get("report_path")
+        if (
+            not isinstance(report_path, str)
+            or not report_path
+            or Path(report_path).is_absolute()
+            or ".." in Path(report_path).parts
+        ):
+            raise BenchmarkProtocolError(
+                "portable benchmark Phase C report path must be safe and repository-relative"
+            )
+        root = repository_root().resolve()
+        durable_report = (root / report_path).resolve()
+        try:
+            durable_report.relative_to(root)
+            report_sha256 = _sha256_path(durable_report)
+        except (OSError, ValueError) as error:
+            raise BenchmarkProtocolError(
+                "portable benchmark Phase C report is missing or escapes the repository"
+            ) from error
+        if phase_c.get("report_sha256") != report_sha256:
+            raise BenchmarkProtocolError(
+                "portable benchmark Phase C report hash differs from durable evidence"
+            )
+        fingerprint = hashlib.sha256(
+            _canonical_json({"report_sha256": report_sha256, "evidence": evidence})
+        ).hexdigest()
+        if phase_c.get("gate_fingerprint") != fingerprint:
+            raise BenchmarkProtocolError("portable benchmark Phase C gate fingerprint is stale")
+
+
+def validate_result(
+    result: Mapping[str, Any], *, phase_c_report_override: Path | None = None
+) -> None:
+    """Validate result evidence and re-authenticate the current local candidate runtime."""
+
+    validate_result_portable(result)
+    _validate_release_eligibility(
+        result,
+        verify_live_runtime=True,
+        phase_c_report_override=phase_c_report_override,
+    )
 
 
 def run_benchmark(
@@ -859,8 +1033,10 @@ def run_benchmark(
     minimum_seconds: float | None = None,
     thread_regimes: Sequence[str] = (),
     build_labels: Sequence[str] = (),
+    production_thread_budget: int | None = None,
     phase_c_report_path: Path | None = None,
     phase_c_assets_root: Path | None = None,
+    phase_c_publish_report_path: Path | None = None,
 ) -> dict[str, Any]:
     if mode not in MODE_DEFAULTS:
         raise BenchmarkProtocolError(f"unknown benchmark mode: {mode}")
@@ -898,7 +1074,9 @@ def run_benchmark(
             for case in selected:
                 for build_label in effective_builds:
                     for regime in effective_regimes:
-                        thread_budget = _thread_budget(regime)
+                        thread_budget = _thread_budget(
+                            regime, production_thread_budget=production_thread_budget
+                        )
                         orders = randomized_orders(repetitions, seed=seed + schedule_index)
                         schedule_index += 1
                         for repetition, order in enumerate(orders):
@@ -984,6 +1162,10 @@ def run_benchmark(
             "minimum_samples": effective_samples,
             "minimum_seconds": effective_seconds,
             "thread_regimes": effective_regimes,
+            "thread_budget_mapping": {
+                regime: _thread_budget(regime, production_thread_budget=production_thread_budget)
+                for regime in effective_regimes
+            },
             "build_labels": effective_builds,
             "p99_minimum_samples": 100,
             "threshold_enforcement": "none; D4 owns release performance gates",
@@ -999,12 +1181,20 @@ def run_benchmark(
         phase_c_report_path=phase_c_report_path,
         phase_c_assets_root=phase_c_assets_root,
     )
-    validate_result(result)
+    if phase_c_publish_report_path is not None:
+        publish_path = Path(phase_c_publish_report_path)
+        if publish_path.is_absolute() or ".." in publish_path.parts or not publish_path.parts:
+            raise BenchmarkProtocolError(
+                "future Phase C publication path must be safe and repository-relative"
+            )
+        if result["release_eligibility"]["phase_c"]["status"] == "pass":
+            result["release_eligibility"]["phase_c"]["report_path"] = publish_path.as_posix()
+    validate_result(result, phase_c_report_override=phase_c_report_path)
     return result
 
 
-def render_report(result: Mapping[str, Any]) -> str:
-    validate_result(result)
+def render_report(result: Mapping[str, Any], *, phase_c_report_override: Path | None = None) -> str:
+    validate_result(result, phase_c_report_override=phase_c_report_override)
     eligibility = result["release_eligibility"]
     phase_c = eligibility["phase_c"]
     reason_text = ", ".join(phase_c["reason_codes"]) or "current passing correctness gate"
@@ -1084,13 +1274,18 @@ def _run_command(args: argparse.Namespace) -> None:
         minimum_seconds=args.minimum_seconds,
         thread_regimes=_parse_csv(args.thread_regimes),
         build_labels=_parse_csv(args.build_labels),
+        production_thread_budget=args.production_thread_budget,
         phase_c_report_path=args.phase_c_report,
         phase_c_assets_root=args.phase_c_assets_root,
+        phase_c_publish_report_path=args.phase_c_publish_report,
     )
     _write_json(args.output, result)
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(render_report(result), encoding="utf-8")
+        args.report.write_text(
+            render_report(result, phase_c_report_override=args.phase_c_report),
+            encoding="utf-8",
+        )
     print(f"wrote paired benchmark result {args.output}")
 
 
@@ -1113,6 +1308,11 @@ def main() -> None:
     run_parser.add_argument("--thread-regimes", default="")
     run_parser.add_argument("--build-labels", default="")
     run_parser.add_argument(
+        "--production-thread-budget",
+        type=int,
+        help="explicit equal production budget for cross-host evidence",
+    )
+    run_parser.add_argument(
         "--phase-c-report",
         type=Path,
         default=DEFAULT_PHASE_C_REPORT,
@@ -1123,6 +1323,11 @@ def main() -> None:
         type=Path,
         default=DEFAULT_PHASE_C_ASSETS_ROOT,
         help="authenticated profile assets used to validate the selected Phase C report",
+    )
+    run_parser.add_argument(
+        "--phase-c-publish-report",
+        type=Path,
+        help="future safe repository-relative report path recorded in returned evidence",
     )
     run_parser.add_argument("--output", type=Path, required=True)
     run_parser.add_argument("--report", type=Path)
@@ -1137,7 +1342,34 @@ def main() -> None:
 
     validate_parser = subparsers.add_parser("validate", help="validate a result file")
     validate_parser.add_argument("result", type=Path)
-    validate_parser.set_defaults(func=lambda args: validate_result(_load_json(args.result)))
+    validate_parser.add_argument(
+        "--phase-c-source-report",
+        type=Path,
+        help="capture-time source report for validating a future publication path",
+    )
+    validate_parser.set_defaults(
+        func=lambda args: validate_result(
+            _load_json(args.result), phase_c_report_override=args.phase_c_source_report
+        )
+    )
+
+    portable_parser = subparsers.add_parser(
+        "validate-portable",
+        help="validate authenticated foreign-architecture result evidence",
+    )
+    portable_parser.add_argument("result", type=Path)
+    portable_parser.add_argument("--runtime-authentication", type=Path, required=True)
+
+    def portable_command(args: argparse.Namespace) -> None:
+        authentication = _load_json(args.runtime_authentication)
+        expected = authentication.get("benchmark_runtime_identity")
+        if not isinstance(expected, Mapping):
+            raise BenchmarkProtocolError("runtime authentication lacks benchmark_runtime_identity")
+        validate_result_authenticated_portable(
+            _load_json(args.result), expected_runtime_identity=expected
+        )
+
+    portable_parser.set_defaults(func=portable_command)
 
     report_parser = subparsers.add_parser("report", help="render a Markdown result report")
     report_parser.add_argument("result", type=Path)

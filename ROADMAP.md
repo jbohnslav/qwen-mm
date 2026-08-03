@@ -194,7 +194,10 @@ remain separate.
 
 - All timed runs pass conformance immediately before and after measurement.
 - The lower bound of the 95% speedup confidence interval is at least `2.0x` for
-  both `jpeg24_one_request` and `ragged24` on dedicated ARM and x86 hosts.
+  both `jpeg24_one_request` and `ragged24` on controlled ARM and x86 hosts.
+  Allocated native Modal x86 compute is eligible when captured CPU allocation,
+  affinity/cgroups, repeatability, and runtime provenance satisfy the same
+  protocol; provider identity alone neither qualifies nor disqualifies a run.
 - On the current M4 baseline, the initial point targets are therefore below
   111.0 ms for Qwen3-VL and 111.6 ms for Qwen3.5 on `image24`.
 - `jpeg1_offgrid` and both text-only cases regress by no more than 5%.
@@ -307,7 +310,7 @@ identical model inputs. The seam spike decides this early rather than at the end
 | D1 — Native observability and profile | A5, C3 | Add request/media stage spans, allocation and buffer-lifetime counters, Python-call counters, and whole-operation flamegraphs. Publish a ranked bottleneck list on ARM and x86. |
 | D2 — Deterministic bounded parallelism | D1 | Parallelize requests/visuals with an owned bounded pool. Outputs and errors are invariant at thread counts 1 through N; tokenizers/PyTorch/vLLM cannot oversubscribe it by default. |
 | D3 — Profile-driven fusion and arenas | C1, D1 | Land scratch reuse, fused normalize/layout writes, and caller-owned buffers only where profiles justify them. Each isolated change reruns full conformance and documents removed buffers/copies. |
-| D4 — Image performance certification | A5, C3, D2, D3 | Run the complete dedicated-host protocol and meet every CPU speed, regression, scaling, and transient-memory gate. Publish raw JSON and a readable report beside correctness. |
+| D4 — Image performance certification | A5, C3, D2, D3 | Run the complete controlled-host protocol and meet every CPU speed, regression, scaling, and transient-memory gate. Publish raw JSON and a readable report beside correctness. |
 
 ### Phase E: temporal and encoded-video support
 

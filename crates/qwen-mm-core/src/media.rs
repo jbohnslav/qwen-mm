@@ -1,6 +1,9 @@
 //! Bounded still-image decode, color conversion, raw RGB packing, and resize.
 
-use std::io::{BufReader, Cursor};
+use std::{
+    io::{BufReader, Cursor},
+    mem,
+};
 
 use image::{DynamicImage, ImageError, ImageFormat as DecoderFormat, ImageReader, Limits};
 use libjpeg_turbo_rs::{DecodeLimits, Decoder as JpegDecoder, JpegError, PixelFormat};
@@ -9,9 +12,10 @@ use crate::{
     error::{ErrorCategory, QwenError, Result},
     geometry::{ImageGeometryPlan, plan_image_geometry},
     limits::{ResourceLimits, checked_add, checked_mul},
+    observability::{BufferClass, ObservationRecorder, ObservationScope},
     profile::VisualProfile,
     request::{ImageFormat, ImageInput, ImageOptions, Rgb8},
-    resize::resize_image_rgb8,
+    resize::{resize_image_rgb8, resize_image_rgb8_observed},
 };
 
 const RGB_CHANNELS: u64 = 3;
@@ -168,21 +172,130 @@ pub(crate) fn plan_image_rgb8<'a>(
 
 /// Executes one image plan, performing full decode before deferred geometry.
 pub(crate) fn execute_image_plan(plan: ImagePreparationPlan<'_>) -> Result<PreparedRgbImage> {
+    execute_image_plan_internal(plan, None, ObservationScope::default())
+}
+
+/// Executes one image plan with bounded decode/color, resize, allocation, and
+/// copy observations. The unobserved path calls the same implementation with
+/// no recorder.
+pub(crate) fn execute_image_plan_observed(
+    plan: ImagePreparationPlan<'_>,
+    recorder: &mut ObservationRecorder,
+    scope: ObservationScope,
+) -> Result<PreparedRgbImage> {
+    execute_image_plan_internal(plan, Some(recorder), scope)
+}
+
+#[allow(clippy::too_many_lines)]
+fn execute_image_plan_internal(
+    plan: ImagePreparationPlan<'_>,
+    mut recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
+) -> Result<PreparedRgbImage> {
     match plan.source {
         PlannedSource::Encoded {
             data,
             format,
             header,
         } => {
-            let decoded = decode_to_rgb(data, format, header, plan.limits)?;
-            let geometry = plan.geometry?;
-            let rgb = resize_image_rgb8(
-                &decoded,
-                header.height,
-                header.width,
-                checked_mul("decoded packed RGB stride", header.width, RGB_CHANNELS)?,
-                &geometry,
-            )?;
+            let decode_span = recorder.as_deref_mut().map(|recorder| {
+                recorder.begin("native.media.decode_color", scope, data.len() as u64)
+            });
+            let decoded = match decode_to_rgb(data, format, header, plan.limits) {
+                Ok(decoded) => {
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        if let Some(span) = decode_span {
+                            recorder.finish_success(
+                                span,
+                                decoded.len() as u64,
+                                &[header.height, header.width, RGB_CHANNELS],
+                            );
+                        }
+                        recorder.record_allocation(
+                            "decoded_rgb",
+                            BufferClass::Transient,
+                            scope,
+                            vector_capacity_bytes(&decoded),
+                        );
+                    }
+                    decoded
+                }
+                Err(error) => {
+                    if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), decode_span) {
+                        recorder.finish_error(span, &error);
+                    }
+                    return Err(error);
+                }
+            };
+            let geometry = match plan.geometry {
+                Ok(geometry) => geometry,
+                Err(error) => {
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        recorder.release_transient(
+                            "decoded_rgb",
+                            scope,
+                            vector_capacity_bytes(&decoded),
+                        );
+                    }
+                    return Err(error);
+                }
+            };
+            let decoded_stride =
+                checked_mul("decoded packed RGB stride", header.width, RGB_CHANNELS)?;
+            let resize_span = recorder
+                .as_deref_mut()
+                .map(|recorder| recorder.begin("native.media.resize", scope, decoded.len() as u64));
+            let resized = if let Some(recorder) = recorder.as_deref_mut() {
+                resize_image_rgb8_observed(
+                    &decoded,
+                    header.height,
+                    header.width,
+                    decoded_stride,
+                    &geometry,
+                    recorder,
+                    scope,
+                )
+            } else {
+                resize_image_rgb8(
+                    &decoded,
+                    header.height,
+                    header.width,
+                    decoded_stride,
+                    &geometry,
+                )
+            };
+            let rgb = match resized {
+                Ok(rgb) => {
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        if let Some(span) = resize_span {
+                            recorder.finish_success(
+                                span,
+                                rgb.len() as u64,
+                                &[geometry.height, geometry.width, RGB_CHANNELS],
+                            );
+                        }
+                        recorder.release_transient(
+                            "decoded_rgb",
+                            scope,
+                            vector_capacity_bytes(&decoded),
+                        );
+                    }
+                    rgb
+                }
+                Err(error) => {
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        if let Some(span) = resize_span {
+                            recorder.finish_error(span, &error);
+                        }
+                        recorder.release_transient(
+                            "decoded_rgb",
+                            scope,
+                            vector_capacity_bytes(&decoded),
+                        );
+                    }
+                    return Err(error);
+                }
+            };
             if u64::try_from(rgb.len()).map_err(|_| overflow("prepared RGB length"))?
                 != geometry.rgb_capacity_bytes
             {
@@ -205,27 +318,71 @@ pub(crate) fn execute_image_plan(plan: ImagePreparationPlan<'_>) -> Result<Prepa
             packed_stride,
             required,
         } => {
-            if height == 0 || width == 0 {
-                return Err(geometry_error("raw RGB dimensions must be non-zero"));
-            }
-            if stride < packed_stride {
-                return Err(
-                    geometry_error("raw RGB stride is smaller than packed width")
-                        .with_context("stride", stride)
-                        .with_context("packed_stride", packed_stride),
-                );
-            }
             let actual =
                 u64::try_from(raw.data.len()).map_err(|_| overflow("raw RGB buffer length"))?;
+            let decode_span = recorder
+                .as_deref_mut()
+                .map(|recorder| recorder.begin("native.media.decode_color", scope, required));
+            if height == 0 || width == 0 {
+                let error = geometry_error("raw RGB dimensions must be non-zero");
+                if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), decode_span) {
+                    recorder.finish_error(span, &error);
+                }
+                return Err(error);
+            }
+            if stride < packed_stride {
+                let error = geometry_error("raw RGB stride is smaller than packed width")
+                    .with_context("stride", stride)
+                    .with_context("packed_stride", packed_stride);
+                if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), decode_span) {
+                    recorder.finish_error(span, &error);
+                }
+                return Err(error);
+            }
             if actual < required {
-                return Err(geometry_error(
-                    "raw RGB buffer is shorter than its dimensions and stride",
-                )
-                .with_context("actual_bytes", actual)
-                .with_context("required_bytes", required));
+                let error =
+                    geometry_error("raw RGB buffer is shorter than its dimensions and stride")
+                        .with_context("actual_bytes", actual)
+                        .with_context("required_bytes", required);
+                if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), decode_span) {
+                    recorder.finish_error(span, &error);
+                }
+                return Err(error);
+            }
+            if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), decode_span) {
+                recorder.finish_success(span, 0, &[height, width, RGB_CHANNELS]);
             }
             let geometry = plan.geometry?;
-            let rgb = resize_image_rgb8(raw.data, height, width, stride, &geometry)?;
+            let resize_span = recorder
+                .as_deref_mut()
+                .map(|recorder| recorder.begin("native.media.resize", scope, required));
+            let resized = if let Some(recorder) = recorder.as_deref_mut() {
+                resize_image_rgb8_observed(
+                    raw.data, height, width, stride, &geometry, recorder, scope,
+                )
+            } else {
+                resize_image_rgb8(raw.data, height, width, stride, &geometry)
+            };
+            let rgb = match resized {
+                Ok(rgb) => {
+                    if let Some(recorder) = recorder.as_deref_mut()
+                        && let Some(span) = resize_span
+                    {
+                        recorder.finish_success(
+                            span,
+                            rgb.len() as u64,
+                            &[geometry.height, geometry.width, RGB_CHANNELS],
+                        );
+                    }
+                    rgb
+                }
+                Err(error) => {
+                    if let (Some(recorder), Some(span)) = (recorder, resize_span) {
+                        recorder.finish_error(span, &error);
+                    }
+                    return Err(error);
+                }
+            };
             Ok(PreparedRgbImage {
                 source_height: height,
                 source_width: width,
@@ -266,6 +423,13 @@ fn check_encoded_bytes(data: &[u8], limits: ResourceLimits) -> Result<()> {
         actual,
         limits.encoded_bytes_per_batch(),
     )
+}
+
+#[allow(clippy::ptr_arg)] // Vec capacity, rather than slice length, is the allocation metric.
+fn vector_capacity_bytes<T>(values: &Vec<T>) -> u64 {
+    let capacity = u64::try_from(values.capacity()).unwrap_or(u64::MAX);
+    let element_bytes = u64::try_from(mem::size_of::<T>()).unwrap_or(u64::MAX);
+    capacity.saturating_mul(element_bytes)
 }
 
 fn check_source_resources(height: u64, width: u64, limits: ResourceLimits) -> Result<()> {
@@ -1029,10 +1193,15 @@ fn invariant(message: impl Into<String>) -> QwenError {
 
 #[cfg(test)]
 mod tests {
-    use super::{png_crc32, prepare_image_rgb8, probe_webp};
+    use image::{ExtendedColorType, ImageEncoder, codecs::png::PngEncoder};
+
+    use super::{
+        execute_image_plan_observed, plan_image_rgb8, png_crc32, prepare_image_rgb8, probe_webp,
+    };
     use crate::{
         error::ErrorCategory,
         limits::{LimitOverrides, ResourceLimits},
+        observability::{ObservationRecorder, ObservationScope, StageOutcome},
         profile::{ProfileAlias, ProfileRegistry, VisualProfile},
         request::{ImageFormat, ImageInput, ImageOptions, Rgb8},
     };
@@ -1224,6 +1393,46 @@ mod tests {
             .category(),
             ErrorCategory::MediaDecode
         );
+    }
+
+    #[test]
+    fn observed_deferred_geometry_error_releases_successfully_decoded_rgb() {
+        const WIDTH: u32 = 12_864;
+        const HEIGHT: u32 = 64;
+        let rgb = vec![29_u8; WIDTH as usize * HEIGHT as usize * 3];
+        let mut encoded = Vec::new();
+        PngEncoder::new(&mut encoded)
+            .write_image(&rgb, WIDTH, HEIGHT, ExtendedColorType::Rgb8)
+            .expect("encode bad-aspect PNG");
+        let plan = plan_image_rgb8(
+            ImageInput::Encoded {
+                data: &encoded,
+                format: ImageFormat::Png,
+            },
+            &visual(),
+            ImageOptions::default(),
+            ResourceLimits::default(),
+        )
+        .expect("decode plan defers geometry");
+        assert_eq!(
+            plan.geometry().expect_err("bad aspect").category(),
+            ErrorCategory::MediaGeometry
+        );
+        let scope = ObservationScope::media_at(0, 1, 2, 3, 4);
+        let mut recorder = ObservationRecorder::new(16);
+        let error = execute_image_plan_observed(plan, &mut recorder, scope)
+            .expect_err("geometry after decode");
+        assert_eq!(error.category(), ErrorCategory::MediaGeometry);
+        let report = recorder.report();
+        assert_eq!(report.allocations.transient_live_bytes, 0);
+        assert!(report.buffers.iter().any(|buffer| {
+            buffer.name == "decoded_rgb" && buffer.scope == scope && buffer.released_at_ns.is_some()
+        }));
+        assert!(report.spans.iter().any(|span| {
+            span.name == "native.media.decode_color"
+                && span.scope == scope
+                && span.outcome == StageOutcome::Success
+        }));
     }
 
     #[test]

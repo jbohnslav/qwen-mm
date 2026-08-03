@@ -1,0 +1,25 @@
+Analysis of sampling python3.11 (pid 1234) every 1 milliseconds
+Process:         python3.11 [1234]
+Code Type:       ARM64
+Platform:        macOS
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Call graph:
+    1526 Thread_20790486   DispatchQueue_1: com.apple.main-thread  (serial)
+      1526 start  (in dyld) + 6992  [0x18d6abe00]
+        1526 PyEval_EvalCode  (in libpython3.11.dylib) + 224  [0x10171631c]
+          1526 _PyEval_EvalFrameDefault  (in libpython3.11.dylib) + 193868  [0x1016dcd28]
+          + 1526 qwen_mm_python::binding::prepare_batch  (in _native.abi3.so) + 144  [0x104000090]
+          + ! 1200 0x1040000a0  (in _native.abi3.so) + 16  [0x1040000a0]
+          +     1200 qwen_mm_core::processor::execute_plan_into  (in _native.abi3.so) + 172,460,...  [0x1040000b0,0x1040000c0,...]
+          +   326 qwen_mm_core::resize::resize_rgb  (in _native.abi3.so) + 88  [0x1040000d0]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        qwen_mm_core::processor::execute_plan_into  (in _native.abi3.so)        1200
+        qwen_mm_core::resize::resize_rgb  (in _native.abi3.so)                  326
+
+Binary Images:
+       0x104000000 - 0x1040ffffff +_native.abi3.so /tmp/_native.abi3.so

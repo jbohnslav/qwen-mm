@@ -6,6 +6,8 @@ import hashlib
 import io
 import json
 import os
+import subprocess
+import tarfile
 import tempfile
 import zipfile
 from collections.abc import Iterable, Mapping
@@ -62,6 +64,8 @@ def is_ignored_source_path(relative: Path) -> bool:
         return True
     if relative.name.startswith("_native") and relative.suffix in {".dylib", ".pyd", ".so"}:
         return True
+    if relative.parts[:2] == ("benchmarks", "profile-evidence-v1"):
+        return True
     return relative.parts[:2] == ("reference", ".cache")
 
 
@@ -77,6 +81,66 @@ def source_tree_digest(root: Path) -> tuple[str, int, int]:
             continue
         data = path.read_bytes()
         encoded = relative.as_posix().encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, "big"))
+        digest.update(encoded)
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
+        file_count += 1
+        total_bytes += len(data)
+    return digest.hexdigest(), file_count, total_bytes
+
+
+def committed_source_tree_digest(
+    root: Path, revision: str, *, excluded: Iterable[str] = ()
+) -> tuple[str, int, int]:
+    """Hash the immutable files recorded by a canonical Git commit."""
+
+    if len(revision) not in {40, 64} or any(
+        character not in "0123456789abcdef" for character in revision
+    ):
+        raise ModalBenchmarkArtifactError("source revision is not a canonical Git object ID")
+    try:
+        resolved = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if resolved != revision:
+            raise ModalBenchmarkArtifactError("source revision is not a canonical commit ID")
+        archive_bytes = subprocess.run(
+            ["git", "archive", "--format=tar", revision],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        ).stdout
+        with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as archive:
+            source_files: dict[str, bytes] = {}
+            for member in archive.getmembers():
+                if not member.isfile():
+                    continue
+                extracted = archive.extractfile(member)
+                if extracted is None:
+                    raise ModalBenchmarkArtifactError(
+                        f"source tree entry cannot be read: {member.name}"
+                    )
+                source_files[member.name] = extracted.read()
+    except ModalBenchmarkArtifactError:
+        raise
+    except (OSError, subprocess.CalledProcessError, tarfile.TarError) as error:
+        raise ModalBenchmarkArtifactError(
+            "source revision is missing or its Git tree cannot be read"
+        ) from error
+
+    excluded_paths = set(excluded)
+    digest = hashlib.sha256()
+    file_count = 0
+    total_bytes = 0
+    for name, data in sorted(source_files.items()):
+        if name in excluded_paths or is_ignored_source_path(Path(name)):
+            continue
+        encoded = name.encode("utf-8")
         digest.update(len(encoded).to_bytes(8, "big"))
         digest.update(encoded)
         digest.update(len(data).to_bytes(8, "big"))

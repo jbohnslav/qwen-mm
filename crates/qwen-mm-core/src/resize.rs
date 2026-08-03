@@ -1,9 +1,12 @@
 //! Reference-compatible spatial resize entry points.
 
+use std::mem;
+
 use crate::{
     error::{ErrorCategory, QwenError, Result},
     geometry::ImageGeometryPlan,
     limits::{checked_add, checked_mul},
+    observability::{BufferClass, ObservationRecorder, ObservationScope},
 };
 
 const RGB_CHANNELS: u64 = 3;
@@ -26,20 +29,69 @@ pub fn resize_image_rgb8(
     source_stride_bytes: u64,
     plan: &ImageGeometryPlan,
 ) -> Result<Vec<u8>> {
+    resize_image_rgb8_internal(
+        source,
+        source_height,
+        source_width,
+        source_stride_bytes,
+        plan,
+        None,
+        ObservationScope::default(),
+    )
+}
+
+/// Observed still-image resize used by the complete batch recorder.
+pub(crate) fn resize_image_rgb8_observed(
+    source: &[u8],
+    source_height: u64,
+    source_width: u64,
+    source_stride_bytes: u64,
+    plan: &ImageGeometryPlan,
+    recorder: &mut ObservationRecorder,
+    scope: ObservationScope,
+) -> Result<Vec<u8>> {
+    resize_image_rgb8_internal(
+        source,
+        source_height,
+        source_width,
+        source_stride_bytes,
+        plan,
+        Some(recorder),
+        scope,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn resize_image_rgb8_internal(
+    source: &[u8],
+    source_height: u64,
+    source_width: u64,
+    source_stride_bytes: u64,
+    plan: &ImageGeometryPlan,
+    mut recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
+) -> Result<Vec<u8>> {
     let (destination_height, destination_width) = validate_resize_plan(plan)?;
-    let source = packed_source(source, source_height, source_width, source_stride_bytes)?;
+    let source = packed_source(
+        source,
+        source_height,
+        source_width,
+        source_stride_bytes,
+        recorder.as_deref_mut(),
+        scope,
+    )?;
     let source_width_u32 = dimension_u32("source_width", source_width)?;
     let source_height_u32 = dimension_u32("source_height", source_height)?;
 
-    if source_width == plan.width && source_height == plan.height {
-        return Ok(source);
-    }
     resize_fixed_point_u8(
         &source,
+        vec_capacity_bytes(&source),
         source_height_u32 as usize,
         source_width_u32 as usize,
         destination_height,
         destination_width,
+        recorder,
+        scope,
     )
 }
 
@@ -57,7 +109,14 @@ pub fn resize_video_rgb8_to_f32(
     plan: &ImageGeometryPlan,
 ) -> Result<Vec<f32>> {
     let (destination_height, destination_width) = validate_resize_plan(plan)?;
-    let source = packed_source(source, source_height, source_width, source_stride_bytes)?;
+    let source = packed_source(
+        source,
+        source_height,
+        source_width,
+        source_stride_bytes,
+        None,
+        ObservationScope::default(),
+    )?;
     resize_torchvision_f32(
         &source,
         usize_capacity(source_height, "source height")?,
@@ -260,42 +319,133 @@ struct FixedWeights {
     kernel_size: usize,
 }
 
+#[derive(Clone, Copy)]
+struct ResizeAllocationNames {
+    floating: &'static str,
+    bounds: &'static str,
+    coefficients: &'static str,
+    destination: &'static str,
+}
+
+const HORIZONTAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
+    floating: "resize.horizontal.weights_f64",
+    bounds: "resize.horizontal.bounds",
+    coefficients: "resize.horizontal.coefficients_i32",
+    destination: "resize.horizontal.destination",
+};
+
+const VERTICAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
+    floating: "resize.vertical.weights_f64",
+    bounds: "resize.vertical.bounds",
+    coefficients: "resize.vertical.coefficients_i32",
+    destination: "resize.vertical.destination",
+};
+
 /// A source-faithful port of Pillow's separable 8-bit bicubic resampler.
+#[allow(clippy::too_many_arguments)]
 fn resize_fixed_point_u8(
     source: &[u8],
+    source_capacity_bytes: u64,
     source_height: usize,
     source_width: usize,
     destination_height: usize,
     destination_width: usize,
+    mut recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
 ) -> Result<Vec<u8>> {
     if source_height == destination_height && source_width == destination_width {
-        return Ok(source.to_vec());
+        let destination = source.to_vec();
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                "resize.noop.source_copy",
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
+            recorder.record_copy("resize.noop.source_copy", scope, usize_bytes(source.len()));
+            recorder.release_transient("resize.packed_source", scope, source_capacity_bytes);
+            recorder.rename_live_transient("resize.noop.source_copy", "prepared_rgb", scope);
+        }
+        return Ok(destination);
     }
 
-    let horizontal = if source_width == destination_width {
-        source.to_vec()
+    let (horizontal, horizontal_name) = if source_width == destination_width {
+        let horizontal = source.to_vec();
+        if let Some(recorder) = recorder.as_deref_mut() {
+            recorder.record_allocation(
+                "resize.horizontal.source_copy",
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&horizontal),
+            );
+            recorder.record_copy(
+                "resize.horizontal.source_copy",
+                scope,
+                usize_bytes(source.len()),
+            );
+        }
+        (horizontal, "resize.horizontal.source_copy")
     } else {
-        let weights = fixed_cubic_weights(source_width, destination_width)?;
-        convolve_horizontal(
+        let weights = fixed_cubic_weights(
+            source_width,
+            destination_width,
+            HORIZONTAL_RESIZE_NAMES,
+            recorder.as_deref_mut(),
+            scope,
+        )?;
+        let destination = convolve_horizontal(
             source,
             source_height,
             source_width,
             destination_width,
             &weights,
-        )?
+            recorder.as_deref_mut(),
+            scope,
+        )?;
+        release_fixed_weights(
+            &weights,
+            HORIZONTAL_RESIZE_NAMES,
+            recorder.as_deref_mut(),
+            scope,
+        );
+        (destination, HORIZONTAL_RESIZE_NAMES.destination)
     };
 
     if source_height == destination_height {
+        if let Some(recorder) = recorder.as_deref_mut() {
+            recorder.release_transient("resize.packed_source", scope, source_capacity_bytes);
+            recorder.rename_live_transient(horizontal_name, "prepared_rgb", scope);
+        }
         return Ok(horizontal);
     }
-    let weights = fixed_cubic_weights(source_height, destination_height)?;
-    convolve_vertical(
+    let weights = fixed_cubic_weights(
+        source_height,
+        destination_height,
+        VERTICAL_RESIZE_NAMES,
+        recorder.as_deref_mut(),
+        scope,
+    )?;
+    let destination = convolve_vertical(
         &horizontal,
         source_height,
         destination_height,
         destination_width,
         &weights,
-    )
+        recorder.as_deref_mut(),
+        scope,
+    )?;
+    release_fixed_weights(
+        &weights,
+        VERTICAL_RESIZE_NAMES,
+        recorder.as_deref_mut(),
+        scope,
+    );
+    if let Some(recorder) = recorder {
+        recorder.release_transient("resize.packed_source", scope, source_capacity_bytes);
+        recorder.release_transient(horizontal_name, scope, vec_capacity_bytes(&horizontal));
+        recorder.rename_live_transient("resize.vertical.destination", "prepared_rgb", scope);
+    }
+    Ok(destination)
 }
 
 #[allow(
@@ -303,7 +453,13 @@ fn resize_fixed_point_u8(
     clippy::cast_precision_loss,
     clippy::cast_sign_loss
 )] // All casts deliberately mirror pinned PyTorch C++ conversions.
-fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWeights> {
+fn fixed_cubic_weights(
+    input_size: usize,
+    output_size: usize,
+    names: ResizeAllocationNames,
+    mut recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
+) -> Result<FixedWeights> {
     const PRECISION: u32 = 22;
     if input_size == 0 || output_size == 0 {
         return Err(geometry("resize dimensions must be non-zero"));
@@ -321,6 +477,20 @@ fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWei
         .ok_or_else(|| overflow("image resize weights capacity"))?;
     let mut floating = vec![0.0_f64; floating_len];
     let mut bounds = Vec::with_capacity(output_size);
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.record_allocation(
+            names.floating,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&floating),
+        );
+        recorder.record_allocation(
+            names.bounds,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&bounds),
+        );
+    }
 
     for output_index in 0..output_size {
         let center = scale * (output_index as f64 + 0.5);
@@ -354,6 +524,7 @@ fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWei
     }
 
     let scale = f64::from(1_u32 << PRECISION);
+    let floating_bytes = vec_capacity_bytes(&floating);
     let coefficients = floating
         .into_iter()
         .map(|weight| {
@@ -365,12 +536,37 @@ fn fixed_cubic_weights(input_size: usize, output_size: usize) -> Result<FixedWei
             }
         })
         .collect::<Vec<_>>();
+    if let Some(recorder) = recorder {
+        recorder.record_allocation(
+            names.coefficients,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&coefficients),
+        );
+        recorder.release_transient(names.floating, scope, floating_bytes);
+    }
 
     Ok(FixedWeights {
         bounds,
         coefficients,
         kernel_size,
     })
+}
+
+fn release_fixed_weights(
+    weights: &FixedWeights,
+    names: ResizeAllocationNames,
+    recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
+) {
+    if let Some(recorder) = recorder {
+        recorder.release_transient(names.bounds, scope, vec_capacity_bytes(&weights.bounds));
+        recorder.release_transient(
+            names.coefficients,
+            scope,
+            vec_capacity_bytes(&weights.coefficients),
+        );
+    }
 }
 
 fn keys_cubic(mut value: f64) -> f64 {
@@ -391,6 +587,8 @@ fn convolve_horizontal(
     source_width: usize,
     destination_width: usize,
     weights: &FixedWeights,
+    recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
 ) -> Result<Vec<u8>> {
     const PRECISION: u32 = 22;
     let destination_len = height
@@ -398,6 +596,14 @@ fn convolve_horizontal(
         .and_then(|value| value.checked_mul(3))
         .ok_or_else(|| overflow("horizontal video resize capacity"))?;
     let mut destination = vec![0_u8; destination_len];
+    if let Some(recorder) = recorder {
+        recorder.record_allocation(
+            HORIZONTAL_RESIZE_NAMES.destination,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&destination),
+        );
+    }
     for row in 0..height {
         for output_x in 0..destination_width {
             let (minimum, count) = weights.bounds[output_x];
@@ -424,6 +630,8 @@ fn convolve_vertical(
     destination_height: usize,
     width: usize,
     weights: &FixedWeights,
+    recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
 ) -> Result<Vec<u8>> {
     const PRECISION: u32 = 22;
     debug_assert_eq!(weights.bounds.len(), destination_height);
@@ -434,6 +642,14 @@ fn convolve_vertical(
         .checked_mul(row_bytes)
         .ok_or_else(|| overflow("vertical video resize capacity"))?;
     let mut destination = vec![0_u8; destination_len];
+    if let Some(recorder) = recorder {
+        recorder.record_allocation(
+            VERTICAL_RESIZE_NAMES.destination,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&destination),
+        );
+    }
     for output_y in 0..destination_height {
         let (minimum, count) = weights.bounds[output_y];
         debug_assert!(minimum + count <= source_height);
@@ -457,6 +673,8 @@ fn packed_source(
     source_height: u64,
     source_width: u64,
     source_stride_bytes: u64,
+    recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
 ) -> Result<Vec<u8>> {
     if source_height == 0 || source_width == 0 {
         return Err(geometry("source dimensions must be non-zero"));
@@ -499,7 +717,27 @@ fn packed_source(
             .ok_or_else(|| overflow("source RGB row offset"))?;
         packed.extend_from_slice(&source[start..start + row_bytes]);
     }
+    if let Some(recorder) = recorder {
+        recorder.record_allocation(
+            "resize.packed_source",
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&packed),
+        );
+        recorder.record_copy("resize.packed_source", scope, packed_capacity);
+    }
     Ok(packed)
+}
+
+#[allow(clippy::ptr_arg)] // Vec capacity, rather than slice length, is the allocation metric.
+fn vec_capacity_bytes<T>(values: &Vec<T>) -> u64 {
+    let capacity = u64::try_from(values.capacity()).unwrap_or(u64::MAX);
+    let element_bytes = u64::try_from(mem::size_of::<T>()).unwrap_or(u64::MAX);
+    capacity.saturating_mul(element_bytes)
+}
+
+fn usize_bytes(value: usize) -> u64 {
+    u64::try_from(value).unwrap_or(u64::MAX)
 }
 
 fn validate_resize_plan(plan: &ImageGeometryPlan) -> Result<(usize, usize)> {
@@ -551,11 +789,15 @@ fn invariant(message: impl Into<String>) -> QwenError {
 mod tests {
     use serde::Deserialize;
 
-    use super::{quantize_torchvision_u8_to_f32, resize_image_rgb8, resize_video_rgb8_to_f32};
+    use super::{
+        quantize_torchvision_u8_to_f32, resize_image_rgb8, resize_image_rgb8_observed,
+        resize_video_rgb8_to_f32,
+    };
     use crate::{
         error::ErrorCategory,
         geometry::plan_image_geometry,
         limits::ResourceLimits,
+        observability::{BufferClass, ObservationRecorder, ObservationScope},
         profile::{ProfileAlias, ProfileRegistry},
         request::ImageOptions,
     };
@@ -585,6 +827,138 @@ mod tests {
     const PILLOW: &[u8] = include_bytes!("../../../reference/resize/v1/pillow-image-rgb8.bin");
     const TORCHVISION: &[u8] =
         include_bytes!("../../../reference/resize/v1/torchvision-video-f32le.bin");
+
+    #[test]
+    fn observed_two_axis_resize_reconciles_owned_scratch_and_copy_bytes() {
+        let geometry = plan_with_options(
+            64,
+            64,
+            ImageOptions {
+                resized_height: Some(96),
+                resized_width: Some(96),
+                ..ImageOptions::default()
+            },
+        );
+        assert_ne!([geometry.height, geometry.width], [64, 64]);
+        let source = vec![17_u8; 64 * 64 * 3];
+        let scope = ObservationScope::media_at(2, 3, 4, 5, 6);
+        let mut recorder = ObservationRecorder::new(64);
+        let prepared =
+            resize_image_rgb8_observed(&source, 64, 64, 64 * 3, &geometry, &mut recorder, scope)
+                .expect("observed resize");
+        let report = recorder.report();
+        assert_eq!(report.allocations.copy_count, 1);
+        assert_eq!(report.allocations.copied_bytes, source.len() as u64);
+        assert_eq!(report.copies.len(), 1);
+        assert_eq!(report.copies[0].name, "resize.packed_source");
+        assert_eq!(report.copies[0].scope, scope);
+        assert_eq!(report.copies[0].bytes, source.len() as u64);
+        assert_eq!(report.allocations.allocation_count, 9);
+        assert_eq!(report.buffers.len(), 9);
+        assert_eq!(
+            report.allocations.allocated_bytes,
+            report
+                .buffers
+                .iter()
+                .map(|buffer| buffer.bytes)
+                .sum::<u64>()
+        );
+        let names = report
+            .buffers
+            .iter()
+            .map(|buffer| buffer.name.as_str())
+            .collect::<Vec<_>>();
+        for required in [
+            "resize.packed_source",
+            "resize.horizontal.weights_f64",
+            "resize.horizontal.bounds",
+            "resize.horizontal.coefficients_i32",
+            "resize.horizontal.destination",
+            "resize.vertical.weights_f64",
+            "resize.vertical.bounds",
+            "resize.vertical.coefficients_i32",
+            "prepared_rgb",
+        ] {
+            assert!(names.contains(&required), "missing {required}: {names:?}");
+        }
+        let live = report
+            .buffers
+            .iter()
+            .filter(|buffer| buffer.released_at_ns.is_none())
+            .collect::<Vec<_>>();
+        assert_eq!(live.len(), 1);
+        assert_eq!(live[0].name, "prepared_rgb");
+        assert_eq!(live[0].class, BufferClass::Transient);
+        assert_eq!(
+            report.allocations.transient_live_bytes,
+            u64::try_from(prepared.capacity()).expect("capacity")
+        );
+        assert!(
+            report.allocations.peak_transient_live_bytes > report.allocations.transient_live_bytes
+        );
+        recorder.release_transient(
+            "prepared_rgb",
+            scope,
+            u64::try_from(prepared.capacity()).expect("capacity"),
+        );
+        drop(prepared);
+        assert_eq!(recorder.report().allocations.transient_live_bytes, 0);
+    }
+
+    #[test]
+    fn observed_height_only_resize_preserves_and_counts_original_source_clone() {
+        let geometry = plan_with_options(
+            64,
+            64,
+            ImageOptions {
+                resized_height: Some(96),
+                resized_width: Some(64),
+                ..ImageOptions::default()
+            },
+        );
+        let source = (0..64 * 64 * 3)
+            .map(|index| u8::try_from(index % 251).expect("value"))
+            .collect::<Vec<_>>();
+        let expected = resize_image_rgb8(&source, 64, 64, 64 * 3, &geometry).expect("plain");
+        let scope = ObservationScope::media(0, 0, 0);
+        let mut recorder = ObservationRecorder::new(32);
+        let actual =
+            resize_image_rgb8_observed(&source, 64, 64, 64 * 3, &geometry, &mut recorder, scope)
+                .expect("observed");
+        assert_eq!(actual, expected);
+        let report = recorder.report();
+        assert_eq!(report.allocations.allocation_count, 6);
+        assert_eq!(report.allocations.copy_count, 2);
+        assert_eq!(
+            report.allocations.copied_bytes,
+            u64::try_from(source.len() * 2).expect("copy bytes")
+        );
+        assert_eq!(report.copies.len(), 2);
+        assert_eq!(
+            report
+                .copies
+                .iter()
+                .map(|copy| copy.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["resize.packed_source", "resize.horizontal.source_copy"]
+        );
+        assert!(report.copies.iter().all(|copy| copy.scope == scope));
+        assert_eq!(
+            report.copies.iter().map(|copy| copy.bytes).sum::<u64>(),
+            report.allocations.copied_bytes
+        );
+        assert!(report.buffers.iter().any(|buffer| {
+            buffer.name == "resize.horizontal.source_copy" && buffer.released_at_ns.is_some()
+        }));
+        assert_eq!(
+            report
+                .buffers
+                .iter()
+                .filter(|buffer| buffer.name == "prepared_rgb")
+                .count(),
+            1
+        );
+    }
 
     #[derive(Deserialize)]
     struct Fixture {
@@ -640,6 +1014,53 @@ mod tests {
         assert_eq!(
             resize_video_rgb8_to_f32(&source, 64, 64, 192, &geometry).expect("video"),
             source.iter().copied().map(f32::from).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn observed_no_op_preserves_the_two_allocations_and_copies() {
+        let source = (0_u8..=255).cycle().take(64 * 64 * 3).collect::<Vec<_>>();
+        let geometry = plan(64, 64);
+        let plain = resize_image_rgb8(&source, 64, 64, 192, &geometry).expect("plain image");
+        let scope = ObservationScope::media_at(1, 2, 3, 4, 5);
+        let mut recorder = ObservationRecorder::new(8);
+        let observed =
+            resize_image_rgb8_observed(&source, 64, 64, 192, &geometry, &mut recorder, scope)
+                .expect("observed image");
+        assert_eq!(observed, plain);
+        assert_eq!(observed, source);
+        assert_ne!(plain.as_ptr(), source.as_ptr());
+        assert_ne!(observed.as_ptr(), source.as_ptr());
+        assert_eq!(plain.capacity(), observed.capacity());
+
+        let report = recorder.report();
+        assert_eq!(report.allocations.allocation_count, 2);
+        assert_eq!(report.allocations.copy_count, 2);
+        assert_eq!(
+            report.allocations.copied_bytes,
+            u64::try_from(source.len() * 2).expect("copy bytes")
+        );
+        assert_eq!(
+            report
+                .copies
+                .iter()
+                .map(|copy| copy.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["resize.packed_source", "resize.noop.source_copy"]
+        );
+        assert!(report.copies.iter().all(|copy| copy.scope == scope));
+        assert!(report.buffers.iter().any(|buffer| {
+            buffer.name == "resize.packed_source" && buffer.released_at_ns.is_some()
+        }));
+        assert!(
+            report
+                .buffers
+                .iter()
+                .any(|buffer| { buffer.name == "prepared_rgb" && buffer.released_at_ns.is_none() })
+        );
+        assert_eq!(
+            report.allocations.transient_live_bytes,
+            u64::try_from(observed.capacity()).expect("capacity")
         );
     }
 

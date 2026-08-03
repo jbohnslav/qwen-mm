@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-mm.local/schemas/profile-v1.json",
+  "title": "qwen-mm whole-operation profile bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "schema_version", "created_at", "protocol", "captures", "summary"],
+  "properties": {
+    "schema_id": {"const": "qwen-mm-profile-bundle-v1"},
+    "schema_version": {"const": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "protocol": {"$ref": "#/$defs/protocol"},
+    "captures": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/capture"}},
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonnegativeInteger": {"type": "integer", "minimum": 0},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_index", "message_index", "content_item_index", "media_index", "input_index"],
+      "properties": {
+        "request_index": {"type": ["integer", "null"], "minimum": 0},
+        "message_index": {"type": ["integer", "null"], "minimum": 0},
+        "content_item_index": {"type": ["integer", "null"], "minimum": 0},
+        "media_index": {"type": ["integer", "null"], "minimum": 0},
+        "input_index": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "parent_sequence", "name", "scope", "started_ns", "duration_ns", "exclusive_duration_ns", "outcome", "error_category", "input_bytes", "output_bytes", "shape"],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "parent_sequence": {"type": ["integer", "null"], "minimum": 0},
+        "name": {"type": "string", "minLength": 1},
+        "scope": {"$ref": "#/$defs/scope"},
+        "started_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "duration_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "exclusive_duration_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "outcome": {"enum": ["success", "error"]},
+        "error_category": {"type": ["string", "null"]},
+        "input_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "output_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "shape": {"type": "array", "items": {"$ref": "#/$defs/nonnegativeInteger"}}
+      }
+    },
+    "buffer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "name", "class", "scope", "bytes", "allocated_at_ns", "released_at_ns"],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "name": {"type": "string", "minLength": 1},
+        "class": {"enum": ["retained_output", "discarded_output", "transient"]},
+        "scope": {"$ref": "#/$defs/scope"},
+        "bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "allocated_at_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "released_at_ns": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "copy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "name", "scope", "bytes"],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "name": {"type": "string", "minLength": 1},
+        "scope": {"$ref": "#/$defs/scope"},
+        "bytes": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "allocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation_count", "allocated_bytes", "copy_count", "copied_bytes", "transient_live_bytes", "peak_transient_live_bytes", "retained_final_output_bytes"],
+      "properties": {
+        "allocation_count": {"$ref": "#/$defs/nonnegativeInteger"},
+        "allocated_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "copy_count": {"$ref": "#/$defs/nonnegativeInteger"},
+        "copied_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "transient_live_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "peak_transient_live_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "retained_final_output_bytes": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "calls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_python_calls", "native_batch_calls", "native_visual_calls", "python_callbacks", "hugging_face_calls", "qwen_vl_utils_calls", "pillow_calls", "torchvision_calls"],
+      "properties": {
+        "public_python_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "native_batch_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "native_visual_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "python_callbacks": {"$ref": "#/$defs/nonnegativeInteger"},
+        "hugging_face_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "qwen_vl_utils_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "pillow_calls": {"$ref": "#/$defs/nonnegativeInteger"},
+        "torchvision_calls": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "event_capacity", "dropped_events", "outcome", "error_category", "duration_ns", "spans", "buffers", "copies", "allocations", "calls", "counter_scope"],
+      "properties": {
+        "schema_version": {"const": "qwen-mm-observation-v1"},
+        "event_capacity": {"$ref": "#/$defs/nonnegativeInteger"},
+        "dropped_events": {"$ref": "#/$defs/nonnegativeInteger"},
+        "outcome": {"enum": ["success", "error"]},
+        "error_category": {"type": ["string", "null"]},
+        "duration_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "spans": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/span"}},
+        "buffers": {"type": "array", "items": {"$ref": "#/$defs/buffer"}},
+        "copies": {"type": "array", "items": {"$ref": "#/$defs/copy"}},
+        "allocations": {"$ref": "#/$defs/allocations"},
+        "calls": {"$ref": "#/$defs/calls"},
+        "counter_scope": {"type": "string", "minLength": 1}
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workload", "observed_adapter", "paired_adapter", "profiles", "cases", "thread_budgets", "thread_regimes", "repetitions", "event_capacity", "samplers", "build_labels", "production_thread_budget"],
+      "properties": {
+        "workload": {"type": "object"},
+        "observed_adapter": {"const": "qwen_mm.benchmark:create_observed_adapter"},
+        "paired_adapter": {"const": "qwen_mm.benchmark:create_adapter"},
+        "profiles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "cases": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "thread_budgets": {"const": [1, 4]},
+        "thread_regimes": {"const": {"one": 1, "production": 4}},
+        "repetitions": {"const": 3},
+        "event_capacity": {"const": 4096},
+        "samplers": {
+          "const": {
+            "arm64": {"name": "sample", "native": true, "duration_seconds": 2, "interval_ms": 1, "conversion_version": "macos-sample-callgraph-v1"},
+            "x86_64": {"name": "py-spy", "native": true, "rate_hz": 99, "duration_seconds": 2}
+          }
+        },
+        "build_labels": {"const": ["profiled-release"]},
+        "production_thread_budget": {"const": 4}
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_alias", "case_id", "release_name", "boundary", "thread_budget", "thread_regime", "thread_settings", "repetition", "media_count", "input_fingerprint", "output_signature", "observation"],
+      "properties": {
+        "profile_alias": {"type": "string"},
+        "case_id": {"type": "string"},
+        "release_name": {"type": ["string", "null"]},
+        "boundary": {"type": "string"},
+        "thread_budget": {"enum": [1, 4]},
+        "thread_regime": {"enum": ["one", "production"]},
+        "thread_settings": {"type": "object"},
+        "repetition": {"$ref": "#/$defs/nonnegativeInteger"},
+        "media_count": {"$ref": "#/$defs/nonnegativeInteger"},
+        "input_fingerprint": {"$ref": "#/$defs/sha256"},
+        "output_signature": {"type": "object"},
+        "observation": {"$ref": "#/$defs/observation"}
+      }
+    },
+    "rankingRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame", "samples", "share"],
+      "properties": {
+        "frame": {"type": "string", "minLength": 1},
+        "samples": {"type": "integer", "minimum": 1},
+        "share": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "rankings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sample_count", "native_sample_count", "native_sample_share", "inclusive", "self"],
+      "properties": {
+        "sample_count": {"type": "integer", "minimum": 1},
+        "native_sample_count": {"type": "integer", "minimum": 1},
+        "native_sample_share": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "inclusive": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/rankingRow"}},
+        "self": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/rankingRow"}}
+      }
+    },
+    "sampledProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_alias", "architecture_family", "case_id", "thread_budget", "thread_regime", "input_fingerprint", "before_signature", "after_signature", "iterations", "whole_boundary_marker", "worker", "sampler", "artifacts", "rankings"],
+      "properties": {
+        "profile_alias": {"type": "string", "minLength": 1},
+        "architecture_family": {"enum": ["arm64", "x86_64"]},
+        "case_id": {"type": "string", "minLength": 1},
+        "thread_budget": {"enum": [1, 4]},
+        "thread_regime": {"enum": ["one", "production"]},
+        "input_fingerprint": {"$ref": "#/$defs/sha256"},
+        "before_signature": {"type": "object"},
+        "after_signature": {"type": "object"},
+        "iterations": {"type": "integer", "minimum": 1},
+        "whole_boundary_marker": {"const": "qwen_mm_profile_iteration"},
+        "worker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "result", "command", "target_pid"],
+          "properties": {
+            "source": {"$ref": "#/$defs/artifact"},
+            "result": {"$ref": "#/$defs/artifact"},
+            "command": {"type": "string", "minLength": 1},
+            "target_pid": {"type": "integer", "minimum": 1}
+          }
+        },
+        "sampler": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "binary_path", "binary_sha256", "binary_bytes", "command", "native", "duration_seconds", "sample_count", "unique_stacks", "errors", "install_provenance"],
+          "properties": {
+            "name": {"enum": ["sample", "py-spy"]},
+            "version": {"type": "string", "minLength": 1},
+            "binary_path": {"type": "string", "minLength": 1},
+            "binary_sha256": {"$ref": "#/$defs/sha256"},
+            "binary_bytes": {"type": "integer", "minimum": 1},
+            "command": {"type": "string", "minLength": 1},
+            "native": {"const": true},
+            "rate_hz": {"const": 99},
+            "interval_ms": {"const": 1},
+            "conversion_version": {"const": "macos-sample-callgraph-v1"},
+            "duration_seconds": {"const": 2},
+            "sample_count": {"type": "integer", "minimum": 1},
+            "unique_stacks": {"type": "integer", "minimum": 1},
+            "errors": {"const": 0},
+            "install_provenance": {"type": "string", "minLength": 1}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"name": {"const": "py-spy"}}},
+              "then": {"required": ["rate_hz"], "properties": {"version": {"const": "py-spy 0.4.1"}}},
+              "else": {"required": ["interval_ms", "conversion_version"], "properties": {"binary_path": {"const": "/usr/bin/sample"}}}
+            }
+          ]
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw", "collapsed"],
+          "properties": {
+            "raw": {"$ref": "#/$defs/artifact"},
+            "collapsed": {"$ref": "#/$defs/artifact"}
+          }
+        },
+        "rankings": {"$ref": "#/$defs/rankings"}
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "release", "machine", "architecture_family", "hostname", "cpu_description", "logical_cpu_count", "affinity_cpus", "effective_cpu_count", "cgroup_v2", "python"],
+      "properties": {
+        "system": {"enum": ["Darwin", "Linux"]},
+        "release": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "architecture_family": {"enum": ["arm64", "x86_64"]},
+        "hostname": {"type": "string"},
+        "cpu_description": {"type": "string", "minLength": 1},
+        "logical_cpu_count": {"type": ["integer", "null"], "minimum": 1},
+        "affinity_cpus": {"type": ["array", "null"], "items": {"$ref": "#/$defs/nonnegativeInteger"}, "uniqueItems": true},
+        "effective_cpu_count": {"type": "integer", "minimum": 4},
+        "cgroup_v2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cpu.max", "cpuset.cpus.effective"],
+          "properties": {
+            "cpu.max": {"type": ["string", "null"]},
+            "cpuset.cpus.effective": {"type": ["string", "null"]}
+          }
+        },
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "mode", "command", "candidate_identity", "log", "wheel"],
+      "properties": {
+        "label": {"const": "profiled-release"},
+        "mode": {"const": "release"},
+        "command": {"type": "string", "minLength": 1},
+        "candidate_identity": {"type": "object"},
+        "log": {"$ref": "#/$defs/artifact"},
+        "wheel": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "profiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "timing"],
+      "properties": {
+        "name": {"const": "qwen-mm-observation-v1"},
+        "kind": {"const": "bounded_stage_instrumentation"},
+        "timing": {"const": "inclusive and exclusive monotonic wall nanoseconds"}
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "source", "build", "capture_command", "profiler", "phase_c_report", "paired_benchmark", "observations", "sampled_profiles"],
+      "properties": {
+        "host": {"$ref": "#/$defs/host"},
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["revision", "tree_sha256", "file_count", "total_bytes", "dirty", "clean_attestation"],
+          "properties": {
+            "revision": {"type": "string", "minLength": 1},
+            "tree_sha256": {"$ref": "#/$defs/sha256"},
+            "file_count": {"type": ["integer", "null"], "minimum": 0},
+            "total_bytes": {"type": ["integer", "null"], "minimum": 0},
+            "dirty": {"type": "boolean"},
+            "clean_attestation": {"enum": ["git_status_porcelain", "packaged_source_from_clean_revision_and_digest"]}
+          }
+        },
+        "build": {"$ref": "#/$defs/build"},
+        "phase_c_report": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "bytes"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"$ref": "#/$defs/nonnegativeInteger"}
+          }
+        },
+        "capture_command": {"type": "string", "minLength": 1},
+        "profiler": {"$ref": "#/$defs/profiler"},
+        "paired_benchmark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "bytes", "architecture_family", "schema_id", "candidate_identity"],
+          "properties": {
+            "path": {"type": "string"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+            "architecture_family": {"enum": ["arm64", "x86_64"]},
+            "schema_id": {"const": "qwen-mm-benchmark-result-v2"},
+            "candidate_identity": {"type": "object"}
+          }
+        },
+        "observations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/operation"}},
+        "sampled_profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sampledProfile"}}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timing_semantics", "architectures"],
+      "properties": {
+        "timing_semantics": {"type": "string"},
+        "architectures": {"type": "object"}
+      }
+    }
+  }
+}

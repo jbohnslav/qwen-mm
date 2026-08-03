@@ -8,10 +8,12 @@ use pyo3::{
     types::{PyDict, PyList},
 };
 use qwen_mm_core::{
-    BatchDestinations, BatchImageLayout, BatchRequestLayout, ContentItem, CoordinateRange,
-    FunctionCall, ImageInput, ImageSidecar, IntegrationSidecar, Message, MessageContent,
-    PreparedTextRequest, ProcessedBatchImageOccurrence, QwenError, QwenImageProcessor, Request,
-    Rgb8, TextReplacement, ToolCall, ToolDefinition, VisualModality,
+    ArrayCapacity, BatchCapacities, BatchDestinations, BatchImageLayout, BatchPlan,
+    BatchRequestLayout, BufferClass, ContentItem, CoordinateRange, FunctionCall, ImageInput,
+    ImageSidecar, IntegrationSidecar, Message, MessageContent, ObservationRecorder,
+    ObservationReport, ObservationScope, PreparedTextRequest, ProcessedBatchImageOccurrence,
+    QwenError, QwenImageProcessor, Request, Rgb8, StageOutcome, TextReplacement, ToolCall,
+    ToolDefinition, VisualModality,
 };
 
 use crate::{
@@ -54,6 +56,85 @@ pub(crate) struct NativeBatch {
     pub(crate) image_grid_thw: Option<NativeMatrix<i64>>,
 }
 
+struct AllocatedBatchDestinations {
+    input_ids: Vec<i64>,
+    attention_mask: Vec<i64>,
+    mm_token_type_ids: Vec<i64>,
+    pixel_values: Option<Vec<f32>>,
+    image_grid_thw: Option<Vec<i64>>,
+}
+
+struct ExecutedBatchMetadata {
+    contract_id: String,
+    profile_fingerprint: String,
+    text: Vec<PreparedTextRequest>,
+    sidecar: IntegrationSidecar,
+    images: Vec<ProcessedBatchImageOccurrence>,
+}
+
+impl AllocatedBatchDestinations {
+    fn into_native_batch(
+        self,
+        capacities: BatchCapacities,
+        metadata: ExecutedBatchMetadata,
+        request_layouts: Vec<BatchRequestLayout>,
+        image_layouts: Vec<BatchImageLayout>,
+    ) -> NativeBatch {
+        let Self {
+            input_ids,
+            attention_mask,
+            mm_token_type_ids,
+            pixel_values,
+            image_grid_thw,
+        } = self;
+        NativeBatch {
+            contract_id: metadata.contract_id,
+            profile_fingerprint: metadata.profile_fingerprint,
+            text: metadata.text,
+            sidecar: metadata.sidecar,
+            images: metadata.images,
+            request_layouts,
+            image_layouts,
+            input_ids: native_matrix(input_ids, capacities.input_ids),
+            attention_mask: native_matrix(attention_mask, capacities.attention_mask),
+            mm_token_type_ids: native_matrix(mm_token_type_ids, capacities.mm_token_type_ids),
+            pixel_values: pixel_values
+                .zip(capacities.pixel_values)
+                .map(|(values, capacity)| native_matrix(values, capacity)),
+            image_grid_thw: image_grid_thw
+                .zip(capacities.image_grid_thw)
+                .map(|(values, capacity)| native_matrix(values, capacity)),
+        }
+    }
+}
+
+fn native_matrix<T>(data: Vec<T>, capacity: ArrayCapacity) -> NativeMatrix<T> {
+    let allocation_ptr = data.as_ptr() as usize;
+    NativeMatrix {
+        shape: capacity.shape,
+        data,
+        allocation_ptr,
+    }
+}
+
+pub(crate) fn native_batch_bytes(batch: &NativeBatch) -> u64 {
+    let mut total = matrix_bytes(&batch.input_ids)
+        .saturating_add(matrix_bytes(&batch.attention_mask))
+        .saturating_add(matrix_bytes(&batch.mm_token_type_ids));
+    if let Some(values) = &batch.pixel_values {
+        total = total.saturating_add(matrix_bytes(values));
+    }
+    if let Some(values) = &batch.image_grid_thw {
+        total = total.saturating_add(matrix_bytes(values));
+    }
+    total
+}
+
+fn matrix_bytes<T>(matrix: &NativeMatrix<T>) -> u64 {
+    let elements = matrix.shape[0].saturating_mul(matrix.shape[1]);
+    u64::try_from(elements.saturating_mul(std::mem::size_of::<T>())).unwrap_or(u64::MAX)
+}
+
 /// One completed batch with official arrays separated from adapter metadata.
 #[pyclass(name = "PreparedBatch", module = "qwen_mm._native", frozen)]
 pub(crate) struct PyPreparedBatch {
@@ -83,6 +164,119 @@ impl PyPreparedBatch {
 
     fn __repr__(&self) -> String {
         format!("PreparedBatch(keys={:?})", self.official_keys)
+    }
+}
+
+pub(crate) fn observation_report_dict<'py>(
+    py: Python<'py>,
+    report: &ObservationReport,
+) -> PyResult<Bound<'py, PyDict>> {
+    let value = PyDict::new(py);
+    value.set_item("schema_version", &report.schema_version)?;
+    value.set_item("event_capacity", report.event_capacity)?;
+    value.set_item("dropped_events", report.dropped_events)?;
+    value.set_item("outcome", outcome_name(report.outcome))?;
+    value.set_item("error_category", &report.error_category)?;
+    value.set_item("duration_ns", report.duration_ns)?;
+
+    let spans = PyList::empty(py);
+    for span in &report.spans {
+        let item = PyDict::new(py);
+        item.set_item("sequence", span.sequence)?;
+        item.set_item("parent_sequence", span.parent_sequence)?;
+        item.set_item("name", &span.name)?;
+        item.set_item("scope", observation_scope_dict(py, span.scope)?)?;
+        item.set_item("started_ns", span.started_ns)?;
+        item.set_item("duration_ns", span.duration_ns)?;
+        item.set_item("exclusive_duration_ns", span.exclusive_duration_ns)?;
+        item.set_item("outcome", outcome_name(span.outcome))?;
+        item.set_item("error_category", &span.error_category)?;
+        item.set_item("input_bytes", span.input_bytes)?;
+        item.set_item("output_bytes", span.output_bytes)?;
+        item.set_item("shape", &span.shape)?;
+        spans.append(item)?;
+    }
+    value.set_item("spans", spans)?;
+
+    let buffers = PyList::empty(py);
+    for buffer in &report.buffers {
+        let item = PyDict::new(py);
+        item.set_item("sequence", buffer.sequence)?;
+        item.set_item("name", &buffer.name)?;
+        item.set_item(
+            "class",
+            match buffer.class {
+                BufferClass::RetainedOutput => "retained_output",
+                BufferClass::DiscardedOutput => "discarded_output",
+                BufferClass::Transient => "transient",
+            },
+        )?;
+        item.set_item("scope", observation_scope_dict(py, buffer.scope)?)?;
+        item.set_item("bytes", buffer.bytes)?;
+        item.set_item("allocated_at_ns", buffer.allocated_at_ns)?;
+        item.set_item("released_at_ns", buffer.released_at_ns)?;
+        buffers.append(item)?;
+    }
+    value.set_item("buffers", buffers)?;
+
+    let copies = PyList::empty(py);
+    for copy in &report.copies {
+        let item = PyDict::new(py);
+        item.set_item("sequence", copy.sequence)?;
+        item.set_item("name", &copy.name)?;
+        item.set_item("scope", observation_scope_dict(py, copy.scope)?)?;
+        item.set_item("bytes", copy.bytes)?;
+        copies.append(item)?;
+    }
+    value.set_item("copies", copies)?;
+
+    let allocations = PyDict::new(py);
+    allocations.set_item("allocation_count", report.allocations.allocation_count)?;
+    allocations.set_item("allocated_bytes", report.allocations.allocated_bytes)?;
+    allocations.set_item("copy_count", report.allocations.copy_count)?;
+    allocations.set_item("copied_bytes", report.allocations.copied_bytes)?;
+    allocations.set_item(
+        "transient_live_bytes",
+        report.allocations.transient_live_bytes,
+    )?;
+    allocations.set_item(
+        "peak_transient_live_bytes",
+        report.allocations.peak_transient_live_bytes,
+    )?;
+    allocations.set_item(
+        "retained_final_output_bytes",
+        report.allocations.retained_final_output_bytes,
+    )?;
+    value.set_item("allocations", allocations)?;
+
+    let calls = PyDict::new(py);
+    calls.set_item("public_python_calls", report.calls.public_python_calls)?;
+    calls.set_item("native_batch_calls", report.calls.native_batch_calls)?;
+    calls.set_item("native_visual_calls", report.calls.native_visual_calls)?;
+    calls.set_item("python_callbacks", report.calls.python_callbacks)?;
+    calls.set_item("hugging_face_calls", report.calls.hugging_face_calls)?;
+    calls.set_item("qwen_vl_utils_calls", report.calls.qwen_vl_utils_calls)?;
+    calls.set_item("pillow_calls", report.calls.pillow_calls)?;
+    calls.set_item("torchvision_calls", report.calls.torchvision_calls)?;
+    value.set_item("calls", calls)?;
+    value.set_item("counter_scope", &report.counter_scope)?;
+    Ok(value)
+}
+
+fn observation_scope_dict(py: Python<'_>, scope: ObservationScope) -> PyResult<Bound<'_, PyDict>> {
+    let value = PyDict::new(py);
+    value.set_item("request_index", scope.request_index)?;
+    value.set_item("message_index", scope.message_index)?;
+    value.set_item("content_item_index", scope.content_item_index)?;
+    value.set_item("media_index", scope.media_index)?;
+    value.set_item("input_index", scope.input_index)?;
+    Ok(value)
+}
+
+const fn outcome_name(outcome: StageOutcome) -> &'static str {
+    match outcome {
+        StageOutcome::Success => "success",
+        StageOutcome::Error => "error",
     }
 }
 
@@ -137,11 +331,83 @@ impl PyPreparedBatch {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 pub(crate) fn run_batch(
     processor: &Arc<QwenImageProcessor>,
     owned: &[OwnedRequest],
 ) -> Result<NativeBatch, RunError> {
+    run_batch_internal(processor, owned, None)
+}
+
+pub(crate) fn run_batch_observed(
+    processor: &Arc<QwenImageProcessor>,
+    owned: &[OwnedRequest],
+    recorder: &mut ObservationRecorder,
+) -> Result<NativeBatch, RunError> {
+    run_batch_internal(processor, owned, Some(recorder))
+}
+
+fn run_batch_internal(
+    processor: &Arc<QwenImageProcessor>,
+    owned: &[OwnedRequest],
+    mut recorder: Option<&mut ObservationRecorder>,
+) -> Result<NativeBatch, RunError> {
+    let plan = plan_owned_requests(processor, owned, recorder.as_deref_mut())?;
+    let capacities = *plan.capacities();
+    let allocation_span = recorder.as_deref_mut().map(|recorder| {
+        recorder.begin(
+            "binding.destination.allocate",
+            ObservationScope::default(),
+            0,
+        )
+    });
+    let (mut destinations, allocated_bytes) =
+        match allocate_batch_destinations(&capacities, recorder.as_deref_mut()) {
+            Ok(values) => values,
+            Err(error) => {
+                match recorder {
+                    Some(recorder) => {
+                        if let Some(span) = allocation_span {
+                            recorder.finish_error_category(span, "memory_error");
+                        }
+                        recorder.discard_retained_outputs();
+                        plan.drop_observed(recorder);
+                    }
+                    None => drop(plan),
+                }
+                return Err(error);
+            }
+        };
+    if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), allocation_span) {
+        recorder.finish_success(span, allocated_bytes, &[allocated_bytes]);
+    }
+    let metadata =
+        match execute_batch_plan(processor, &plan, &mut destinations, recorder.as_deref_mut()) {
+            Ok(values) => values,
+            Err(error) => {
+                match recorder {
+                    Some(recorder) => {
+                        recorder.discard_retained_outputs();
+                        plan.drop_observed(recorder);
+                    }
+                    None => drop(plan),
+                }
+                return Err(error);
+            }
+        };
+    let request_layouts = plan.request_layouts().to_vec();
+    let image_layouts = plan.image_layouts().to_vec();
+    match recorder {
+        Some(recorder) => plan.drop_observed(recorder),
+        None => drop(plan),
+    }
+    Ok(destinations.into_native_batch(capacities, metadata, request_layouts, image_layouts))
+}
+
+fn plan_owned_requests(
+    processor: &QwenImageProcessor,
+    owned: &[OwnedRequest],
+    recorder: Option<&mut ObservationRecorder>,
+) -> Result<BatchPlan, RunError> {
     let image_inputs = owned
         .iter()
         .map(|request| request.images.iter().map(borrow_image).collect::<Vec<_>>())
@@ -215,88 +481,120 @@ pub(crate) fn run_batch(
         })
         .collect::<Vec<_>>();
 
-    let plan = processor.plan_batch(&requests)?;
-    let capacities = *plan.capacities();
-    let mut input_ids = allocate::<i64>("input_ids", capacities.input_ids.elements)?;
-    let mut attention_mask = allocate::<i64>("attention_mask", capacities.attention_mask.elements)?;
-    let mut mm_token_type_ids =
-        allocate::<i64>("mm_token_type_ids", capacities.mm_token_type_ids.elements)?;
-    let mut pixel_values = capacities
-        .pixel_values
-        .map(|capacity| allocate::<f32>("pixel_values", capacity.elements))
-        .transpose()?;
-    let mut image_grid_thw = capacities
-        .image_grid_thw
-        .map(|capacity| allocate::<i64>("image_grid_thw", capacity.elements))
-        .transpose()?;
-    let input_ids_ptr = input_ids.as_ptr() as usize;
-    let attention_mask_ptr = attention_mask.as_ptr() as usize;
-    let mm_token_type_ids_ptr = mm_token_type_ids.as_ptr() as usize;
-    let pixel_values_ptr = pixel_values
-        .as_ref()
-        .map_or(0, |values| values.as_ptr() as usize);
-    let image_grid_thw_ptr = image_grid_thw
-        .as_ref()
-        .map_or(0, |values| values.as_ptr() as usize);
-    let (contract_id, profile_fingerprint, text, sidecar, images) = {
-        let view = processor.execute_plan_into(
-            &plan,
-            BatchDestinations {
-                input_ids: &mut input_ids,
-                attention_mask: &mut attention_mask,
-                mm_token_type_ids: &mut mm_token_type_ids,
-                pixel_values: pixel_values.as_deref_mut(),
-                image_grid_thw: image_grid_thw.as_deref_mut(),
-                pixel_values_videos: None,
-                video_grid_thw: None,
-            },
-        )?;
-        (
-            view.contract_id.to_owned(),
-            view.profile_fingerprint.to_owned(),
-            view.text.to_vec(),
-            view.sidecar().clone(),
-            view.images.to_vec(),
-        )
+    let plan = if let Some(recorder) = recorder {
+        processor.plan_batch_observed(&requests, recorder)?
+    } else {
+        processor.plan_batch(&requests)?
     };
-    Ok(NativeBatch {
-        contract_id,
-        profile_fingerprint,
-        text,
-        sidecar,
-        images,
-        request_layouts: plan.request_layouts().to_vec(),
-        image_layouts: plan.image_layouts().to_vec(),
-        input_ids: NativeMatrix {
-            shape: capacities.input_ids.shape,
-            data: input_ids,
-            allocation_ptr: input_ids_ptr,
+    Ok(plan)
+}
+
+fn allocate_batch_destinations(
+    capacities: &BatchCapacities,
+    mut recorder: Option<&mut ObservationRecorder>,
+) -> Result<(AllocatedBatchDestinations, u64), RunError> {
+    let mut allocated_bytes = 0_u64;
+    let input_ids = allocate_destination(
+        "input_ids",
+        capacities.input_ids,
+        recorder.as_deref_mut(),
+        &mut allocated_bytes,
+    )?;
+    let attention_mask = allocate_destination(
+        "attention_mask",
+        capacities.attention_mask,
+        recorder.as_deref_mut(),
+        &mut allocated_bytes,
+    )?;
+    let mm_token_type_ids = allocate_destination(
+        "mm_token_type_ids",
+        capacities.mm_token_type_ids,
+        recorder.as_deref_mut(),
+        &mut allocated_bytes,
+    )?;
+    let pixel_values = capacities
+        .pixel_values
+        .map(|capacity| {
+            allocate_destination(
+                "pixel_values",
+                capacity,
+                recorder.as_deref_mut(),
+                &mut allocated_bytes,
+            )
+        })
+        .transpose()?;
+    let image_grid_thw = capacities
+        .image_grid_thw
+        .map(|capacity| {
+            allocate_destination("image_grid_thw", capacity, recorder, &mut allocated_bytes)
+        })
+        .transpose()?;
+    Ok((
+        AllocatedBatchDestinations {
+            input_ids,
+            attention_mask,
+            mm_token_type_ids,
+            pixel_values,
+            image_grid_thw,
         },
-        attention_mask: NativeMatrix {
-            shape: capacities.attention_mask.shape,
-            data: attention_mask,
-            allocation_ptr: attention_mask_ptr,
-        },
-        mm_token_type_ids: NativeMatrix {
-            shape: capacities.mm_token_type_ids.shape,
-            data: mm_token_type_ids,
-            allocation_ptr: mm_token_type_ids_ptr,
-        },
-        pixel_values: pixel_values
-            .zip(capacities.pixel_values)
-            .map(|(data, capacity)| NativeMatrix {
-                shape: capacity.shape,
-                data,
-                allocation_ptr: pixel_values_ptr,
-            }),
-        image_grid_thw: image_grid_thw
-            .zip(capacities.image_grid_thw)
-            .map(|(data, capacity)| NativeMatrix {
-                shape: capacity.shape,
-                data,
-                allocation_ptr: image_grid_thw_ptr,
-            }),
+        allocated_bytes,
+    ))
+}
+
+fn allocate_destination<T: Default + Clone>(
+    name: &'static str,
+    capacity: ArrayCapacity,
+    recorder: Option<&mut ObservationRecorder>,
+    allocated_bytes: &mut u64,
+) -> Result<Vec<T>, RunError> {
+    let values = allocate::<T>(name, capacity.elements)?;
+    record_destination_allocation(recorder, name, capacity.bytes);
+    *allocated_bytes = allocated_bytes.saturating_add(capacity.bytes);
+    Ok(values)
+}
+
+fn execute_batch_plan(
+    processor: &QwenImageProcessor,
+    plan: &BatchPlan,
+    destinations: &mut AllocatedBatchDestinations,
+    recorder: Option<&mut ObservationRecorder>,
+) -> Result<ExecutedBatchMetadata, RunError> {
+    let native_destinations = BatchDestinations {
+        input_ids: &mut destinations.input_ids,
+        attention_mask: &mut destinations.attention_mask,
+        mm_token_type_ids: &mut destinations.mm_token_type_ids,
+        pixel_values: destinations.pixel_values.as_deref_mut(),
+        image_grid_thw: destinations.image_grid_thw.as_deref_mut(),
+        pixel_values_videos: None,
+        video_grid_thw: None,
+    };
+    let view = if let Some(recorder) = recorder {
+        processor.execute_plan_into_observed(plan, native_destinations, recorder)?
+    } else {
+        processor.execute_plan_into(plan, native_destinations)?
+    };
+    Ok(ExecutedBatchMetadata {
+        contract_id: view.contract_id.to_owned(),
+        profile_fingerprint: view.profile_fingerprint.to_owned(),
+        text: view.text.to_vec(),
+        sidecar: view.sidecar().clone(),
+        images: view.images.to_vec(),
     })
+}
+
+fn record_destination_allocation(
+    recorder: Option<&mut ObservationRecorder>,
+    name: &'static str,
+    bytes: u64,
+) {
+    if let Some(recorder) = recorder {
+        recorder.record_allocation(
+            name,
+            BufferClass::RetainedOutput,
+            ObservationScope::default(),
+            bytes,
+        );
+    }
 }
 
 fn borrow_image(image: &OwnedImage) -> ImageInput<'_> {

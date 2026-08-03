@@ -14,6 +14,7 @@ use crate::{
     limits::{
         ProfiledRequest, ResourceLimits, checked_capacity_bytes, checked_mul, preflight_batch,
     },
+    observability::{ObservationRecorder, ObservationScope},
     output::{CoordinateRange, Matrix},
     profile::{Profile, ProfileAlias, ProfileRegistry},
     request::{ContentItem, Message, MessageContent, Request, Role},
@@ -332,6 +333,45 @@ impl TextProcessor {
         limits: ResourceLimits,
         additional_output_bytes: u64,
     ) -> Result<BatchTextPlan> {
+        self.plan_batch_from_rendered_internal(
+            requests,
+            visuals,
+            rendered_prompts,
+            limits,
+            additional_output_bytes,
+            None,
+        )
+    }
+
+    /// Observed counterpart to [`Self::plan_batch_from_rendered`].
+    pub(crate) fn plan_batch_from_rendered_observed<'a>(
+        &self,
+        requests: &[Request<'a>],
+        visuals: &[Vec<VisualExpansion<'a>>],
+        rendered_prompts: Vec<String>,
+        limits: ResourceLimits,
+        additional_output_bytes: u64,
+        recorder: &mut ObservationRecorder,
+    ) -> Result<BatchTextPlan> {
+        self.plan_batch_from_rendered_internal(
+            requests,
+            visuals,
+            rendered_prompts,
+            limits,
+            additional_output_bytes,
+            Some(recorder),
+        )
+    }
+
+    fn plan_batch_from_rendered_internal<'a>(
+        &self,
+        requests: &[Request<'a>],
+        visuals: &[Vec<VisualExpansion<'a>>],
+        rendered_prompts: Vec<String>,
+        limits: ResourceLimits,
+        additional_output_bytes: u64,
+        mut recorder: Option<&mut ObservationRecorder>,
+    ) -> Result<BatchTextPlan> {
         if requests.len() != visuals.len() || requests.len() != rendered_prompts.len() {
             return Err(invariant(
                 "batch text planning inputs have inconsistent request counts",
@@ -347,17 +387,44 @@ impl TextProcessor {
             .zip(rendered_prompts)
             .enumerate()
         {
-            validate_visual_plan(request, visual_plan, request_index)?;
-            validate_rendered_visual_sequence(request, &rendered_prompt, request_index)?;
-            let (expanded_prompt, replacements) =
-                expand_visuals(&self.profile, &rendered_prompt, visual_plan, request_index)?;
-            let token_row = self.encode_prompt_once(&expanded_prompt, request_index)?;
-            let count = u64::try_from(token_row.ids.len()).map_err(|_| {
-                arithmetic("rendered token count does not fit parity arithmetic")
-                    .with_context("request_index", request_index)
-            })?;
-            let replacements =
-                Self::locate_replacement_tokens(&token_row.offsets, replacements, request_index)?;
+            let span = recorder.as_deref_mut().map(|recorder| {
+                recorder.begin(
+                    "native.chat.tokenize",
+                    ObservationScope::request(request_index),
+                    rendered_prompt.len() as u64,
+                )
+            });
+            let planned = (|| {
+                validate_visual_plan(request, visual_plan, request_index)?;
+                validate_rendered_visual_sequence(request, &rendered_prompt, request_index)?;
+                let (expanded_prompt, replacements) =
+                    expand_visuals(&self.profile, &rendered_prompt, visual_plan, request_index)?;
+                let token_row = self.encode_prompt_once(&expanded_prompt, request_index)?;
+                let count = u64::try_from(token_row.ids.len()).map_err(|_| {
+                    arithmetic("rendered token count does not fit parity arithmetic")
+                        .with_context("request_index", request_index)
+                })?;
+                let replacements = Self::locate_replacement_tokens(
+                    &token_row.offsets,
+                    replacements,
+                    request_index,
+                )?;
+                Result::Ok((expanded_prompt, replacements, token_row, count))
+            })();
+            let (expanded_prompt, replacements, token_row, count) = match planned {
+                Ok(value) => {
+                    if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), span) {
+                        recorder.finish_success(span, value.3.saturating_mul(4), &[value.3]);
+                    }
+                    value
+                }
+                Err(error) => {
+                    if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), span) {
+                        recorder.finish_error(span, &error);
+                    }
+                    return Err(error);
+                }
+            };
             prepared_requests.push(PreparedTextRequest {
                 rendered_prompt,
                 expanded_prompt,

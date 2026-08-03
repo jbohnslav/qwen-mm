@@ -10,12 +10,19 @@ use std::{path::PathBuf, sync::Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use pyo3::prelude::*;
-use qwen_mm_core::{ProfileRegistry, QwenImageProcessor, ResourceLimits};
+use qwen_mm_core::{
+    ObservationRecorder, ObservationScope, ProfileRegistry, QwenImageProcessor, ResourceLimits,
+};
 
 use crate::{
     errors::{add_exceptions, memory_error, to_python_error},
-    input::{OwnedRequest, parse_limits, parse_requests},
-    output::{NativeBatch, PyPreparedBatch, RunError, run_batch},
+    input::{
+        OwnedRequest, drop_owned_media, parse_limits, parse_requests, parse_requests_observed,
+    },
+    output::{
+        NativeBatch, PyPreparedBatch, RunError, native_batch_bytes, observation_report_dict,
+        run_batch, run_batch_observed,
+    },
 };
 
 /// Returns the native package version.
@@ -114,6 +121,93 @@ impl PyProcessor {
         PyPreparedBatch::from_native(py, native)
     }
 
+    /// Prepares one batch and returns the same arrays plus a bounded JSON-ready
+    /// whole-operation observation report. The normal `prepare_batch` path
+    /// remains completely uninstrumented.
+    #[pyo3(signature = (requests, *, event_capacity=4096))]
+    fn prepare_batch_observed(
+        &self,
+        py: Python<'_>,
+        requests: &Bound<'_, PyAny>,
+        event_capacity: usize,
+    ) -> PyResult<(PyPreparedBatch, Py<PyAny>)> {
+        let mut recorder = ObservationRecorder::new(event_capacity);
+        recorder.calls_mut().public_python_calls = 1;
+        let operation_span =
+            recorder.begin("binding.prepare_batch", ObservationScope::default(), 0);
+        let parse_span = recorder.begin("binding.parse_requests", ObservationScope::default(), 0);
+        let parsed = parse_requests_observed(
+            py,
+            requests,
+            self.limits,
+            self.supports_thinking,
+            self.inner.profile().alias.as_str(),
+            &mut recorder,
+        );
+        let requests = match parsed {
+            Ok(requests) => {
+                recorder.finish_success(parse_span, 0, &[requests.len() as u64]);
+                requests
+            }
+            Err(error) => {
+                recorder.finish_error(parse_span, &error);
+                recorder.discard_retained_outputs();
+                recorder.release_all_transients();
+                recorder.finish_error(operation_span, &error);
+                let python = to_python_error(py, &error);
+                return Err(attach_observation_report(py, python, &recorder.report()));
+            }
+        };
+        recorder.calls_mut().native_batch_calls = 1;
+        let processor = Arc::clone(&self.inner);
+        let (native, mut recorder) = py.detach(move || {
+            #[cfg(feature = "test-hooks")]
+            let _active = TestNativeBatchActiveGuard::enter();
+            let result = run_batch_observed(&processor, &requests, &mut recorder);
+            drop_owned_media(requests, &mut recorder);
+            recorder.release_all_transients();
+            (result, recorder)
+        });
+        let native = match native {
+            Ok(native) => native,
+            Err(RunError::Core(error)) => {
+                recorder.discard_retained_outputs();
+                recorder.release_all_transients();
+                recorder.finish_error(operation_span, &error);
+                let python = to_python_error(py, &error);
+                return Err(attach_observation_report(py, python, &recorder.report()));
+            }
+            Err(RunError::Allocation { name, elements }) => {
+                recorder.discard_retained_outputs();
+                recorder.release_all_transients();
+                recorder.finish_error_category(operation_span, "memory_error");
+                let python = memory_error(name, elements);
+                return Err(attach_observation_report(py, python, &recorder.report()));
+            }
+        };
+        let output_bytes = native_batch_bytes(&native);
+        let materialize_span = recorder.begin(
+            "binding.numpy.materialize",
+            ObservationScope::default(),
+            output_bytes,
+        );
+        let prepared = match PyPreparedBatch::from_native(py, native) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                recorder.finish_error_category(materialize_span, "python_conversion");
+                recorder.discard_retained_outputs();
+                recorder.release_all_transients();
+                recorder.finish_error_category(operation_span, "python_conversion");
+                return Err(attach_observation_report(py, error, &recorder.report()));
+            }
+        };
+        recorder.finish_success(materialize_span, output_bytes, &[output_bytes]);
+        recorder.finish_success(operation_span, output_bytes, &[output_bytes]);
+        let report = recorder.report();
+        let report = observation_report_dict(py, &report)?.into_any().unbind();
+        Ok((prepared, report))
+    }
+
     /// Exact public profile alias bound to this processor.
     #[getter]
     fn profile(&self) -> &str {
@@ -125,6 +219,17 @@ impl PyProcessor {
     fn profile_fingerprint(&self) -> &str {
         &self.inner.profile().fingerprint
     }
+}
+
+fn attach_observation_report(
+    py: Python<'_>,
+    error: PyErr,
+    report: &qwen_mm_core::ObservationReport,
+) -> PyErr {
+    if let Ok(value) = observation_report_dict(py, report) {
+        let _ = error.value(py).setattr("observation_report", value);
+    }
+    error
 }
 
 fn assert_detached_types_are_send_sync() {

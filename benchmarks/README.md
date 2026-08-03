@@ -120,9 +120,10 @@ paired per-process speedups, and a seeded bootstrap 95% confidence interval.
 ## Correctness prerequisite and release status
 
 Every benchmark result is `DIAGNOSTIC ONLY` and `releasable: false` until D4
-implements and passes the dedicated-host performance thresholds. For image
-workloads the harness also evaluates the current Phase C correctness report at
-`reference/phase-c/v1/report.json`. This is a necessary correctness
+implements and passes the controlled-host performance thresholds on an eligible
+authenticated host, which may be an appropriately selected Modal CPU class.
+For image workloads the harness also evaluates the current Phase C correctness
+report at `reference/phase-c/v1/report.json`. This is a necessary correctness
 prerequisite, never a performance certification.
 
 The harness computes eligibility rather than accepting a pass boolean. A Phase
@@ -148,4 +149,9 @@ profile assets; neither option overrides validation.
 schema. A result contains exactly one `architecture_family`; ARM and x86 data
 must remain in separate files and reports. The harness records performance but
 contains no `2x` or regression threshold. Ticket D4 owns release enforcement on
-dedicated hosts; noisy pull-request workers do not.
+controlled hosts, including an eligible authenticated Modal CPU class; noisy
+pull-request workers do not.
+
+Phase D1 whole-operation capture and the native ARM/Modal x86 publication
+workflow are documented in
+[`docs/profile-evidence-v1.md`](../docs/profile-evidence-v1.md).

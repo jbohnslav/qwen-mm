@@ -121,6 +121,154 @@ def test_24_independent_request_order() -> None:
         assert layout["image_grid_rows"] == [request_index, request_index + 1]
 
 
+def test_observed_batch_matches_unobserved_and_reconciles_counters() -> None:
+    processor = _processor("qwen3-vl-8b")
+    image = np.arange(35 * 47 * 3, dtype=np.uint8).reshape(35, 47, 3)
+    request = _request([image], generation=False)
+    baseline = processor.prepare_batch(request)
+    observed, report = processor.prepare_batch_observed(request, event_capacity=128)
+
+    assert list(observed.arrays) == list(baseline.arrays)
+    for name in baseline.arrays:
+        np.testing.assert_array_equal(observed.arrays[name], baseline.arrays[name])
+    assert isinstance(report, dict)
+    assert report["schema_version"] == "qwen-mm-observation-v1"
+    assert report["event_capacity"] == 128
+    assert report["dropped_events"] == 0
+    assert report["outcome"] == "success"
+    assert report["error_category"] is None
+    assert report["calls"] == {
+        "public_python_calls": 1,
+        "native_batch_calls": 1,
+        "native_visual_calls": 1,
+        "python_callbacks": 0,
+        "hugging_face_calls": 0,
+        "qwen_vl_utils_calls": 0,
+        "pillow_calls": 0,
+        "torchvision_calls": 0,
+    }
+    spans = report["spans"]
+    assert [span["sequence"] for span in spans] == list(range(len(spans)))
+    names = [span["name"] for span in spans]
+    for name in (
+        "binding.prepare_batch",
+        "binding.parse_requests",
+        "native.batch.plan",
+        "native.media.plan",
+        "native.media.decode_color",
+        "native.media.resize",
+        "native.chat.render",
+        "native.chat.tokenize",
+        "binding.destination.allocate",
+        "native.destination.execute",
+        "native.media.normalize_patchify_layout",
+        "binding.numpy.materialize",
+    ):
+        assert name in names
+    for span in spans:
+        assert span["outcome"] == "success"
+        assert span["error_category"] is None
+        assert 0 <= span["exclusive_duration_ns"] <= span["duration_ns"]
+        if span["parent_sequence"] is not None:
+            assert span["parent_sequence"] < span["sequence"]
+    media_spans = [span for span in spans if span["name"].startswith("native.media.")]
+    assert media_spans
+    for span in media_spans:
+        assert span["scope"] == {
+            "request_index": 0,
+            "message_index": 0,
+            "content_item_index": 0,
+            "media_index": 0,
+            "input_index": 0,
+        }
+
+    allocations = report["allocations"]
+    assert allocations["transient_live_bytes"] == 0
+    assert allocations["retained_final_output_bytes"] == sum(
+        value.nbytes for value in observed.arrays.values()
+    )
+    assert allocations["allocation_count"] == len(report["buffers"])
+    assert allocations["allocated_bytes"] == sum(item["bytes"] for item in report["buffers"])
+    retained = [item for item in report["buffers"] if item["class"] == "retained_output"]
+    assert sum(item["bytes"] for item in retained) == allocations["retained_final_output_bytes"]
+    owned = [item for item in report["buffers"] if item["name"] == "binding.owned_media"]
+    assert len(owned) == 1
+    assert owned[0]["bytes"] == image.nbytes
+    assert owned[0]["released_at_ns"] is not None
+    assert allocations["copied_bytes"] >= image.nbytes
+
+    text_request = [{"messages": [{"role": "user", "content": "hello"}]}]
+    text_baseline = processor.prepare_batch(text_request)
+    text_observed, text_report = processor.prepare_batch_observed(text_request, event_capacity=64)
+    for name in text_baseline.arrays:
+        np.testing.assert_array_equal(text_observed.arrays[name], text_baseline.arrays[name])
+    assert text_report["calls"]["native_visual_calls"] == 0
+    assert all(not span["name"].startswith("native.media.") for span in text_report["spans"])
+
+    bounded, bounded_report = processor.prepare_batch_observed(text_request, event_capacity=1)
+    for name in text_baseline.arrays:
+        np.testing.assert_array_equal(bounded.arrays[name], text_baseline.arrays[name])
+    assert len(bounded_report["spans"]) <= 1
+    assert len(bounded_report["buffers"]) <= 1
+    assert bounded_report["dropped_events"] > 0
+    assert bounded_report["calls"]["public_python_calls"] == 1
+
+    try:
+        processor.prepare_batch_observed([], event_capacity=32)
+    except qwen_mm.InvalidRequestError as error:
+        failure = error.observation_report
+        assert failure["outcome"] == "error"
+        assert failure["error_category"] == "invalid_request"
+        assert failure["calls"]["public_python_calls"] == 1
+        assert failure["calls"]["native_batch_calls"] == 0
+        assert [span["name"] for span in failure["spans"]] == [
+            "binding.prepare_batch",
+            "binding.parse_requests",
+        ]
+        assert all(span["outcome"] == "error" for span in failure["spans"])
+        _assert_failure_report_contained(failure, "binding.prepare_batch")
+    else:
+        raise AssertionError("observed malformed request unexpectedly succeeded")
+
+    corrupt = _request([{"data": b"not a jpeg", "format": "jpeg"}])
+    try:
+        processor.prepare_batch_observed(corrupt, event_capacity=64)
+    except qwen_mm.MediaDecodeError as error:
+        failure = error.observation_report
+        assert failure["outcome"] == "error"
+        assert failure["error_category"] == "media_decode"
+        assert failure["calls"]["public_python_calls"] == 1
+        assert failure["calls"]["native_batch_calls"] == 1
+        assert failure["calls"]["native_visual_calls"] == 1
+        assert failure["allocations"]["transient_live_bytes"] == 0
+        assert failure["allocations"]["retained_final_output_bytes"] == 0
+        assert any(
+            span["name"] == "native.media.decode_color" and span["outcome"] == "error"
+            for span in failure["spans"]
+        )
+        _assert_failure_report_contained(failure, "binding.prepare_batch")
+    else:
+        raise AssertionError("observed corrupt image unexpectedly succeeded")
+
+
+def _assert_failure_report_contained(report: dict, envelope_name: str) -> None:
+    envelopes = [span for span in report["spans"] if span["name"] == envelope_name]
+    assert len(envelopes) == 1
+    envelope = envelopes[0]
+    envelope_start = envelope["started_ns"]
+    envelope_end = envelope_start + envelope["duration_ns"]
+    assert envelope["outcome"] == "error"
+    for span in report["spans"]:
+        assert envelope_start <= span["started_ns"]
+        assert span["started_ns"] + span["duration_ns"] <= envelope_end
+    for buffer in report["buffers"]:
+        assert envelope_start <= buffer["allocated_at_ns"] <= envelope_end
+        assert buffer["class"] != "retained_output"
+        if buffer["class"] in {"transient", "discarded_output"}:
+            assert buffer["released_at_ns"] is not None
+            assert buffer["allocated_at_ns"] <= buffer["released_at_ns"] <= envelope_end
+
+
 def test_exact_24_image_shape_and_gil_release() -> None:
     processor = _processor("qwen3-vl-8b")
     encoded = [(FIXTURE_ROOT / f"image-{index:02d}.jpg").read_bytes() for index in range(24)]
@@ -438,6 +586,7 @@ def main() -> None:
         raise SystemExit(f"hash-pinned snapshots are missing below {ASSETS_ROOT}")
     test_one_image_and_conditional_outputs()
     test_24_independent_request_order()
+    test_observed_batch_matches_unobserved_and_reconciles_counters()
     test_exact_24_image_shape_and_gil_release()
     test_raw_aliasing_validation_and_output_lifetimes()
     test_row_padded_raw_hwc_and_stride_rejections()
