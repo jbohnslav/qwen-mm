@@ -305,6 +305,73 @@ class D4CaptureSupportTests(unittest.TestCase):
                 masks=masks,
             )
 
+    def test_local_linux_resource_attestation_requires_fixed_dedicated_cgroup(self) -> None:
+        masks = {budget: tuple(range(budget)) for budget in support.THREAD_BUDGETS}
+        cgroups = {
+            "/sys/fs/cgroup/cpu.max": "1600000 100000",
+            "/sys/fs/cgroup/cpuset.cpus.effective": "0-15",
+            "/sys/fs/cgroup/memory.max": str(32 * 1024**3),
+        }
+        result = support.local_linux_resource_attestation(
+            cgroup_limits=cgroups,
+            allocated_physical_cores=16,
+            allocated_memory_bytes=32 * 1024**3,
+            power_policy={
+                "paths": {
+                    f"/sys/devices/system/cpu/cpu{cpu}/cpufreq/{name}": "performance"
+                    for cpu in range(16)
+                    for name in (
+                        "scaling_governor",
+                        "energy_performance_preference",
+                        "scaling_min_freq",
+                        "scaling_max_freq",
+                    )
+                }
+                | {
+                    "/sys/devices/system/cpu/intel_pstate/no_turbo": "1",
+                    "/sys/devices/system/cpu/cpufreq/boost": "0",
+                },
+                "unavailable": {},
+            },
+            exclusive_physical_cores=False,
+            dedicated_capture=True,
+            stable=True,
+            visible_affinity=list(range(16)),
+            masks=masks,
+        )
+        self.assertEqual(result["mode"], "cgroup_v2_cpuset")
+        self.assertEqual(result["allocated_physical_cores"], 16)
+        self.assertNotIn("requested_resources_bound_by", result)
+        self.assertNotIn("nonpreemptible", result)
+        self.assertFalse(result["exclusive_physical_cores"])
+
+        with self.assertRaisesRegex(support.D4CaptureError, "stable host controls"):
+            support.local_linux_resource_attestation(
+                cgroup_limits=cgroups,
+                allocated_physical_cores=16,
+                allocated_memory_bytes=32 * 1024**3,
+                power_policy=result["power_policy"],
+                exclusive_physical_cores=False,
+                dedicated_capture=True,
+                stable=False,
+                visible_affinity=list(range(16)),
+                masks=masks,
+            )
+        undersized = dict(cgroups)
+        undersized["/sys/fs/cgroup/cpu.max"] = "800000 100000"
+        with self.assertRaisesRegex(support.D4CaptureError, "CPU quota"):
+            support.local_linux_resource_attestation(
+                cgroup_limits=undersized,
+                allocated_physical_cores=16,
+                allocated_memory_bytes=32 * 1024**3,
+                power_policy=result["power_policy"],
+                exclusive_physical_cores=False,
+                dedicated_capture=True,
+                stable=True,
+                visible_affinity=list(range(16)),
+                masks=masks,
+            )
+
     def test_noise_rule_keeps_every_observation(self) -> None:
         result = support.noise_assessment([100.0, 101.0, 99.0, 100.5, 99.5])
         self.assertTrue(result["pass"])

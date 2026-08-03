@@ -4,7 +4,7 @@
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
 	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test \
-	d4-arm-capture d4-certify d4-modal-capture d4-test d4-validate \
+	d4-arm-capture d4-certify d4-linux-capture d4-modal-capture d4-test d4-validate \
 	modal-benchmark-test profile-d1-arm-archive profile-d1-ingest profile-d1-ingest-arm \
 	profile-d1-ingest-x86 profile-d1-merge profile-d1-modal-archive profile-d1-test \
 	profile-d1-validate
@@ -30,6 +30,8 @@ D4_X86_ARCHIVE ?= /tmp/qwen-mm-d4-x86_64.zip
 D4_ARTIFACT ?= benchmarks/performance-certification-v1/result.json
 D4_REPORT ?= benchmarks/performance-certification-v1/report.md
 D4_HOST_LABEL ?= local-m4
+D4_LINUX_HOST_LABEL ?= local-linux-x86
+D4_LINUX_ALLOCATION_ID ?=
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -159,6 +161,7 @@ d4-test:
 		reference.tests.test_benchmark_v2 \
 		reference.tests.test_performance_certification_v1 \
 		scripts.tests.test_d4_capture \
+		scripts.tests.test_d4_linux \
 		scripts.tests.test_d4_evidence
 
 d4-arm-capture:
@@ -167,6 +170,12 @@ d4-arm-capture:
 
 d4-modal-capture:
 	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)"
+
+d4-linux-capture:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_linux.py \
+		--execute --dedicated-capture --stable \
+		--host-label "$(D4_LINUX_HOST_LABEL)" \
+		--allocation-id "$(D4_LINUX_ALLOCATION_ID)" --output "$(D4_X86_ARCHIVE)"
 
 d4-certify:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_evidence.py \

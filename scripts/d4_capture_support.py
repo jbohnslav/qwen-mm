@@ -69,6 +69,17 @@ D4_RANDOM_SEED = 20260731
 NATIVE_RUSTFLAGS = "-C target-cpu=native"
 NOISE_CV_MAX = 0.05
 NOISE_MIN_OBSERVATIONS = 5
+LOCAL_LINUX_POWER_POLICY_SUFFIXES = {
+    "scaling_governor": "/scaling_governor",
+    "energy_performance_preference": "/energy_performance_preference",
+    "scaling_min_freq": "/scaling_min_freq",
+    "scaling_max_freq": "/scaling_max_freq",
+    "intel_pstate_no_turbo": "/intel_pstate/no_turbo",
+    "cpufreq_boost": "/cpufreq/boost",
+}
+LOCAL_LINUX_AFFINITY_PROBE_THREADS = (1, 2, 4)
+LOCAL_LINUX_AFFINITY_PROBE_SECONDS = 1.0
+LOCAL_LINUX_CPU_WALL_RATIO_MAX = 1.25
 MODAL_NONPREEMPTIBLE = True
 MODAL_SINGLE_USE_CONTAINER = True
 PYPI_INDEX = "https://pypi.org/simple"
@@ -411,17 +422,10 @@ def parse_cpu_list(value: str) -> set[int]:
     return cpus
 
 
-def physical_core_masks(
-    lscpu_parse: str,
-    *,
-    allowed_cpus: Iterable[int],
-    budgets: Sequence[int] = THREAD_BUDGETS,
-) -> dict[int, tuple[int, ...]]:
-    """Choose nested one-thread-per-physical-core masks from ``lscpu -p``.
-
-    Socket and core IDs form the physical-core key.  Sibling logical CPUs are
-    never selected into the same mask.
-    """
+def physical_core_representatives(
+    lscpu_parse: str, *, allowed_cpus: Iterable[int]
+) -> tuple[int, ...]:
+    """Return one allowed logical CPU for each physical socket/core pair."""
 
     allowed = set(allowed_cpus)
     if not allowed:
@@ -442,7 +446,22 @@ def physical_core_masks(
             continue
         key = (socket_id, core)
         physical[key] = min(cpu, physical.get(key, cpu))
-    representatives = tuple(sorted(physical.values()))
+    return tuple(sorted(physical.values()))
+
+
+def physical_core_masks(
+    lscpu_parse: str,
+    *,
+    allowed_cpus: Iterable[int],
+    budgets: Sequence[int] = THREAD_BUDGETS,
+) -> dict[int, tuple[int, ...]]:
+    """Choose nested one-thread-per-physical-core masks from ``lscpu -p``.
+
+    Socket and core IDs form the physical-core key.  Sibling logical CPUs are
+    never selected into the same mask.
+    """
+
+    representatives = physical_core_representatives(lscpu_parse, allowed_cpus=allowed_cpus)
     requested = tuple(budgets)
     if (
         not requested
@@ -533,6 +552,318 @@ def modal_resource_attestation(
         "physical_core_masks": {f"t{budget}": list(masks[budget]) for budget in THREAD_BUDGETS},
         "cgroup_limits": dict(cgroup_limits),
     }
+
+
+def validate_local_linux_affinity_enforcement(
+    value: Mapping[str, Any], *, expected_affinity: Sequence[int]
+) -> dict[str, Any]:
+    """Validate the frozen pre/post native-thread affinity enforcement probe."""
+
+    fields = {
+        "method",
+        "expected_affinity",
+        "probe_seconds",
+        "cpu_wall_ratio_max",
+        "pre",
+        "post",
+    }
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise D4CaptureError("local Linux affinity-enforcement record has an invalid shape")
+    expected = list(expected_affinity)
+    if (
+        len(expected) != 1
+        or any(isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in expected)
+        or value["method"] != "taskset-t1-python-native-threads-v1"
+        or value["expected_affinity"] != expected
+        or value["probe_seconds"] != LOCAL_LINUX_AFFINITY_PROBE_SECONDS
+        or value["cpu_wall_ratio_max"] != LOCAL_LINUX_CPU_WALL_RATIO_MAX
+    ):
+        raise D4CaptureError("local Linux affinity-enforcement controls changed")
+
+    normalized_phases: dict[str, Any] = {}
+    probe_fields = {
+        "native_thread_count",
+        "wall_seconds",
+        "process_cpu_seconds",
+        "process_cpu_wall_ratio",
+        "worker_reports",
+    }
+    worker_fields = {
+        "worker_index",
+        "native_thread_id",
+        "affinity",
+        "observed_cpus",
+        "iterations",
+    }
+    for phase in ("pre", "post"):
+        raw_phase = value[phase]
+        if not isinstance(raw_phase, Mapping) or set(raw_phase) != {"probes"}:
+            raise D4CaptureError(f"local Linux affinity-enforcement {phase} shape is invalid")
+        probes = raw_phase["probes"]
+        if not isinstance(probes, list) or len(probes) != len(LOCAL_LINUX_AFFINITY_PROBE_THREADS):
+            raise D4CaptureError(
+                f"local Linux affinity-enforcement {phase} probe inventory is incomplete"
+            )
+        normalized_probes: list[dict[str, Any]] = []
+        for raw_probe, thread_count in zip(probes, LOCAL_LINUX_AFFINITY_PROBE_THREADS, strict=True):
+            if not isinstance(raw_probe, Mapping) or set(raw_probe) != probe_fields:
+                raise D4CaptureError(
+                    f"local Linux affinity-enforcement {phase} probe shape is invalid"
+                )
+            if raw_probe["native_thread_count"] != thread_count:
+                raise D4CaptureError(
+                    f"local Linux affinity-enforcement {phase} thread matrix changed"
+                )
+            timing: dict[str, float] = {}
+            for name in (
+                "wall_seconds",
+                "process_cpu_seconds",
+                "process_cpu_wall_ratio",
+            ):
+                raw_timing = raw_probe[name]
+                if (
+                    isinstance(raw_timing, bool)
+                    or not isinstance(raw_timing, (int, float))
+                    or not math.isfinite(raw_timing)
+                    or raw_timing <= 0
+                ):
+                    raise D4CaptureError(
+                        f"local Linux affinity-enforcement {phase} timing is invalid"
+                    )
+                timing[name] = float(raw_timing)
+            if timing["wall_seconds"] < LOCAL_LINUX_AFFINITY_PROBE_SECONDS:
+                raise D4CaptureError(f"local Linux affinity-enforcement {phase} probe is too short")
+            recomputed_ratio = timing["process_cpu_seconds"] / timing["wall_seconds"]
+            if not math.isclose(
+                timing["process_cpu_wall_ratio"],
+                recomputed_ratio,
+                rel_tol=1e-9,
+                abs_tol=1e-12,
+            ):
+                raise D4CaptureError(
+                    f"local Linux affinity-enforcement {phase} CPU/wall ratio is stale"
+                )
+            if timing["process_cpu_wall_ratio"] > LOCAL_LINUX_CPU_WALL_RATIO_MAX:
+                raise D4CaptureError(
+                    f"local Linux affinity-enforcement {phase} exceeded CPU/wall limit"
+                )
+            reports = raw_probe["worker_reports"]
+            if not isinstance(reports, list) or len(reports) != thread_count:
+                raise D4CaptureError(
+                    f"local Linux affinity-enforcement {phase} worker inventory is incomplete"
+                )
+            native_ids: set[int] = set()
+            normalized_reports: list[dict[str, Any]] = []
+            for worker_index, report in enumerate(reports):
+                if not isinstance(report, Mapping) or set(report) != worker_fields:
+                    raise D4CaptureError(
+                        f"local Linux affinity-enforcement {phase} worker shape is invalid"
+                    )
+                native_id = report["native_thread_id"]
+                iterations = report["iterations"]
+                if (
+                    report["worker_index"] != worker_index
+                    or isinstance(native_id, bool)
+                    or not isinstance(native_id, int)
+                    or native_id <= 0
+                    or native_id in native_ids
+                    or isinstance(iterations, bool)
+                    or not isinstance(iterations, int)
+                    or iterations <= 0
+                    or report["affinity"] != expected
+                    or report["observed_cpus"] != expected
+                ):
+                    raise D4CaptureError(
+                        f"local Linux affinity-enforcement {phase} worker report is invalid"
+                    )
+                native_ids.add(native_id)
+                normalized_reports.append(dict(report))
+            normalized_probes.append(
+                {
+                    "native_thread_count": thread_count,
+                    **timing,
+                    "worker_reports": normalized_reports,
+                }
+            )
+        normalized_phases[phase] = {"probes": normalized_probes}
+    return {
+        "method": value["method"],
+        "expected_affinity": expected,
+        "probe_seconds": LOCAL_LINUX_AFFINITY_PROBE_SECONDS,
+        "cpu_wall_ratio_max": LOCAL_LINUX_CPU_WALL_RATIO_MAX,
+        **normalized_phases,
+    }
+
+
+def local_linux_resource_attestation(
+    *,
+    cgroup_limits: Mapping[str, str],
+    allocated_physical_cores: int,
+    allocated_memory_bytes: int,
+    power_policy: Mapping[str, Mapping[str, str]],
+    exclusive_physical_cores: bool,
+    dedicated_capture: bool,
+    stable: bool,
+    visible_affinity: Sequence[int],
+    masks: Mapping[int, Sequence[int]],
+    affinity_enforcement: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate a controlled, fixed local-Linux cgroup allocation.
+
+    A Docker cpuset enforces this capture's affinity but does not prove host-
+    level physical-core exclusivity, so that claim must remain false.
+    ``dedicated_capture`` asserts no other benchmark work ran in the capture
+    allocation, while ``stable`` asserts that its resource limits and the host
+    power/performance policy remained unchanged for the complete capture.
+    """
+
+    if exclusive_physical_cores is not False:
+        raise D4CaptureError("local Linux Docker capture cannot claim exclusive physical cores")
+    if dedicated_capture is not True or stable is not True:
+        raise D4CaptureError(
+            "local Linux capture requires a dedicated capture and stable host controls"
+        )
+    visible = list(visible_affinity)
+    if (
+        not visible
+        or len(visible) != len(set(visible))
+        or any(isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in visible)
+    ):
+        raise D4CaptureError("local Linux visible affinity is invalid")
+    if not isinstance(power_policy, Mapping) or set(power_policy) != {"paths", "unavailable"}:
+        raise D4CaptureError("local Linux power-policy snapshot has an invalid shape")
+    paths = power_policy["paths"]
+    unavailable = power_policy["unavailable"]
+    if not isinstance(paths, Mapping) or not isinstance(unavailable, Mapping):
+        raise D4CaptureError("local Linux power-policy records must be objects")
+    if set(unavailable) - set(LOCAL_LINUX_POWER_POLICY_SUFFIXES):
+        raise D4CaptureError("local Linux power-policy snapshot has unknown endpoint groups")
+    for path, value in paths.items():
+        if (
+            not isinstance(path, str)
+            or not path.startswith("/sys/devices/system/cpu/")
+            or PurePosixPath(path).as_posix() != path
+            or ".." in PurePosixPath(path).parts
+            or not any(
+                path.endswith(suffix) for suffix in LOCAL_LINUX_POWER_POLICY_SUFFIXES.values()
+            )
+            or not isinstance(value, str)
+            or not value.strip()
+        ):
+            raise D4CaptureError("local Linux power-policy path/value is invalid")
+    for group, suffix in LOCAL_LINUX_POWER_POLICY_SUFFIXES.items():
+        matching = [path for path in paths if path.endswith(suffix)]
+        observed = bool(matching)
+        missing = group in unavailable
+        if observed == missing:
+            raise D4CaptureError(
+                f"local Linux power-policy group must be observed or unavailable: {group}"
+            )
+        if missing and (not isinstance(unavailable[group], str) or not unavailable[group].strip()):
+            raise D4CaptureError(f"local Linux power-policy unavailable reason is invalid: {group}")
+        if (
+            group
+            in {
+                "scaling_governor",
+                "energy_performance_preference",
+                "scaling_min_freq",
+                "scaling_max_freq",
+            }
+            and observed
+        ):
+            cpu_prefix = "/sys/devices/system/cpu/cpu"
+            observed_cpus: set[int] = set()
+            for path in matching:
+                cpu_text, separator, endpoint = path[len(cpu_prefix) :].partition("/cpufreq/")
+                if not separator or not cpu_text.isdigit() or endpoint != group:
+                    raise D4CaptureError(
+                        f"local Linux per-CPU power-policy path is invalid: {path}"
+                    )
+                observed_cpus.add(int(cpu_text))
+            if observed_cpus != set(visible):
+                raise D4CaptureError(
+                    f"local Linux power-policy group does not cover visible CPUs: {group}"
+                )
+        if group == "intel_pstate_no_turbo" and matching not in (
+            [],
+            ["/sys/devices/system/cpu/intel_pstate/no_turbo"],
+        ):
+            raise D4CaptureError("local Linux no-turbo power-policy path is invalid")
+        if group == "cpufreq_boost" and matching not in (
+            [],
+            ["/sys/devices/system/cpu/cpufreq/boost"],
+        ):
+            raise D4CaptureError("local Linux boost power-policy path is invalid")
+    if (
+        isinstance(allocated_physical_cores, bool)
+        or not isinstance(allocated_physical_cores, int)
+        or allocated_physical_cores < max(THREAD_BUDGETS)
+    ):
+        raise D4CaptureError("local Linux allocation exposes fewer than 8 physical cores")
+    if (
+        isinstance(allocated_memory_bytes, bool)
+        or not isinstance(allocated_memory_bytes, int)
+        or allocated_memory_bytes <= 0
+    ):
+        raise D4CaptureError("local Linux allocated memory must be a positive byte count")
+    if set(masks) != set(THREAD_BUDGETS):
+        raise D4CaptureError("local Linux affinity masks do not cover t1/t2/t4/t8")
+    prior: list[int] = []
+    for budget in THREAD_BUDGETS:
+        mask = list(masks[budget])
+        if (
+            len(mask) != budget
+            or len(mask) != len(set(mask))
+            or any(isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in mask)
+            or not set(mask).issubset(visible)
+            or (prior and mask[: len(prior)] != prior)
+        ):
+            raise D4CaptureError(f"invalid local Linux t{budget} physical-core mask")
+        prior = mask
+
+    required = {
+        "/sys/fs/cgroup/cpu.max",
+        "/sys/fs/cgroup/cpuset.cpus.effective",
+        "/sys/fs/cgroup/memory.max",
+    }
+    if set(cgroup_limits) != required:
+        raise D4CaptureError("local Linux capture requires the complete cgroup v2 control set")
+    try:
+        quota_text, period_text = cgroup_limits["/sys/fs/cgroup/cpu.max"].split()
+        period = int(period_text)
+        quota = None if quota_text == "max" else int(quota_text)
+        memory_text = cgroup_limits["/sys/fs/cgroup/memory.max"]
+        memory_limit = None if memory_text == "max" else int(memory_text)
+    except (TypeError, ValueError) as error:
+        raise D4CaptureError("local Linux cgroup CPU or memory limit is invalid") from error
+    if period <= 0 or quota is None or quota / period < allocated_physical_cores:
+        raise D4CaptureError("local Linux CPU quota is smaller than its physical-core allocation")
+    if memory_limit is None or memory_limit != allocated_memory_bytes:
+        raise D4CaptureError("local Linux memory limit differs from its allocated memory")
+    cpuset = parse_cpu_list(cgroup_limits["/sys/fs/cgroup/cpuset.cpus.effective"])
+    if cpuset != set(visible):
+        raise D4CaptureError("local Linux effective cpuset differs from visible affinity")
+    result = {
+        "mode": "cgroup_v2_cpuset",
+        "allocated_physical_cores": allocated_physical_cores,
+        "allocated_memory_bytes": allocated_memory_bytes,
+        "power_policy": {
+            "paths": dict(paths),
+            "unavailable": dict(unavailable),
+        },
+        "exclusive_physical_cores": False,
+        "dedicated_capture": True,
+        "stable": True,
+        "visible_affinity": visible,
+        "physical_core_masks": {f"t{budget}": list(masks[budget]) for budget in THREAD_BUDGETS},
+        "cgroup_limits": dict(cgroup_limits),
+    }
+    if affinity_enforcement is not None:
+        result["affinity_enforcement"] = validate_local_linux_affinity_enforcement(
+            affinity_enforcement,
+            expected_affinity=masks[min(THREAD_BUDGETS)],
+        )
+    return result
 
 
 def noise_assessment(values: Sequence[float]) -> dict[str, Any]:
@@ -700,13 +1031,37 @@ def _provenance_affinity_masks(
             recomputed = physical_core_masks(
                 host["lscpu_parse"], allowed_cpus=visible, budgets=THREAD_BUDGETS
             )
-            rebuilt_attestation = modal_resource_attestation(
-                cgroup_limits=attestation["cgroup_limits"],
-                platform_text=host["platform"],
-                uname=host["uname"],
-                visible_affinity=visible,
-                masks=recomputed,
-            )
+            provider = provenance["provider"]
+            if provider == "modal":
+                rebuilt_attestation = modal_resource_attestation(
+                    cgroup_limits=attestation["cgroup_limits"],
+                    platform_text=host["platform"],
+                    uname=host["uname"],
+                    visible_affinity=visible,
+                    masks=recomputed,
+                )
+            elif provider == "local_linux":
+                physical_count = len(
+                    physical_core_representatives(host["lscpu_parse"], allowed_cpus=visible)
+                )
+                if attestation["allocated_physical_cores"] != physical_count:
+                    raise D4CaptureError(
+                        "local Linux physical-core allocation differs from CPU topology"
+                    )
+                rebuilt_attestation = local_linux_resource_attestation(
+                    cgroup_limits=attestation["cgroup_limits"],
+                    allocated_physical_cores=attestation["allocated_physical_cores"],
+                    allocated_memory_bytes=attestation["allocated_memory_bytes"],
+                    power_policy=attestation["power_policy"],
+                    exclusive_physical_cores=attestation["exclusive_physical_cores"],
+                    dedicated_capture=attestation["dedicated_capture"],
+                    stable=attestation["stable"],
+                    visible_affinity=visible,
+                    masks=recomputed,
+                    affinity_enforcement=attestation["affinity_enforcement"],
+                )
+            else:
+                raise D4CaptureError(f"unknown x86 capture provider: {provider!r}")
         except (KeyError, TypeError) as error:
             raise D4CaptureError("raw capture CPU topology attestation is incomplete") from error
         if {budget: list(mask) for budget, mask in recomputed.items()} != {
@@ -1137,3 +1492,9 @@ def toolchain_pins() -> dict[str, Any]:
         "modal_cpu": MODAL_CPU,
         "modal_memory_mib": MODAL_MEMORY_MIB,
     }
+
+
+def local_linux_toolchain_pins() -> dict[str, Any]:
+    """Return build-tool pins without inventing Modal image/resource claims."""
+
+    return {"rust": RUST_VERSION, "uv": UV_VERSION}

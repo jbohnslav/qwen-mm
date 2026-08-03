@@ -139,7 +139,7 @@
         "logical_cpu_count": {"$ref": "#/$defs/positiveInteger"},
         "memory_bytes": {"$ref": "#/$defs/positiveInteger"},
         "controlled": {"const": true},
-        "provider": {"type": "string", "minLength": 1},
+        "provider": {"enum": ["local", "modal", "local_linux"]},
         "instance_type": {"type": "string", "minLength": 1},
         "allocation_id": {"type": "string", "minLength": 1},
         "affinity_available": {"type": "boolean"},
@@ -181,6 +181,29 @@
           "additionalProperties": false
         }
       },
+      "allOf": [
+        {
+          "if": {"properties": {"machine": {"const": "arm64"}}, "required": ["machine"]},
+          "then": {
+            "properties": {
+              "system": {"const": "Darwin"},
+              "provider": {"const": "local"},
+              "affinity_available": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"machine": {"const": "x86_64"}}, "required": ["machine"]},
+          "then": {
+            "properties": {
+              "system": {"const": "Linux"},
+              "provider": {"enum": ["modal", "local_linux"]},
+              "affinity_available": {"const": true},
+              "affinity_unavailable_reason": {"const": null}
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "toolchain": {

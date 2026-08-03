@@ -148,6 +148,7 @@ def run_d4(
 ) -> bytes:
     sys.path.insert(0, str(REMOTE_ROOT / "scripts"))
     from d4_capture_support import source_payload_identity
+    from d4_linux import _affinity_enforcement_phase
     from d4_local import _capture as capture_command
     from d4_local import _collect_files as collect_files
     from d4_local import _run_logged, _runtime_identity
@@ -188,6 +189,10 @@ def run_d4(
     )
 
     environment = normalized_capture_environment(os.environ)
+    # Reported taskset/sched_getaffinity state is insufficient under a virtual
+    # kernel that does not actually constrain native worker threads.  Exercise
+    # the frozen t1 budget before any long build or benchmark work.
+    _affinity_enforcement_phase(masks[1], environment=environment)
     normalized_build_environment = build_environment_evidence(environment)
     build_host = {
         "os_release": {
@@ -358,6 +363,7 @@ def run_d4(
             "schema_version": 1,
             "claim": "raw controlled-host input for the separate D4 certification evaluator",
             "architecture_family": "x86_64",
+            "provider": "modal",
             "started_at": started.isoformat(),
             "completed_at": datetime.now(UTC).isoformat(),
             "source_revision": source_revision,

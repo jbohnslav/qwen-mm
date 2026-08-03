@@ -33,7 +33,9 @@ from d4_capture_support import (  # noqa: E402
     THREAD_BUDGETS,
     _provenance_affinity_masks,
     assert_assets_identity,
+    local_linux_toolchain_pins,
     read_capture_archive,
+    toolchain_pins,
     wheel_benchmark_artifact_identity,
 )
 from modal_benchmark_support import committed_source_tree_digest  # noqa: E402
@@ -285,7 +287,16 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
         "noise_cv_max",
         "environment",
     }
-    fields = common | ({"host_label"} if architecture == "arm64" else {"modal"})
+    if architecture == "arm64":
+        fields = common | {"host_label"}
+    else:
+        provider = value.get("provider")
+        if provider == "modal":
+            fields = common | {"provider", "modal"}
+        elif provider == "local_linux":
+            fields = common | {"provider", "local_linux"}
+        else:
+            _fail("x86_64.provenance.provider must be modal or local_linux")
     provenance = _object(value, f"{architecture}.provenance", fields)
     if (
         provenance["schema_id"] != "qwen-mm-d4-raw-capture-provenance-v1"
@@ -297,6 +308,25 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
         or provenance["noise_cv_max"] != 0.05
     ):
         _fail(f"{architecture} raw provenance changed the D4 capture contract")
+    if architecture == "x86_64":
+        if provenance["provider"] == "modal":
+            modal = _object(provenance["modal"], "x86_64.modal", {"client_version", "environment"})
+            _string(modal["client_version"], "x86_64.modal.client_version")
+            if not isinstance(modal["environment"], Mapping):
+                _fail("x86_64.modal.environment must be an object")
+        else:
+            local = _object(
+                provenance["local_linux"],
+                "x86_64.local_linux",
+                {"host_label", "allocation_id"},
+            )
+            _string(local["host_label"], "x86_64.local_linux.host_label")
+            _string(local["allocation_id"], "x86_64.local_linux.allocation_id")
+        expected_pins = (
+            toolchain_pins() if provenance["provider"] == "modal" else local_linux_toolchain_pins()
+        )
+        if provenance["toolchain_pins"] != expected_pins:
+            _fail(f"x86_64 {provenance['provider']} toolchain/resource pins changed")
     for field in ("build_wheel_sha256", "build_native_sha256"):
         mapping = _object(provenance[field], f"{architecture}.{field}", set(BUILD_LABELS))
         for label, raw_digest in mapping.items():
@@ -404,10 +434,9 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
                 "resource_attestation",
             },
         )
-        attestation = _object(
-            raw["resource_attestation"],
-            "x86_64.host.resource_attestation",
-            {
+        provider = provenance["provider"]
+        if provider == "modal":
+            attestation_fields = {
                 "mode",
                 "requested_resources_bound_by",
                 "requested_physical_cores",
@@ -417,43 +446,74 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
                 "visible_affinity",
                 "physical_core_masks",
                 "cgroup_limits",
-            },
+            }
+        else:
+            attestation_fields = {
+                "mode",
+                "allocated_physical_cores",
+                "allocated_memory_bytes",
+                "power_policy",
+                "affinity_enforcement",
+                "exclusive_physical_cores",
+                "dedicated_capture",
+                "stable",
+                "visible_affinity",
+                "physical_core_masks",
+                "cgroup_limits",
+            }
+        attestation = _object(
+            raw["resource_attestation"],
+            "x86_64.host.resource_attestation",
+            attestation_fields,
         )
-        if (
-            attestation["nonpreemptible"] is not True
-            or attestation["single_use_container"] is not True
-        ):
-            _fail("x86 capture lacks nonpreemptible single-use placement")
         recomputed_masks = _provenance_affinity_masks(provenance, architecture)
         masks = {f"t{budget}": recomputed_masks[budget] for budget in THREAD_BUDGETS}
         topology = {"lscpu": raw["lscpu"], "lscpu_parse": raw["lscpu_parse"]}
         cgroup = {"mode": attestation["mode"], "limits": attestation["cgroup_limits"]}
-        provider = "modal"
-        instance_type = (
-            f"cpu-{attestation['requested_physical_cores']}-"
-            f"memory-{attestation['requested_memory_mib']}MiB"
-        )
-        modal = _object(provenance["modal"], "x86_64.modal", {"client_version", "environment"})
-        modal_environment = modal["environment"]
-        if not isinstance(modal_environment, Mapping):
-            _fail("x86_64.modal.environment must be an object")
-        allocation_id = next(
-            (
-                str(modal_environment[name])
-                for name in ("MODAL_TASK_ID", "MODAL_CONTAINER_ID", "MODAL_APP_ID")
-                if isinstance(modal_environment.get(name), str) and modal_environment[name]
-            ),
-            _string(raw["hostname"], "x86_64.hostname"),
-        )
-        allocated_cpu_count = _integer(
-            attestation["requested_physical_cores"], "x86 allocated CPUs", minimum=8
-        )
-        allocated_memory = (
-            _integer(attestation["requested_memory_mib"], "x86 allocated memory", minimum=1)
-            * 1024
-            * 1024
-        )
-        affinity_source = "taskset+sched_getaffinity"
+        if provider == "modal":
+            if (
+                attestation["nonpreemptible"] is not True
+                or attestation["single_use_container"] is not True
+            ):
+                _fail("x86 capture lacks nonpreemptible single-use placement")
+            instance_type = (
+                f"cpu-{attestation['requested_physical_cores']}-"
+                f"memory-{attestation['requested_memory_mib']}MiB"
+            )
+            modal = provenance["modal"]
+            modal_environment = modal["environment"]
+            allocation_id = next(
+                (
+                    str(modal_environment[name])
+                    for name in ("MODAL_TASK_ID", "MODAL_CONTAINER_ID", "MODAL_APP_ID")
+                    if isinstance(modal_environment.get(name), str) and modal_environment[name]
+                ),
+                _string(raw["hostname"], "x86_64.hostname"),
+            )
+            allocated_cpu_count = _integer(
+                attestation["requested_physical_cores"], "x86 allocated CPUs", minimum=8
+            )
+            allocated_memory = (
+                _integer(attestation["requested_memory_mib"], "x86 allocated memory", minimum=1)
+                * 1024
+                * 1024
+            )
+            affinity_source = "taskset+sched_getaffinity"
+        else:
+            local = provenance["local_linux"]
+            instance_type = _string(local["host_label"], "x86_64.local_linux.host_label")
+            allocation_id = _string(local["allocation_id"], "x86_64.local_linux.allocation_id")
+            allocated_cpu_count = _integer(
+                attestation["allocated_physical_cores"],
+                "x86 allocated physical CPUs",
+                minimum=8,
+            )
+            allocated_memory = _integer(
+                attestation["allocated_memory_bytes"],
+                "x86 allocated memory",
+                minimum=1,
+            )
+            affinity_source = "cgroup_v2_cpuset+taskset+sched_getaffinity"
         unavailable_reason = None
         if raw["system"] != "Linux" or raw["machine"] not in {"x86_64", "amd64"}:
             _fail("x86 host provenance is not native Linux x86_64")

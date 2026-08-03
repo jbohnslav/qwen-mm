@@ -34,7 +34,41 @@ def asset_identity() -> dict[str, object]:
     }
 
 
-def provenance(architecture: str) -> dict[str, object]:
+def affinity_enforcement() -> dict[str, object]:
+    def phase(native_id_offset: int) -> dict[str, object]:
+        return {
+            "probes": [
+                {
+                    "native_thread_count": thread_count,
+                    "wall_seconds": 1.0,
+                    "process_cpu_seconds": 1.0,
+                    "process_cpu_wall_ratio": 1.0,
+                    "worker_reports": [
+                        {
+                            "worker_index": worker_index,
+                            "native_thread_id": native_id_offset + worker_index,
+                            "affinity": [0],
+                            "observed_cpus": [0],
+                            "iterations": 100,
+                        }
+                        for worker_index in range(thread_count)
+                    ],
+                }
+                for thread_count in (1, 2, 4)
+            ]
+        }
+
+    return {
+        "method": "taskset-t1-python-native-threads-v1",
+        "expected_affinity": [0],
+        "probe_seconds": 1.0,
+        "cpu_wall_ratio_max": 1.25,
+        "pre": phase(100),
+        "post": phase(200),
+    }
+
+
+def provenance(architecture: str, *, provider: str = "modal") -> dict[str, object]:
     capture_inputs = {
         path: {"bytes": index + 1, "sha256": digest(path)}
         for index, path in enumerate(evidence.CAPTURE_INPUT_PATHS)
@@ -52,7 +86,7 @@ def provenance(architecture: str) -> dict[str, object]:
         "capture_inputs": capture_inputs,
         "build_wheel_sha256": {"shipping": digest("sw"), "native": digest("nw")},
         "build_native_sha256": {"shipping": digest("sn"), "native": digest("nn")},
-        "toolchain_pins": {},
+        "toolchain_pins": evidence.toolchain_pins(),
         "sample_pruning": "forbidden",
         "noise_cv_max": 0.05,
         "environment": {
@@ -82,10 +116,18 @@ def provenance(architecture: str) -> dict[str, object]:
             },
         }
     else:
-        common["modal"] = {
-            "client_version": "1.4.0",
-            "environment": {"MODAL_TASK_ID": "task-1"},
-        }
+        common["provider"] = provider
+        if provider == "modal":
+            common["modal"] = {
+                "client_version": "1.4.0",
+                "environment": {"MODAL_TASK_ID": "task-1"},
+            }
+        else:
+            common["toolchain_pins"] = evidence.local_linux_toolchain_pins()
+            common["local_linux"] = {
+                "host_label": "dedicated-linux-fixture",
+                "allocation_id": "capture-1",
+            }
         common["host"] = {
             "system": "Linux",
             "machine": "x86_64",
@@ -117,6 +159,43 @@ def provenance(architecture: str) -> dict[str, object]:
                 },
             },
         }
+        if provider == "local_linux":
+            common["host"]["hostname"] = "local-linux-host"
+            common["host"]["resource_attestation"] = {
+                "mode": "cgroup_v2_cpuset",
+                "allocated_physical_cores": 16,
+                "allocated_memory_bytes": 32 * 1024**3,
+                "power_policy": {
+                    "paths": {
+                        f"/sys/devices/system/cpu/cpu{cpu}/cpufreq/{name}": "performance"
+                        for cpu in range(16)
+                        for name in (
+                            "scaling_governor",
+                            "energy_performance_preference",
+                            "scaling_min_freq",
+                            "scaling_max_freq",
+                        )
+                    }
+                    | {
+                        "/sys/devices/system/cpu/intel_pstate/no_turbo": "1",
+                        "/sys/devices/system/cpu/cpufreq/boost": "0",
+                    },
+                    "unavailable": {},
+                },
+                "affinity_enforcement": affinity_enforcement(),
+                "exclusive_physical_cores": False,
+                "dedicated_capture": True,
+                "stable": True,
+                "visible_affinity": list(range(16)),
+                "physical_core_masks": {
+                    f"t{budget}": list(range(budget)) for budget in evidence.THREAD_BUDGETS
+                },
+                "cgroup_limits": {
+                    "/sys/fs/cgroup/cpu.max": "1600000 100000",
+                    "/sys/fs/cgroup/cpuset.cpus.effective": "0-15",
+                    "/sys/fs/cgroup/memory.max": str(32 * 1024**3),
+                },
+            }
     return common
 
 
@@ -311,6 +390,41 @@ class D4EvidenceTests(unittest.TestCase):
         relabeled["host"]["machine"] = "arm64"
         with self.assertRaisesRegex(evidence.D4EvidenceError, "not native Linux"):
             evidence._host(relabeled, "x86_64")
+
+    def test_local_linux_provider_has_authenticated_controls_without_modal_fields(self) -> None:
+        x86 = provenance("x86_64", provider="local_linux")
+        validated = evidence._validate_provenance(x86, "x86_64")
+        host = evidence._host(validated, "x86_64")
+        self.assertEqual(host["provider"], "local_linux")
+        self.assertEqual(host["instance_type"], "dedicated-linux-fixture")
+        self.assertEqual(host["allocation_id"], "capture-1")
+        self.assertEqual(host["allocated_cpu_count"], 16)
+        self.assertTrue(host["affinity_available"])
+        self.assertNotIn("modal", validated)
+
+        forged_modal = copy.deepcopy(x86)
+        forged_modal["modal"] = {"client_version": "test", "environment": {}}
+        with self.assertRaisesRegex(evidence.D4EvidenceError, "closed shape"):
+            evidence._validate_provenance(forged_modal, "x86_64")
+
+        unstable = copy.deepcopy(x86)
+        unstable["host"]["resource_attestation"]["stable"] = False
+        with self.assertRaisesRegex(ValueError, "stable host controls"):
+            evidence._host(unstable, "x86_64")
+
+        false_exclusivity = copy.deepcopy(x86)
+        false_exclusivity["host"]["resource_attestation"]["exclusive_physical_cores"] = True
+        with self.assertRaisesRegex(ValueError, "cannot claim exclusive"):
+            evidence._host(false_exclusivity, "x86_64")
+
+        over_budget = copy.deepcopy(x86)
+        over_budget_probe = over_budget["host"]["resource_attestation"]["affinity_enforcement"][
+            "post"
+        ]["probes"][2]
+        over_budget_probe["process_cpu_seconds"] = 1.3
+        over_budget_probe["process_cpu_wall_ratio"] = 1.3
+        with self.assertRaisesRegex(ValueError, "exceeded CPU/wall limit"):
+            evidence._host(over_budget, "x86_64")
 
     def test_worker_transform_preserves_samples_floor_and_native_census(self) -> None:
         raw = worker(candidate=True)
