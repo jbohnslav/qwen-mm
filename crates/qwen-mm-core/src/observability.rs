@@ -317,6 +317,7 @@ impl ObservationRecorder {
         let sequence = self.next_span_sequence;
         self.next_span_sequence = self.next_span_sequence.saturating_add(1);
         let started = Instant::now();
+        let started_ns = nanos(started.duration_since(self.started));
         let parent_sequence = self.active_spans.last().map(|active| active.sequence);
         let index = if self.spans.len() < self.capacity {
             let index = self.spans.len();
@@ -325,7 +326,7 @@ impl ObservationRecorder {
                 parent_sequence,
                 name: name.to_owned(),
                 scope,
-                started_ns: nanos(self.started.elapsed()),
+                started_ns,
                 duration_ns: 0,
                 exclusive_duration_ns: 0,
                 outcome: StageOutcome::Success,
@@ -648,5 +649,36 @@ mod tests {
             parent.duration_ns.saturating_sub(child.duration_ns)
         );
         assert_eq!(child.exclusive_duration_ns, child.duration_ns);
+    }
+
+    #[test]
+    fn adjacent_sibling_intervals_do_not_overlap() {
+        let mut recorder = ObservationRecorder::new(1024);
+        let parent = recorder.begin("parent", ObservationScope::default(), 0);
+        for _ in 0..512 {
+            let child = recorder.begin("child", ObservationScope::default(), 0);
+            let recorded_start = recorder.spans[child.index.expect("recorded child")].started_ns;
+            assert_eq!(
+                recorded_start,
+                nanos(child.started.duration_since(recorder.started))
+            );
+            recorder.finish_success(child, 0, &[]);
+        }
+        recorder.finish_success(parent, 0, &[]);
+
+        let report = recorder.report();
+        let children = report
+            .spans
+            .iter()
+            .filter(|span| span.parent_sequence == Some(parent.sequence))
+            .collect::<Vec<_>>();
+        for adjacent in children.windows(2) {
+            assert!(
+                adjacent[0].started_ns + adjacent[0].duration_ns <= adjacent[1].started_ns,
+                "adjacent sibling spans overlap: {:?} then {:?}",
+                adjacent[0],
+                adjacent[1]
+            );
+        }
     }
 }
