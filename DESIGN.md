@@ -444,6 +444,10 @@ Optimization work follows profiles. The expected primary gain is eliminating who
 
 ## Implementation plan
 
+The dependency-ordered work packages, quantitative release gates, and production
+validation plan are maintained in [ROADMAP.md](ROADMAP.md). The milestones below
+remain the architectural summary.
+
 Each milestone has a runnable artifact and an exit condition. Correctness gates precede optimization, and the first vertical slice is encoded JPEG plus text to final arrays for one Qwen3-VL configuration.
 
 ### Milestone 0: lock and measure the reference

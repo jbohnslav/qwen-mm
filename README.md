@@ -13,3 +13,5 @@ The implementation-level compatibility source of truth is
 [`reference/compatibility/v1.json`](reference/compatibility/v1.json).
 
 The first current-path measurement is documented in [BENCHMARK.md](BENCHMARK.md).
+
+The dependency-ordered implementation plan and release gates are in [ROADMAP.md](ROADMAP.md).
