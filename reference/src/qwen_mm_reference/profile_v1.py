@@ -763,6 +763,13 @@ def _sample_worker(args: argparse.Namespace) -> None:
         ),
     }
     Path(config["result_path"]).write_text(json.dumps(result), encoding="utf-8")
+    if duration_seconds is not None:
+        # py-spy 0.4.1 performs a final waitpid after sampling a child.  Keep the
+        # finite worker alive after its authenticated result is durable so the
+        # controller can stop py-spy cleanly; py-spy then terminates its child
+        # instead of racing the host's process handling at child exit.
+        while True:
+            signal.pause()
 
 
 def _wait_for_path(path: Path, process: subprocess.Popen[str], timeout: float) -> None:
@@ -824,14 +831,54 @@ def _run_py_spy_child(
     ready_path: Path | None = None,
     result_path: Path | None = None,
     timeout: float = 300.0,
+    cwd: Path | None = None,
+    environment: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a py-spy child capture with bounded, authenticated orphan cleanup."""
 
     sampler = subprocess.Popen(
-        sampler_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        sampler_command,
+        cwd=cwd,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
+    deadline = time.monotonic() + timeout
+    authenticated_worker_pid: int | None = None
+    authentication_error: str | None = None
     try:
-        stdout, stderr = sampler.communicate(timeout=timeout)
+        if result_path is not None:
+            while sampler.poll() is None:
+                result_pids = _recorded_worker_pids((result_path,))
+                if result_pids:
+                    if len(result_pids) != 1:
+                        authentication_error = "py-spy result records an ambiguous worker PID"
+                    else:
+                        authenticated_worker_pid = next(iter(result_pids))
+                        if _linux_process_command(authenticated_worker_pid) != worker_command:
+                            authentication_error = (
+                                "py-spy result PID does not match the exact worker command"
+                            )
+                        elif ready_path is not None:
+                            ready_pids = _recorded_worker_pids((ready_path,))
+                            if ready_pids != result_pids:
+                                authentication_error = (
+                                    "py-spy readiness/result worker PIDs do not match"
+                                )
+                    # Signal only py-spy, never its process group.  Even if the
+                    # result is malformed, py-spy owns and safely tears down its
+                    # actual child before we reject the capture below.
+                    try:
+                        os.kill(sampler.pid, signal.SIGINT)
+                    except ProcessLookupError:
+                        pass
+                    break
+                if time.monotonic() >= deadline:
+                    raise subprocess.TimeoutExpired(sampler_command, timeout)
+                time.sleep(0.02)
+        remaining = max(0.001, deadline - time.monotonic())
+        stdout, stderr = sampler.communicate(timeout=remaining)
     except subprocess.TimeoutExpired as error:
         try:
             children_text = Path(f"/proc/{sampler.pid}/task/{sampler.pid}/children").read_text(
@@ -865,6 +912,28 @@ def _run_py_spy_child(
         raise ProfileArtifactError(
             f"py-spy child capture exceeded the {timeout:g} s timeout{cleanup}"
         ) from error
+    if result_path is not None and authenticated_worker_pid is None:
+        cleaned = _cleanup_authenticated_workers(
+            list(_recorded_worker_pids((ready_path, result_path))), worker_command
+        )
+        cleanup = (
+            f"; terminated {cleaned} authenticated child worker(s)"
+            if cleaned
+            else "; no live authenticated child worker was discoverable for cleanup"
+        )
+        raise ProfileArtifactError(
+            "py-spy exited before an authenticated worker result was published" + cleanup
+        )
+    if authenticated_worker_pid is not None:
+        surviving_command = _linux_process_command(authenticated_worker_pid)
+        if surviving_command == worker_command:
+            _cleanup_authenticated_workers((authenticated_worker_pid,), worker_command)
+            raise ProfileArtifactError("py-spy exited while its authenticated child was still live")
+    if authentication_error is not None:
+        _cleanup_authenticated_workers(
+            list(_recorded_worker_pids((ready_path, result_path))), worker_command
+        )
+        raise ProfileArtifactError(authentication_error)
     result = subprocess.CompletedProcess(
         sampler_command, sampler.returncode, stdout=stdout, stderr=stderr
     )
@@ -982,7 +1051,8 @@ def capture_sampled_profile(
             # Linux ptrace policies commonly reject sibling attachment. Let
             # py-spy create the finite worker so the target is its child; the
             # worker's authenticated monotonic window controls the two-second
-            # whole-operation measurement and exits normally after post-check.
+            # whole-operation measurement, publishes its post-check result, and
+            # waits while the controller stops py-spy cleanly.
             sampler_command = [
                 str(binary_path),
                 "record",
@@ -2271,22 +2341,29 @@ def capture_bundle(
                             thread_settings=thread_settings,
                         )
                     )
-    sampled_profiles = [
-        capture_sampled_profile(
-            profile=profile,
-            case_id=case["case_id"],
-            thread_budget=budget,
-            workload_path=workload_path,
-            artifact_directory=artifact_directory,
-            artifact_publish_directory=artifact_publish_directory,
-            py_spy=py_spy,
-            rate_hz=sampler_rate_hz,
-            duration_seconds=sampler_duration_seconds,
-        )
-        for profile in profiles
-        for case in selected
-        for budget in thread_budgets
-    ]
+    sampled_profiles = []
+    for profile in profiles:
+        for case in selected:
+            for budget in thread_budgets:
+                try:
+                    sampled_profiles.append(
+                        capture_sampled_profile(
+                            profile=profile,
+                            case_id=case["case_id"],
+                            thread_budget=budget,
+                            workload_path=workload_path,
+                            artifact_directory=artifact_directory,
+                            artifact_publish_directory=artifact_publish_directory,
+                            py_spy=py_spy,
+                            rate_hz=sampler_rate_hz,
+                            duration_seconds=sampler_duration_seconds,
+                        )
+                    )
+                except ProfileArtifactError as error:
+                    raise ProfileArtifactError(
+                        "sampled profile failed at "
+                        f"profile={profile}, case={case['case_id']}, threads={budget}: {error}"
+                    ) from error
     protocol = {
         "workload": workload_provenance(workload_path),
         "observed_adapter": DEFAULT_ADAPTER,

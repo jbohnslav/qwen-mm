@@ -30,10 +30,15 @@ it profiles at 99 Hz. The worker performs unmarked setup, records a monotonic
 two-second dispatch deadline, and starts marked whole-operation iterations only
 before that deadline. A final operation started before the deadline completes
 at its whole-operation boundary; then the worker performs an unmarked output
-post-check and exits naturally. Raw setup and post-check stacks are retained as
-sampler evidence but excluded from the canonical collapse and rankings. The
+post-check and publishes its authenticated result while remaining alive. The
+controller verifies the result PID and exact worker command, signals only
+py-spy, and requires py-spy to stop cleanly with its child no longer live. This
+avoids the child-exit wait race in py-spy 0.4.1 without accepting a nonzero
+sampler exit. Raw setup, post-check, and brief control-wait stacks are retained
+as sampler evidence but excluded from the canonical collapse and rankings. The
 bundled worker result authenticates the window, runtime identity, and pre/post
-signatures.
+signatures; validation still requires zero sampling errors and exact agreement
+between the reported and raw sample totals.
 
 Each command writes an integrity-validated ZIP under `/tmp` by default. Archive
 validation enforces a 90 MiB compressed return cap, an explicit durable-member

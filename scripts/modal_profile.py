@@ -140,14 +140,25 @@ def _capture(command: list[str]) -> str:
 def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, str]) -> None:
     """Prove native py-spy can profile a child before the 24-cell run."""
 
+    from qwen_mm_reference.profile_v1 import _run_py_spy_child
+
     with tempfile.TemporaryDirectory(prefix="qwen-mm-py-spy-preflight-") as directory:
         temporary = Path(directory)
         raw = temporary / "preflight.raw"
+        result_path = temporary / "result.json"
         program = (
-            "import qwen_mm._native, time; "
+            "import json, os, pathlib, qwen_mm._native, sys, time; "
             "deadline=time.monotonic()+1.0; value=0; "
-            "exec('while time.monotonic() < deadline:\\n value += 1')"
+            "exec('while time.monotonic() < deadline:\\n value += 1'); "
+            "pathlib.Path(sys.argv[1]).write_text(json.dumps({'pid': os.getpid()})); "
+            "exec('while True:\\n time.sleep(60)')"
         )
+        worker_command = [
+            str(python),
+            "-c",
+            program,
+            str(result_path),
+        ]
         command = [
             "py-spy",
             "record",
@@ -159,25 +170,22 @@ def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, st
             "-o",
             str(raw),
             "--",
-            str(python),
-            "-c",
-            program,
+            *worker_command,
         ]
-        result = subprocess.run(
+        result = _run_py_spy_child(
             command,
+            worker_command,
+            result_path=result_path,
             cwd=REMOTE_ROOT,
-            env=environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=False,
             timeout=30,
+            environment=environment,
         )
         raw_text = raw.read_text(encoding="utf-8") if raw.is_file() else ""
-        rendered = "$ " + shlex.join(command) + "\n" + result.stdout
+        output = f"{result.stdout}\n{result.stderr}"
+        rendered = "$ " + shlex.join(command) + "\n" + output
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text(rendered, encoding="utf-8")
-        summary = re.findall(r"\bSamples:\s*(\d+)\s+Errors:\s*(\d+)\b", result.stdout)
+        summary = re.findall(r"\bSamples:\s*(\d+)\s+Errors:\s*(\d+)\b", output)
         try:
             raw_samples = sum(
                 int(line.rsplit(" ", 1)[1]) for line in raw_text.splitlines() if line.strip()

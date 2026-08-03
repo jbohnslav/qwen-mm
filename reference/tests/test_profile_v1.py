@@ -10,7 +10,7 @@ import unittest
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from qwen_mm_reference.benchmark_protocol import (
     THREAD_ENVIRONMENT_NAMES,
@@ -451,8 +451,241 @@ class SampleValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(ProfileArtifactError, "5 s timeout"):
                 _run_py_spy_child(["py-spy", "record"], worker_command, timeout=5.0)
         self.assertTrue(sampler.killed)
-        self.assertEqual(sampler.communicate_timeouts, [5.0, 10.0])
+        self.assertEqual(len(sampler.communicate_timeouts), 2)
+        self.assertAlmostEqual(sampler.communicate_timeouts[0] or 0, 5.0, places=3)
+        self.assertEqual(sampler.communicate_timeouts[1], 10.0)
         kill.assert_called_once_with(123, signal.SIGKILL)
+
+    def test_py_spy_child_stops_sampler_after_authenticated_result(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+        sampler_signaled = False
+
+        class SuccessfulSampler:
+            pid = 4321
+            returncode: int | None = None
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                if not sampler_signaled:
+                    raise AssertionError("sampler was reaped before its authenticated stop")
+                self.returncode = 0
+                return "Samples: 200 Errors: 0", ""
+
+        def mark_signal(pid: int, requested_signal: int) -> None:
+            nonlocal sampler_signaled
+            self.assertEqual((pid, requested_signal), (4321, signal.SIGINT))
+            sampler_signaled = True
+
+        with tempfile.TemporaryDirectory() as temporary:
+            ready_path = Path(temporary) / "ready.json"
+            result_path = Path(temporary) / "result.json"
+            ready_path.write_text(json.dumps({"pid": 321}), encoding="utf-8")
+            result_path.write_text(json.dumps({"pid": 321}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=SuccessfulSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    side_effect=[worker_command, None],
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill", side_effect=mark_signal) as kill,
+            ):
+                result = _run_py_spy_child(
+                    ["py-spy", "record"],
+                    worker_command,
+                    ready_path=ready_path,
+                    result_path=result_path,
+                )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Samples: 200 Errors: 0", result.stdout)
+        kill.assert_called_once_with(4321, signal.SIGINT)
+
+    def test_py_spy_child_rejects_result_pid_command_mismatch(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class SuccessfulSampler:
+            pid = 4321
+            returncode: int | None = None
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                self.returncode = 0
+                return "Samples: 200 Errors: 0", ""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "result.json"
+            result_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=SuccessfulSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    return_value=["python", "unrelated.py"],
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                with self.assertRaisesRegex(ProfileArtifactError, "exact worker command"):
+                    _run_py_spy_child(["py-spy", "record"], worker_command, result_path=result_path)
+        kill.assert_called_once_with(4321, signal.SIGINT)
+
+    def test_py_spy_child_cleans_ready_worker_when_result_pid_mismatches(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class SuccessfulSampler:
+            pid = 4321
+            returncode: int | None = None
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                self.returncode = 0
+                return "Samples: 200 Errors: 0", ""
+
+        def recorded_command(pid: int) -> list[str]:
+            return worker_command if pid == 321 else ["python", "unrelated.py"]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            ready_path = Path(temporary) / "ready.json"
+            result_path = Path(temporary) / "result.json"
+            ready_path.write_text(json.dumps({"pid": 321}), encoding="utf-8")
+            result_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=SuccessfulSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    side_effect=recorded_command,
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                with self.assertRaisesRegex(ProfileArtifactError, "exact worker command"):
+                    _run_py_spy_child(
+                        ["py-spy", "record"],
+                        worker_command,
+                        ready_path=ready_path,
+                        result_path=result_path,
+                    )
+        self.assertEqual(
+            kill.call_args_list,
+            [
+                call(4321, signal.SIGINT),
+                call(321, signal.SIGKILL),
+            ],
+        )
+
+    def test_py_spy_child_does_not_signal_sampler_that_exited_before_result(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class ExitedSampler:
+            pid = 4321
+            returncode = 1
+
+            def poll(self) -> int:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                return "", "child exited before result"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            missing_result = Path(temporary) / "missing-result.json"
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=ExitedSampler(),
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                with self.assertRaisesRegex(ProfileArtifactError, "before an authenticated"):
+                    _run_py_spy_child(
+                        ["py-spy", "record"], worker_command, result_path=missing_result
+                    )
+        kill.assert_not_called()
+
+    def test_py_spy_child_cleans_ready_worker_when_sampler_exits_before_result(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class ExitedSampler:
+            pid = 4321
+            returncode = 0
+
+            def poll(self) -> int:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                return "Samples: 200 Errors: 0", ""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            ready_path = Path(temporary) / "ready.json"
+            result_path = Path(temporary) / "missing-result.json"
+            ready_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=ExitedSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    return_value=worker_command,
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                with self.assertRaisesRegex(ProfileArtifactError, "terminated 1 authenticated"):
+                    _run_py_spy_child(
+                        ["py-spy", "record"],
+                        worker_command,
+                        ready_path=ready_path,
+                        result_path=result_path,
+                    )
+        kill.assert_called_once_with(654, signal.SIGKILL)
+
+    def test_py_spy_child_rejects_and_kills_authenticated_worker_still_live(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class SuccessfulSampler:
+            pid = 4321
+            returncode: int | None = None
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                self.returncode = 0
+                return "Samples: 200 Errors: 0", ""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "result.json"
+            result_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=SuccessfulSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    side_effect=[worker_command, worker_command, worker_command],
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                with self.assertRaisesRegex(ProfileArtifactError, "still live"):
+                    _run_py_spy_child(["py-spy", "record"], worker_command, result_path=result_path)
+        self.assertEqual(
+            kill.call_args_list,
+            [
+                call(4321, signal.SIGINT),
+                call(654, signal.SIGKILL),
+            ],
+        )
 
     def test_py_spy_nonzero_exit_kills_only_authenticated_recorded_worker(self) -> None:
         worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
@@ -493,8 +726,8 @@ class SampleValidationTests(unittest.TestCase):
                 return "", "failed"
 
         with tempfile.TemporaryDirectory() as temporary:
-            result_path = Path(temporary) / "result.json"
-            result_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            ready_path = Path(temporary) / "ready.json"
+            ready_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
             with (
                 patch(
                     "qwen_mm_reference.profile_v1.subprocess.Popen",
@@ -507,7 +740,7 @@ class SampleValidationTests(unittest.TestCase):
                 patch("qwen_mm_reference.profile_v1.os.kill") as kill,
             ):
                 result = _run_py_spy_child(
-                    ["py-spy", "record"], worker_command, result_path=result_path
+                    ["py-spy", "record"], worker_command, ready_path=ready_path
                 )
         self.assertEqual(result.returncode, 1)
         kill.assert_not_called()
