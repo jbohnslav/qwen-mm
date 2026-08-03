@@ -22,7 +22,7 @@
       "python_isolated_mode": true
     },
     "runtime_identity": {
-      "native_artifact_sha256": "ec014480a15f51b6983a360cb21aa335c4935a2f0a8b73905fb8f584607cd607",
+      "native_artifact_sha256": "7725251206b2d83c6a7e6635b59e299a86f23da1c7160e5788912de93c22eb2a",
       "native_module": "qwen_mm._native",
       "package": "qwen_mm",
       "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
@@ -30,7 +30,7 @@
     },
     "wheel": {
       "bound_runtime_identity": {
-        "native_artifact_sha256": "ec014480a15f51b6983a360cb21aa335c4935a2f0a8b73905fb8f584607cd607",
+        "native_artifact_sha256": "7725251206b2d83c6a7e6635b59e299a86f23da1c7160e5788912de93c22eb2a",
         "native_module": "qwen_mm._native",
         "package": "qwen_mm",
         "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
@@ -38,7 +38,7 @@
       },
       "build_command": "maturin build --locked",
       "filename": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
-      "sha256": "191dbb6d17e0bed3a53ec702e96637a2ec66f0a78110e103b402ecaa3c44493c",
+      "sha256": "34b7cd012200aab9aa28737c8b4bb638e385e6b2ce56971ab85de1f7d5c35d13",
       "tag": "cp311-abi3-macosx_11_0_arm64"
     }
   },
@@ -58,7 +58,7 @@
     "prepared_lossy_absolute_byte_error_max": 1
   },
   "contract_id": "qwen-mm-compat-v1",
-  "created_at": "2026-08-03T16:00:41.295063+00:00",
+  "created_at": "2026-08-03T17:29:25.736408+00:00",
   "fixture_authentication": [
     {
       "candidate_executed": false,
@@ -240,7 +240,7 @@
     },
     {
       "path": "crates/qwen-mm-core/src/media.rs",
-      "sha256": "74c27c7f4a73a7f669edb99d63c939893fff8490b73a5748c4a73de4e6b61b75"
+      "sha256": "2d73e873df11207f496ee80360688ae7a08049b5ea2f3e1140144f9c7b86efb7"
     },
     {
       "path": "crates/qwen-mm-core/src/media_conformance_tests.rs",
@@ -264,7 +264,7 @@
     },
     {
       "path": "crates/qwen-mm-core/src/processor.rs",
-      "sha256": "81a0e111f1b46c3eecfb48904f06dee04530339493e2f80eed0df10d096ce3ce"
+      "sha256": "1bc61f8e60da357e3134efa6ca4f1e65ecaf19c3a07c5d8c96ee232e3d77ebd7"
     },
     {
       "path": "crates/qwen-mm-core/src/profile.rs",
@@ -276,7 +276,7 @@
     },
     {
       "path": "crates/qwen-mm-core/src/resize.rs",
-      "sha256": "bf9b4aa2fbb49059813fc8d5dcf24ae7c6a4438064a23413f4c69f4ebdc8fb32"
+      "sha256": "9910e7d62d85bab8115f67f82f085120ee6ace8dde2c6550ccc00612ecadd5ae"
     },
     {
       "path": "crates/qwen-mm-core/src/text.rs",
@@ -818,7 +818,7 @@
     "git": {
       "gate_input_status": [],
       "gate_inputs_clean": true,
-      "revision": "204109bc062fcb5f61ac3b04f4f1cc45c85c506e"
+      "revision": "b7d8eee2eb4096ed966e6fc8740919ae312eb3a5"
     },
     "platform": {
       "byte_order": "little",
@@ -3745,6 +3745,6 @@
     ],
     "skipped_case_ids": []
   },
-  "source_fingerprint": "2eff9e786a62fb1c85892ab86731e12a6d772996e0522bbad22b10bf3e8965ae",
+  "source_fingerprint": "071d371a37b6762b981ab589584c13a033d5afbe11c6f72f0568b5b2d82be76d",
   "status": "pass"
 }
