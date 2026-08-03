@@ -92,6 +92,9 @@ d4_image = (
         f"cd {REMOTE_ROOT} && env {PYPI_UNSET_ARGUMENTS} UV_DEFAULT_INDEX={PYPI_INDEX} "
         f"uv sync --locked --all-packages --group dev --default-index {PYPI_INDEX}",
     )
+    # Phase C authenticates committed inputs with git show/merge-base. Keep the
+    # object database separate from the fingerprinted source payload.
+    .add_local_dir(str(LOCAL_ROOT / ".git"), remote_path=str(REMOTE_ROOT / ".git"), copy=True)
     .add_local_dir(str(LOCAL_ASSETS_ROOT), remote_path=str(REMOTE_ASSETS_ROOT), copy=True)
     .workdir(str(REMOTE_ROOT))
 )
@@ -368,6 +371,7 @@ def run_d4(
                 "hostname": socket.gethostname(),
                 "cpu_description": cpu_description,
                 "lscpu": lscpu_json,
+                "lscpu_parse": topology,
                 "logical_cpu_count": os.cpu_count(),
                 "proc_meminfo_total_bytes": _memory_total_bytes(),
                 "resource_attestation": resource_attestation,
@@ -451,6 +455,7 @@ def main(output: str = "/tmp/qwen-mm-d4-x86_64.zip", dry_run: bool = False) -> N
         destination,
         expected_source=source,
         expected_assets=assets,
+        phase_c_assets_root=LOCAL_ASSETS_ROOT,
     )
     print(f"wrote validated D4 x86_64 raw capture: {destination}")
 

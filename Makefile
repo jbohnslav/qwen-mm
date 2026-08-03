@@ -4,6 +4,7 @@
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
 	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test \
+	d4-arm-capture d4-certify d4-modal-capture d4-test d4-validate \
 	modal-benchmark-test profile-d1-arm-archive profile-d1-ingest profile-d1-ingest-arm \
 	profile-d1-ingest-x86 profile-d1-merge profile-d1-modal-archive profile-d1-test \
 	profile-d1-validate
@@ -24,6 +25,11 @@ PHASE_B_REPORT_OUTPUT ?= /tmp/qwen-mm-phase-b-report.json
 PHASE_C_ASSETS_ROOT ?= reference/.cache/huggingface
 PROFILE_D1_ARM_ARCHIVE ?= /tmp/qwen-mm-arm-d1-profile.zip
 PROFILE_D1_X86_ARCHIVE ?= /tmp/qwen-mm-modal-d1-profile.zip
+D4_ARM_ARCHIVE ?= /tmp/qwen-mm-d4-arm64.zip
+D4_X86_ARCHIVE ?= /tmp/qwen-mm-d4-x86_64.zip
+D4_ARTIFACT ?= benchmarks/performance-certification-v1/result.json
+D4_REPORT ?= benchmarks/performance-certification-v1/report.md
+D4_HOST_LABEL ?= local-m4
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -147,6 +153,30 @@ profile-d1-merge:
 
 profile-d1-validate:
 	$(UV_CMD) run --locked python scripts/profile_evidence.py validate
+
+d4-test:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m unittest \
+		reference.tests.test_benchmark_v2 \
+		reference.tests.test_performance_certification_v1 \
+		scripts.tests.test_d4_capture \
+		scripts.tests.test_d4_evidence
+
+d4-arm-capture:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_local.py \
+		--execute --host-label "$(D4_HOST_LABEL)" --output "$(D4_ARM_ARCHIVE)"
+
+d4-modal-capture:
+	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)"
+
+d4-certify:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_evidence.py \
+		--arm64 "$(D4_ARM_ARCHIVE)" --x86-64 "$(D4_X86_ARCHIVE)" \
+		--artifact "$(D4_ARTIFACT)" --report "$(D4_REPORT)"
+
+d4-validate:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_evidence.py \
+		--arm64 "$(D4_ARM_ARCHIVE)" --x86-64 "$(D4_X86_ARCHIVE)" \
+		--artifact "$(D4_ARTIFACT)" --report "$(D4_REPORT)" --validate-only
 
 wheel-smoke:
 	./scripts/smoke-wheel.sh

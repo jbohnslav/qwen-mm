@@ -14,6 +14,7 @@ import statistics
 import tempfile
 import zipfile
 from collections.abc import Iterable, Mapping, Sequence
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -45,7 +46,26 @@ ARTIFACT_SCHEMA_VERSION = 1
 BUILD_LABELS = ("shipping", "native")
 THREAD_BUDGETS = (1, 2, 4, 8)
 PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
+D4_TIMED_CASES = (
+    "text_short",
+    "text_long",
+    "image1",
+    "image24",
+    "jpeg24_requests",
+    "ragged24",
+    "aligned24",
+    "minmax_boundaries",
+    "rgb24",
+    "repeat24_uncached",
+    "repeat24_separated",
+    "images_1",
+    "images_4",
+    "images_16",
+    "images_32",
+    "images_64",
+)
 PRODUCTION_THREAD_BUDGET = 8
+D4_RANDOM_SEED = 20260731
 NATIVE_RUSTFLAGS = "-C target-cpu=native"
 NOISE_CV_MAX = 0.05
 NOISE_MIN_OBSERVATIONS = 5
@@ -356,6 +376,22 @@ def reconcile_installed_runtime(*, wheel: Path, runtime: Mapping[str, Any]) -> d
     }
 
 
+def wheel_benchmark_artifact_identity(wheel: Path) -> dict[str, Any]:
+    """Hash the exact adapter wrapper executed from a retained D4 wheel."""
+
+    try:
+        with zipfile.ZipFile(wheel) as archive:
+            members = [name for name in archive.namelist() if name == "qwen_mm/benchmark.py"]
+            if len(members) != 1:
+                raise D4CaptureError(
+                    "D4 wheel must contain exactly one qwen_mm/benchmark.py adapter"
+                )
+            value = archive.read(members[0])
+    except (OSError, zipfile.BadZipFile) as error:
+        raise D4CaptureError("D4 retained wheel is unreadable") from error
+    return {"member": members[0], "bytes": len(value), "sha256": sha256_bytes(value)}
+
+
 def parse_cpu_list(value: str) -> set[int]:
     """Parse a Linux cpuset such as ``0-3,8,10-11``."""
 
@@ -530,6 +566,283 @@ def noise_assessment(values: Sequence[float]) -> dict[str, Any]:
     }
 
 
+def result_noise_assessment(result: Mapping[str, Any]) -> dict[str, Any]:
+    """Recompute the complete no-pruning CV evidence from raw process medians."""
+
+    groups: dict[tuple[str, str, str], list[float]] = {}
+    pairs = result.get("pairs")
+    if not isinstance(pairs, list):
+        raise D4CaptureError("benchmark result has no raw pairs")
+    for pair in pairs:
+        if not isinstance(pair, Mapping):
+            raise D4CaptureError("benchmark pair is invalid")
+        for implementation in ("reference", "candidate"):
+            try:
+                value = float(pair["implementations"][implementation]["summary"]["wall_ms"]["p50"])
+                key = (str(pair["profile_alias"]), str(pair["case_id"]), implementation)
+            except (KeyError, TypeError, ValueError) as error:
+                raise D4CaptureError("benchmark pair lacks a raw process median") from error
+            groups.setdefault(key, []).append(value)
+    assessments = []
+    for (profile, case, implementation), values in sorted(groups.items()):
+        assessments.append(
+            {
+                "profile_alias": profile,
+                "case_id": case,
+                "implementation": implementation,
+                **noise_assessment(values),
+            }
+        )
+    return {
+        "rule_frozen_before_capture": True,
+        "sample_pruning": "forbidden",
+        "assessments": assessments,
+        "pass": all(item["pass"] for item in assessments),
+    }
+
+
+def validate_d4_result_contract(
+    result: Mapping[str, Any],
+    *,
+    architecture: str,
+    build_label: str,
+    budget: int,
+    affinity_cpus: Sequence[int] | None,
+) -> None:
+    """Require one raw benchmark to match its complete frozen D4 coordinate."""
+
+    protocol = result.get("protocol")
+    expected_cases = ["image24"] if budget in {2, 4} else list(D4_TIMED_CASES)
+    expected_affinity = None if affinity_cpus is None else list(affinity_cpus)
+    if not isinstance(protocol, Mapping):
+        raise D4CaptureError("raw benchmark protocol is missing")
+    expected = {
+        "reference_adapter": "official",
+        "candidate_adapter": "qwen_mm.benchmark:create_adapter",
+        "profiles": list(PROFILES),
+        "cases": expected_cases,
+        "process_repetitions": 5,
+        "random_seed": D4_RANDOM_SEED,
+        "order": "randomized AB/BA per process repetition",
+        "warmups": 3,
+        "minimum_samples": 30,
+        "minimum_seconds": 5.0,
+        "thread_regimes": [f"t{budget}"],
+        "thread_budget_mapping": {f"t{budget}": budget},
+        "affinity_cpu_mapping": {f"t{budget}": expected_affinity},
+        "build_labels": [build_label],
+        "timing_protocol": "instrumentation-free-v1",
+        "timing_sample_fields": [
+            "sequence",
+            "wall_ms",
+            "cpu_ms",
+            "throughput_per_s",
+            "core_utilization",
+        ],
+        "timing_floor_policy": (
+            "minimum_samples one-operation latency samples; supplemental individually clocked "
+            "exact-stability operations aggregate only to minimum_seconds and are excluded from "
+            "latency distributions"
+        ),
+        "resource_census_position": "after_all_timed_samples",
+        "production_thread_budget": PRODUCTION_THREAD_BUDGET,
+    }
+    if result.get("mode") != "dedicated" or any(
+        protocol.get(field) != value for field, value in expected.items()
+    ):
+        raise D4CaptureError("raw benchmark changed the frozen D4 protocol or matrix")
+    pairs = result.get("pairs")
+    if not isinstance(pairs, list) or len(pairs) != len(PROFILES) * len(expected_cases) * 5:
+        raise D4CaptureError("raw benchmark pair inventory is incomplete")
+    phase_c = result.get("release_eligibility", {}).get("phase_c", {})
+    if not isinstance(phase_c, Mapping) or phase_c.get("status") != "pass":
+        raise D4CaptureError("raw benchmark lacks a passing Phase C prerequisite")
+
+
+def _provenance_affinity_masks(
+    provenance: Mapping[str, Any], architecture: str
+) -> dict[int, list[int] | None]:
+    try:
+        if architecture == "arm64":
+            raw_masks = provenance["host"]["affinity"]["masks"]
+        else:
+            host = provenance["host"]
+            attestation = host["resource_attestation"]
+            raw_masks = attestation["physical_core_masks"]
+    except (KeyError, TypeError) as error:
+        raise D4CaptureError("raw capture lacks physical-core affinity provenance") from error
+    if not isinstance(raw_masks, Mapping) or set(raw_masks) != {
+        f"t{budget}" for budget in THREAD_BUDGETS
+    }:
+        raise D4CaptureError("raw capture physical-core mask inventory is incomplete")
+    masks: dict[int, list[int] | None] = {}
+    prior: list[int] = []
+    for budget in THREAD_BUDGETS:
+        raw = raw_masks[f"t{budget}"]
+        if architecture == "arm64":
+            if raw is not None:
+                raise D4CaptureError("macOS capture invented unavailable CPU affinity")
+            masks[budget] = None
+            continue
+        if (
+            not isinstance(raw, list)
+            or len(raw) != budget
+            or len(raw) != len(set(raw))
+            or any(isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in raw)
+            or (prior and raw[: len(prior)] != prior)
+        ):
+            raise D4CaptureError("raw capture physical-core masks are invalid or non-nested")
+        masks[budget] = raw
+        prior = raw
+    if architecture == "x86_64":
+        try:
+            visible = attestation["visible_affinity"]
+            recomputed = physical_core_masks(
+                host["lscpu_parse"], allowed_cpus=visible, budgets=THREAD_BUDGETS
+            )
+            rebuilt_attestation = modal_resource_attestation(
+                cgroup_limits=attestation["cgroup_limits"],
+                platform_text=host["platform"],
+                uname=host["uname"],
+                visible_affinity=visible,
+                masks=recomputed,
+            )
+        except (KeyError, TypeError) as error:
+            raise D4CaptureError("raw capture CPU topology attestation is incomplete") from error
+        if {budget: list(mask) for budget, mask in recomputed.items()} != {
+            budget: masks[budget] for budget in THREAD_BUDGETS
+        } or rebuilt_attestation != attestation:
+            raise D4CaptureError("raw capture physical-core masks differ from CPU topology")
+    return masks
+
+
+def validate_archived_build(
+    files: Mapping[str, bytes], provenance: Mapping[str, Any], build_label: str
+) -> dict[str, Any]:
+    """Re-hash the retained wheel and reconcile every recorded build identity."""
+
+    prefix = f"builds/{build_label}/"
+    wheel_names = sorted(
+        name for name in files if name.startswith(prefix) and name.endswith(".whl")
+    )
+    if len(wheel_names) != 1:
+        raise D4CaptureError(f"{build_label}: raw archive must retain exactly one wheel")
+    try:
+        build = json.loads(files[f"builds/{build_label}/build.json"])
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise D4CaptureError(f"{build_label}: archived build metadata is invalid") from error
+    wheel_name = wheel_names[0]
+    wheel_bytes = files[wheel_name]
+    with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-wheel-verify-") as temporary:
+        wheel_path = Path(temporary) / Path(wheel_name).name
+        wheel_path.write_bytes(wheel_bytes)
+        contents = wheel_contents_identity(wheel_path)
+        benchmark_artifact = wheel_benchmark_artifact_identity(wheel_path)
+    try:
+        identity = build["identity"]["wheel"]
+        runtime = build["runtime"]
+        reconciliation = build["runtime_reconciliation"]
+        expected_wheel_sha = provenance["build_wheel_sha256"][build_label]
+        expected_native_sha = provenance["build_native_sha256"][build_label]
+    except (KeyError, TypeError) as error:
+        raise D4CaptureError(f"{build_label}: build identity is incomplete") from error
+    if (
+        identity.get("name") != Path(wheel_name).name
+        or identity.get("bytes") != len(wheel_bytes)
+        or identity.get("sha256") != sha256_bytes(wheel_bytes)
+        or identity.get("contents") != contents
+        or reconciliation.get("verified") is not True
+        or reconciliation.get("wheel_contents") != contents
+        or runtime.get("native_sha256") != contents.get("native_artifact_sha256")
+        or runtime.get("native_bytes") != contents.get("native_bytes")
+        or expected_wheel_sha != contents.get("wheel", {}).get("sha256")
+        or expected_native_sha != contents.get("native_artifact_sha256")
+    ):
+        raise D4CaptureError(f"{build_label}: retained wheel/build/runtime identities differ")
+    return {**build, "_retained_benchmark_artifact": benchmark_artifact}
+
+
+def validate_archived_phase_c(
+    files: Mapping[str, bytes],
+    provenance: Mapping[str, Any],
+    build_label: str,
+    build: Mapping[str, Any],
+    *,
+    assets_root: Path | None,
+) -> dict[str, str]:
+    """Authenticate both fresh Phase C envelopes and optionally their full assets."""
+
+    def timestamp(value: Any, name: str) -> datetime:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError as error:
+            raise D4CaptureError(f"{name} is not an ISO-8601 timestamp") from error
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise D4CaptureError(f"{name} lacks a timezone")
+        return parsed
+
+    try:
+        capture = json.loads(files[f"builds/{build_label}/capture.json"])
+    except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError) as error:
+        raise D4CaptureError(f"{build_label}: archived capture metadata is invalid") from error
+    started = timestamp(provenance.get("started_at"), "provenance.started_at")
+    completed = timestamp(provenance.get("completed_at"), "provenance.completed_at")
+    capture_created = timestamp(capture.get("created_at"), f"{build_label}.capture.created_at")
+    reports: dict[str, str] = {}
+    report_times: dict[str, datetime] = {}
+    for position in ("pre", "post"):
+        name = f"phase-c/{build_label}/{position}/report.json"
+        try:
+            report = json.loads(files[name])
+            runtime = report["candidate"]["runtime_identity"]
+            scope = report["scope"]
+            git = report["provenance"]["git"]
+        except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError) as error:
+            raise D4CaptureError(
+                f"{build_label}: archived Phase C {position} is invalid"
+            ) from error
+        if (
+            report.get("status") != "pass"
+            or report.get("passed") is not True
+            or scope.get("profiles") != list(PROFILES)
+            or scope.get("skipped_case_ids") != []
+            or scope.get("declared_case_ids") != scope.get("executed_case_ids")
+            or git.get("revision") != provenance.get("source_revision")
+            or git.get("gate_inputs_clean") is not True
+            or git.get("gate_input_status") != []
+            or runtime.get("native_artifact_sha256")
+            != build.get("runtime", {}).get("native_sha256")
+            or runtime.get("package_artifact_sha256")
+            != build.get("runtime_reconciliation", {})
+            .get("wheel_contents", {})
+            .get("package_artifact_sha256")
+        ):
+            raise D4CaptureError(f"{build_label}: Phase C {position} provenance is stale")
+        if assets_root is not None:
+            try:
+                from qwen_mm_reference.phase_c_conformance import validate_report
+
+                validate_report(report, assets_root=assets_root)
+            except (ImportError, OSError, RuntimeError, TypeError, ValueError) as error:
+                raise D4CaptureError(
+                    f"{build_label}: Phase C {position} failed full validation"
+                ) from error
+        reports[position] = sha256_bytes(files[name])
+        report_times[position] = timestamp(
+            report.get("created_at"), f"{build_label}.phase_c.{position}.created_at"
+        )
+    if reports["pre"] == reports["post"]:
+        raise D4CaptureError(f"{build_label}: Phase C pre/post reports were replayed")
+    if not (started <= report_times["pre"] < report_times["post"] <= capture_created <= completed):
+        raise D4CaptureError(f"{build_label}: Phase C/capture timestamps are stale or inverted")
+    reports.update(
+        pre_created_at=report_times["pre"].isoformat(),
+        post_created_at=report_times["post"].isoformat(),
+        capture_created_at=capture_created.isoformat(),
+    )
+    return reports
+
+
 def _safe_name(name: str) -> None:
     path = PurePosixPath(name)
     if not name or path.is_absolute() or ".." in path.parts or path.as_posix() != name:
@@ -585,7 +898,9 @@ def create_capture_archive(files: Mapping[str, bytes]) -> bytes:
     return value
 
 
-def read_capture_archive(value: bytes) -> dict[str, bytes]:
+def read_capture_archive(
+    value: bytes, *, phase_c_assets_root: Path | None = None
+) -> dict[str, bytes]:
     """Validate archive bounds, paths, hashes, build labels, and raw inventory."""
 
     if len(value) > MAX_ARCHIVE_COMPRESSED_BYTES:
@@ -635,7 +950,26 @@ def read_capture_archive(value: bytes) -> dict[str, bytes]:
         raise D4CaptureError("raw capture index inventory mismatch")
     if any(token in name.lower() for name in files for token in ("pruned", "filtered", "dropped")):
         raise D4CaptureError("raw capture artifact may not package pruned samples")
+    try:
+        provenance = json.loads(files["provenance.json"])
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise D4CaptureError("raw capture provenance is invalid") from error
+    architecture = provenance.get("architecture_family")
+    if index.get("architecture_family") != architecture or architecture not in {"arm64", "x86_64"}:
+        raise D4CaptureError("raw capture architecture provenance is inconsistent")
+    affinity_masks = _provenance_affinity_masks(provenance, architecture)
     for build_label in BUILD_LABELS:
+        build = validate_archived_build(files, provenance, build_label)
+        phase_c_reports = validate_archived_phase_c(
+            files,
+            provenance,
+            build_label,
+            build,
+            assets_root=phase_c_assets_root,
+        )
+        pre_created = datetime.fromisoformat(phase_c_reports["pre_created_at"])
+        post_created = datetime.fromisoformat(phase_c_reports["post_created_at"])
+        previous_result_created: datetime | None = None
         name = f"captures/{build_label}/repeat24_cached-unsupported.json"
         try:
             unsupported = json.loads(files[name])
@@ -678,6 +1012,61 @@ def read_capture_archive(value: bytes) -> dict[str, bytes]:
                 result = json.loads(files[result_name])
             except (json.JSONDecodeError, UnicodeDecodeError) as error:
                 raise D4CaptureError("raw benchmark/noise payload is invalid") from error
+            try:
+                result_created = datetime.fromisoformat(
+                    str(result.get("created_at")).replace("Z", "+00:00")
+                )
+            except ValueError as error:
+                raise D4CaptureError("raw benchmark creation timestamp is invalid") from error
+            if (
+                result_created.tzinfo is None
+                or result_created.utcoffset() is None
+                or not pre_created < result_created < post_created
+                or (
+                    previous_result_created is not None
+                    and result_created <= previous_result_created
+                )
+            ):
+                raise D4CaptureError(
+                    "raw benchmark timestamps are stale, inverted, or outside fresh Phase C"
+                )
+            previous_result_created = result_created
+            try:
+                from qwen_mm_reference.benchmark_v2 import validate_result_portable
+
+                validate_result_portable(result)
+            except (ImportError, RuntimeError, TypeError, ValueError) as error:
+                raise D4CaptureError("raw benchmark failed portable validation") from error
+            if (
+                result.get("architecture_family") != architecture
+                or result.get("protocol", {}).get("build_labels") != [build_label]
+                or result.get("protocol", {}).get("thread_regimes") != [f"t{budget}"]
+                or result.get("protocol", {}).get("random_seed") != D4_RANDOM_SEED
+            ):
+                raise D4CaptureError("raw benchmark coordinate provenance is inconsistent")
+            candidate_identity = result.get("protocol", {}).get("candidate_identity", {})
+            if (
+                not isinstance(candidate_identity, Mapping)
+                or candidate_identity.get("artifact_sha256")
+                != build["_retained_benchmark_artifact"]["sha256"]
+            ):
+                raise D4CaptureError(
+                    "raw benchmark adapter differs from qwen_mm/benchmark.py in its retained wheel"
+                )
+            validate_d4_result_contract(
+                result,
+                architecture=architecture,
+                build_label=build_label,
+                budget=budget,
+                affinity_cpus=affinity_masks[budget],
+            )
+            if (
+                result.get("release_eligibility", {}).get("phase_c", {}).get("report_sha256")
+                != phase_c_reports["pre"]
+            ):
+                raise D4CaptureError("raw benchmark is not bound to its archived pre-Phase C run")
+            if noise != result_noise_assessment(result):
+                raise D4CaptureError("raw capture noise assessment differs from raw medians")
             assessments = noise.get("assessments")
             if (
                 noise.get("sample_pruning") != "forbidden"
@@ -709,10 +1098,11 @@ def write_capture_archive(
     *,
     expected_source: Mapping[str, Any] | None = None,
     expected_assets: Mapping[str, Any] | None = None,
+    phase_c_assets_root: Path | None = None,
 ) -> None:
     """Validate and atomically persist a raw capture archive."""
 
-    files = read_capture_archive(value)
+    files = read_capture_archive(value, phase_c_assets_root=phase_c_assets_root)
     if expected_source is not None or expected_assets is not None:
         try:
             provenance = json.loads(files["provenance.json"])

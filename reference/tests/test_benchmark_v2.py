@@ -18,6 +18,7 @@ import numpy as np
 import qwen_mm_reference.benchmark_protocol as benchmark_protocol
 import qwen_mm_reference.benchmark_v2 as benchmark_v2
 from qwen_mm_reference.benchmark_protocol import (
+    TIMING_SAMPLE_FIELDS,
     BenchmarkProtocolError,
     compare_outputs,
     load_workload,
@@ -140,7 +141,70 @@ class WorkloadTests(unittest.TestCase):
         for pair in result["pairs"]:
             for implementation in pair["implementations"].values():
                 implementation["environment"]["architecture_family"] = "x86_64"
-            pair["implementations"]["candidate"]["adapter_spec"] = adapter
+            candidate = pair["implementations"]["candidate"]
+            candidate["adapter_spec"] = adapter
+            model = benchmark_protocol.total_thread_budget_model(adapter, pair["thread_budget"])
+            candidate["thread_settings"]["environment"] = model["environment"]
+            candidate["thread_settings"]["total_budget_model"] = model
+            census = candidate["resource_census"]
+            census["adapter_spec"] = "qwen_mm.benchmark:create_observed_adapter"
+            output_bytes = census["output_bytes"]
+            allocation_count = census["adapter_metrics"]["allocation_count"]
+            census["adapter_metrics"].update(
+                copied_bytes=0,
+                retained_final_output_bytes=output_bytes,
+            )
+            peak_transient = census["adapter_metrics"]["peak_transient_live_bytes"]
+            census["native_observed"] = {
+                "schema_version": "qwen-mm-observation-v1",
+                "outcome": "success",
+                "dropped_events": 0,
+                "duration_ns": allocation_count,
+                "counter_scope": "portable test fixture",
+                "allocations": {
+                    "allocation_count": allocation_count,
+                    "allocated_bytes": output_bytes,
+                    "copy_count": 0,
+                    "copied_bytes": 0,
+                    "transient_live_bytes": peak_transient,
+                    "peak_transient_live_bytes": peak_transient,
+                    "retained_final_output_bytes": output_bytes,
+                },
+                "buffers": {
+                    "count": allocation_count,
+                    "total_bytes": output_bytes,
+                    "bytes_by_class": {"retained_output": output_bytes},
+                    "records": [
+                        {
+                            "sequence": index,
+                            "name": f"portable-test-{index}",
+                            "class": "retained_output",
+                            "scope": {
+                                "request_index": None,
+                                "message_index": None,
+                                "content_item_index": None,
+                                "media_index": None,
+                                "input_index": None,
+                            },
+                            "bytes": output_bytes if index == 0 else 0,
+                            "allocated_at_ns": index,
+                            "released_at_ns": None,
+                        }
+                        for index in range(allocation_count)
+                    ],
+                },
+                "copies": [],
+                "calls": {
+                    "public_python_calls": 1,
+                    "native_batch_calls": 1,
+                    "native_visual_calls": 0,
+                    "python_callbacks": 0,
+                    "hugging_face_calls": 0,
+                    "qwen_vl_utils_calls": 0,
+                    "pillow_calls": 0,
+                    "torchvision_calls": 0,
+                },
+            }
         return result, foreign_runtime
 
     def test_authenticated_portable_validation_accepts_foreign_runtime_and_rejects_tampering(
@@ -189,6 +253,15 @@ class WorkloadTests(unittest.TestCase):
             "pair": lambda value: value["pairs"][0]["implementations"]["candidate"].update(
                 input_fingerprint="tampered"
             ),
+            "native-buffer": lambda value: value["pairs"][0]["implementations"]["candidate"][
+                "resource_census"
+            ]["native_observed"]["buffers"]["records"][0].update(bytes=1),
+            "native-fallback": lambda value: value["pairs"][0]["implementations"]["candidate"][
+                "resource_census"
+            ]["native_observed"]["calls"].update(qwen_vl_utils_calls=1),
+            "native-duration": lambda value: value["pairs"][0]["implementations"]["candidate"][
+                "resource_census"
+            ]["native_observed"].update(duration_ns=0),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name):
@@ -807,6 +880,93 @@ class ReleaseGuardTests(unittest.TestCase):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_darwin_rss_uses_mach_basic_info_without_32_bit_clamping(self) -> None:
+        expected_rss = 6 * 1024**3 + 17
+        observed_flavors: list[int] = []
+
+        class Function:
+            def __init__(self, callback: Callable[..., int]) -> None:
+                self.callback = callback
+                self.restype: object = None
+                self.argtypes: object = None
+
+            def __call__(self, *args: object) -> int:
+                return self.callback(*args)
+
+        def task_info(
+            _task: object, flavor: object, info_pointer: object, _count_pointer: object
+        ) -> int:
+            observed_flavors.append(int(flavor))
+            info_pointer._obj.resident_size = expected_rss  # type: ignore[attr-defined]
+            return 0
+
+        library = type(
+            "MachLibrary",
+            (),
+            {
+                "mach_task_self": Function(lambda: 7),
+                "task_info": Function(task_info),
+            },
+        )()
+        with mock.patch.object(benchmark_protocol.ctypes, "CDLL", return_value=library):
+            rss = benchmark_protocol._darwin_current_rss_bytes()
+
+        self.assertEqual(observed_flavors, [20])
+        self.assertEqual(rss, expected_rss)
+        self.assertGreater(rss, 2**32)
+
+    def test_timing_lane_contains_only_adapter_and_required_normalization(self) -> None:
+        case = select_cases(load_workload(WORKLOAD_PATH), case_ids=["text_short"])[0]
+        payload = materialize_case(case)
+        expected = {
+            "input_ids": np.asarray([[1, 2]], dtype=np.int64),
+            "attention_mask": np.asarray([[1, 1]], dtype=np.int64),
+            "mm_token_type_ids": np.asarray([[0, 0]], dtype=np.int64),
+        }
+        events: list[str] = []
+
+        class Adapter:
+            name = "timing-test"
+
+            def run(self, _payload: object) -> dict[str, np.ndarray]:
+                events.append("run")
+                return expected
+
+            def metrics(self) -> dict[str, object]:
+                raise AssertionError("metrics must not run in the timing lane")
+
+        original_normalize = benchmark_protocol.normalize_outputs
+
+        def normalize(outputs: dict[str, np.ndarray], value: object) -> dict[str, np.ndarray]:
+            events.append("normalize")
+            return original_normalize(outputs, value)  # type: ignore[arg-type]
+
+        process_values = iter((10, 20))
+        wall_values = iter((100, 200))
+
+        def process_clock() -> int:
+            events.append("process_clock")
+            return next(process_values)
+
+        def wall_clock() -> int:
+            events.append("wall_clock")
+            return next(wall_values)
+
+        with (
+            mock.patch.object(benchmark_protocol.gc, "collect"),
+            mock.patch.object(benchmark_protocol.time, "process_time_ns", process_clock),
+            mock.patch.object(benchmark_protocol.time, "perf_counter_ns", wall_clock),
+            mock.patch.object(benchmark_protocol, "normalize_outputs", normalize),
+        ):
+            outputs, sample = benchmark_protocol._measure_once(Adapter(), payload)
+
+        self.assertEqual(
+            events,
+            ["wall_clock", "process_clock", "run", "normalize", "process_clock", "wall_clock"],
+        )
+        self.assertEqual(set(sample), set(TIMING_SAMPLE_FIELDS) - {"sequence"})
+        self.assertEqual(list(outputs), list(expected))
+
     def test_worker_records_complete_metrics_and_conformance(self) -> None:
         workload = load_workload(WORKLOAD_PATH)
         case = select_cases(workload, case_ids=["text_short"])[0]
@@ -818,19 +978,183 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result["conformance"]["post_measurement"], "pass")
         self.assertEqual(len(result["samples"]), 3)
         sample = result["samples"][0]
-        for field in (
-            "wall_ms",
-            "cpu_ms",
-            "throughput_per_s",
-            "core_utilization",
-            "peak_rss_bytes",
-            "transient_live_bytes",
-            "allocation_count",
-            "copy_count",
-        ):
-            self.assertIn(field, sample)
+        self.assertEqual(set(sample), set(TIMING_SAMPLE_FIELDS))
+        census = result["resource_census"]
+        self.assertEqual(census["timing_separation"], "after_all_timed_samples")
+        self.assertEqual(census["output_conformance"], "exact_pass")
+        self.assertGreaterEqual(
+            census["rss"]["peak_rss_bytes"], census["rss"]["baseline_rss_bytes"]
+        )
+        self.assertEqual(census["rss"]["rss_after_bytes"], census["rss"]["retained_rss_bytes"])
+        self.assertEqual(
+            census["rss"]["external_transient_rss_bytes"],
+            max(
+                0,
+                census["rss"]["peak_rss_bytes"]
+                - census["rss"]["baseline_rss_bytes"]
+                - census["output_bytes"],
+            ),
+        )
+        self.assertIn("allocation_count", census["adapter_metrics"])
+        self.assertIn("copy_count", census["adapter_metrics"])
         self.assertFalse(result["summary"]["wall_ms"]["p99_qualified"])
         self.assertIsNone(result["summary"]["wall_ms"]["p99"])
+        self.assertEqual(result["timing_floor"]["raw_sample_iteration_count"], 3)
+        self.assertEqual(result["timing_floor"]["total_iteration_count"], 3)
+
+    def test_fast_worker_retains_raw_samples_and_aggregates_only_the_time_floor(self) -> None:
+        workload = load_workload(WORKLOAD_PATH)
+        case = select_cases(workload, case_ids=["text_short"])[0]
+
+        result = run_worker(worker_config(minimum_samples=3, minimum_seconds=0.02), case)
+
+        self.assertEqual(len(result["samples"]), 3)
+        floor = result["timing_floor"]
+        self.assertEqual(floor["raw_sample_iteration_count"], 3)
+        self.assertGreater(floor["supplemental_iteration_count"], 0)
+        self.assertGreaterEqual(floor["total_elapsed_wall_ms"], 20.0)
+        self.assertEqual(
+            floor["total_iteration_count"],
+            floor["raw_sample_iteration_count"] + floor["supplemental_iteration_count"],
+        )
+
+    def test_explicit_t1_t2_t4_t8_regimes_and_total_budget_models(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["text_short"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            thread_regimes=["t1", "t2", "t4", "t8"],
+            build_labels=["shipping"],
+            seed=53,
+        )
+
+        self.assertEqual(
+            result["protocol"]["thread_budget_mapping"],
+            {"t1": 1, "t2": 2, "t4": 4, "t8": 8},
+        )
+        for pair in result["pairs"]:
+            for implementation in pair["implementations"].values():
+                model = implementation["thread_settings"]["total_budget_model"]
+                self.assertEqual(model["total_budget"], pair["thread_budget"])
+                self.assertEqual(set(model["environment"].values()), {"1"})
+        validate_result(result)
+
+    def test_validation_rejects_timing_resource_process_and_budget_tampering(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["text_short"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=2,
+            minimum_seconds=0.0,
+            thread_regimes=["t2"],
+            build_labels=["shipping"],
+            seed=59,
+        )
+        pair = result["pairs"][0]
+        reference = pair["implementations"]["reference"]
+
+        def mutate_nan(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["reference"]["samples"][0]["wall_ms"] = float(
+                "nan"
+            )
+
+        def mutate_extra_timing_field(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["reference"]["samples"][0]["profiler"] = "enabled"
+
+        def mutate_floor(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["reference"]["samples"].pop()
+
+        def mutate_extra_sample(value: dict[str, Any]) -> None:
+            samples = value["pairs"][0]["implementations"]["reference"]["samples"]
+            samples.append({**samples[-1], "sequence": len(samples)})
+
+        def mutate_timing_floor(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["reference"]["timing_floor"][
+                "total_elapsed_wall_ms"
+            ] += 1
+
+        def mutate_order_seed(value: dict[str, Any]) -> None:
+            value["pairs"][0]["order_seed"] += 1
+
+        def mutate_messages_fingerprint(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["candidate"]["messages_fingerprint"] = "0" * 64
+
+        def mutate_process_id(value: dict[str, Any]) -> None:
+            implementations = value["pairs"][0]["implementations"]
+            implementations["candidate"]["process_id"] = implementations["reference"]["process_id"]
+
+        def mutate_nonce(value: dict[str, Any]) -> None:
+            implementations = value["pairs"][0]["implementations"]
+            implementations["candidate"]["worker_nonce"] = implementations["reference"][
+                "worker_nonce"
+            ]
+
+        def mutate_rss(value: dict[str, Any]) -> None:
+            rss = value["pairs"][0]["implementations"]["reference"]["resource_census"]["rss"]
+            rss["transient_rss_bytes"] += 1
+
+        def mutate_thread_environment(value: dict[str, Any]) -> None:
+            value["pairs"][0]["implementations"]["reference"]["thread_settings"]["environment"][
+                "RAYON_NUM_THREADS"
+            ] = "2"
+
+        def mutate_cpu_budget(value: dict[str, Any]) -> None:
+            sample = value["pairs"][0]["implementations"]["reference"]["samples"][0]
+            sample["cpu_ms"] = sample["wall_ms"] * 3
+            sample["core_utilization"] = 3.0
+
+        mutations = {
+            "non-finite": mutate_nan,
+            "timing-instrumentation": mutate_extra_timing_field,
+            "sample-floor": mutate_floor,
+            "extra-sample": mutate_extra_sample,
+            "timing-floor": mutate_timing_floor,
+            "order-seed": mutate_order_seed,
+            "messages-fingerprint": mutate_messages_fingerprint,
+            "process-id": mutate_process_id,
+            "nonce": mutate_nonce,
+            "rss-envelope": mutate_rss,
+            "thread-environment": mutate_thread_environment,
+            "cpu-budget": mutate_cpu_budget,
+        }
+        self.assertEqual(reference["minimum_samples"], 2)
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                changed = copy.deepcopy(result)
+                mutate(changed)
+                with self.assertRaises(BenchmarkProtocolError):
+                    validate_result(changed)
+
+    def test_affinity_attestation_is_explicit_on_linux_and_unavailable_on_macos(self) -> None:
+        config = {"affinity_cpus": [4, 6]}
+        with (
+            mock.patch.object(benchmark_protocol.platform, "system", return_value="Linux"),
+            mock.patch.object(
+                benchmark_protocol.os,
+                "sched_getaffinity",
+                return_value={4, 6},
+                create=True,
+            ),
+        ):
+            linux = benchmark_protocol._worker_affinity(config)
+        self.assertEqual(linux["status"], "attested")
+        self.assertEqual(linux["observed_cpus"], [4, 6])
+        with mock.patch.object(benchmark_protocol.platform, "system", return_value="Darwin"):
+            macos = benchmark_protocol._worker_affinity(config)
+        self.assertEqual(macos["status"], "unavailable")
+        self.assertIsNone(macos["observed_cpus"])
 
     def test_schedule_and_bootstrap_are_seeded(self) -> None:
         first = randomized_orders(5, seed=7)

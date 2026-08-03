@@ -6,9 +6,13 @@ import importlib
 import importlib.metadata
 import importlib.util
 import json
+import math
 import os
+import platform
 import random
 import re
+import secrets
+import shutil
 import statistics
 import subprocess
 import sys
@@ -25,6 +29,8 @@ from .benchmark_protocol import (
     RESULT_SCHEMA_ID,
     RESULT_SCHEMA_VERSION,
     THREAD_ENVIRONMENT_NAMES,
+    TIMING_FLOOR_POLICY,
+    TIMING_SAMPLE_FIELDS,
     BenchmarkProtocolError,
     architecture_family,
     environment_metadata,
@@ -34,6 +40,8 @@ from .benchmark_protocol import (
     physical_cpu_count,
     run_worker,
     select_cases,
+    summarize_samples,
+    total_thread_budget_model,
     workload_provenance,
 )
 from .fixtures import repository_root
@@ -481,8 +489,9 @@ def _thread_budget(regime: str, *, production_thread_budget: int | None = None) 
         return 1
     if regime == "production":
         return production_thread_budget or physical_cpu_count()
+    numeric = regime[1:] if re.fullmatch(r"t[1-9][0-9]*", regime) else regime
     try:
-        value = int(regime)
+        value = int(numeric)
     except ValueError as error:
         raise BenchmarkProtocolError(f"invalid thread regime: {regime}") from error
     if value <= 0:
@@ -533,13 +542,25 @@ def _run_subprocess_worker(
         "--output",
         str(output_path),
     ]
+    requested_affinity = config.get("affinity_cpus")
+    if platform.system() == "Linux" and requested_affinity is not None:
+        taskset = shutil.which("taskset")
+        if taskset is None:
+            raise BenchmarkProtocolError("Linux affinity was requested but taskset is unavailable")
+        cpu_list = ",".join(str(cpu) for cpu in requested_affinity)
+        command = [taskset, "--cpu-list", cpu_list, *command]
+    worker_environment = os.environ.copy()
+    budget_model = total_thread_budget_model(
+        str(config["adapter_spec"]), int(config["thread_budget"])
+    )
+    worker_environment.update(budget_model["environment"])
     completed = subprocess.run(
         command,
         cwd=repository_root(),
         check=False,
         capture_output=True,
         text=True,
-        env=os.environ.copy(),
+        env=worker_environment,
     )
     if completed.returncode != 0:
         raise BenchmarkProtocolError(
@@ -740,6 +761,417 @@ def _authenticated_workload(result: Mapping[str, Any]) -> dict[str, Any]:
         raise BenchmarkProtocolError("authenticated benchmark workload is invalid") from error
 
 
+def _finite_number(value: Any, *, positive: bool = False) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise BenchmarkProtocolError("benchmark sample values must be numeric")
+    number = float(value)
+    if not math.isfinite(number) or (number <= 0 if positive else number < 0):
+        raise BenchmarkProtocolError("benchmark sample values must be finite and non-negative")
+    return number
+
+
+def _nonnegative_integer(value: Any, *, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise BenchmarkProtocolError(f"benchmark {field} must be a non-negative integer")
+    return value
+
+
+def _optional_nonnegative_integer(value: Any, *, field: str) -> int | None:
+    if value is None:
+        return None
+    return _nonnegative_integer(value, field=field)
+
+
+def _validate_resource_scope(value: Any) -> None:
+    fields = {
+        "request_index",
+        "message_index",
+        "content_item_index",
+        "media_index",
+        "input_index",
+    }
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise BenchmarkProtocolError("native resource scope is invalid")
+    if any(
+        index is not None and (isinstance(index, bool) or not isinstance(index, int) or index < 0)
+        for index in value.values()
+    ):
+        raise BenchmarkProtocolError("native resource scope index is invalid")
+
+
+def _validate_resource_census(
+    value: Any, *, primary_adapter: str, implementation_name: str
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "timing_separation",
+        "adapter_spec",
+        "output_conformance",
+        "output_bytes",
+        "rss",
+        "adapter_metrics",
+        "native_observed",
+    }:
+        raise BenchmarkProtocolError("benchmark resource census is incomplete")
+    expected_adapter = (
+        "qwen_mm.benchmark:create_observed_adapter"
+        if primary_adapter == "qwen_mm.benchmark:create_adapter"
+        else primary_adapter
+    )
+    if (
+        value.get("timing_separation") != "after_all_timed_samples"
+        or value.get("adapter_spec") != expected_adapter
+        or value.get("output_conformance") != "exact_pass"
+        or _nonnegative_integer(value.get("output_bytes"), field="resource output bytes") <= 0
+    ):
+        raise BenchmarkProtocolError("benchmark resource census was relabeled")
+    rss = value.get("rss")
+    if not isinstance(rss, Mapping) or set(rss) != {
+        "source",
+        "sampler",
+        "baseline_rss_bytes",
+        "peak_rss_bytes",
+        "retained_rss_bytes",
+        "rss_after_bytes",
+        "retained_rss_delta_bytes",
+        "transient_rss_bytes",
+        "external_transient_rss_bytes",
+        "sample_count",
+    }:
+        raise BenchmarkProtocolError("benchmark RSS census is incomplete")
+    if rss.get("source") not in {"darwin-mach-task-info", "linux-procfs-statm"}:
+        raise BenchmarkProtocolError("benchmark RSS census source is invalid")
+    if rss.get("sampler") != "os_current_rss_sampler_thread":
+        raise BenchmarkProtocolError("benchmark RSS census did not use OS current RSS")
+    baseline = _nonnegative_integer(rss.get("baseline_rss_bytes"), field="RSS baseline")
+    peak = _nonnegative_integer(rss.get("peak_rss_bytes"), field="RSS peak")
+    retained = _nonnegative_integer(rss.get("retained_rss_bytes"), field="retained RSS")
+    rss_after = _nonnegative_integer(rss.get("rss_after_bytes"), field="RSS after")
+    retained_delta = _nonnegative_integer(
+        rss.get("retained_rss_delta_bytes"), field="retained RSS delta"
+    )
+    transient = _nonnegative_integer(rss.get("transient_rss_bytes"), field="transient RSS")
+    external_transient = _nonnegative_integer(
+        rss.get("external_transient_rss_bytes"), field="external transient RSS"
+    )
+    samples = _nonnegative_integer(rss.get("sample_count"), field="RSS sample count")
+    if (
+        samples < 2
+        or peak < max(baseline, retained)
+        or rss_after != retained
+        or retained_delta != max(0, retained - baseline)
+        or transient != max(0, peak - baseline - value["output_bytes"])
+        or external_transient != transient
+    ):
+        raise BenchmarkProtocolError("benchmark RSS census envelope is inconsistent")
+    metrics = value.get("adapter_metrics")
+    if not isinstance(metrics, Mapping) or set(metrics) != {
+        "allocation_count",
+        "copy_count",
+        "copied_bytes",
+        "retained_final_output_bytes",
+        "peak_transient_live_bytes",
+        "copy_count_scope",
+        "cache_supported",
+    }:
+        raise BenchmarkProtocolError("benchmark adapter resource counters are incomplete")
+    for field in (
+        "allocation_count",
+        "copy_count",
+        "copied_bytes",
+        "retained_final_output_bytes",
+        "peak_transient_live_bytes",
+    ):
+        _optional_nonnegative_integer(metrics.get(field), field=f"adapter {field}")
+    if metrics.get("copy_count_scope") is not None and not isinstance(
+        metrics.get("copy_count_scope"), str
+    ):
+        raise BenchmarkProtocolError("benchmark copy-count scope is invalid")
+    if metrics.get("cache_supported") not in {None, True, False}:
+        raise BenchmarkProtocolError("benchmark cache-support counter is invalid")
+
+    native = value.get("native_observed")
+    expects_native = implementation_name == "candidate" and expected_adapter.endswith(
+        ":create_observed_adapter"
+    )
+    if expects_native != (native is not None):
+        raise BenchmarkProtocolError("candidate native resource census is missing or misplaced")
+    if native is None:
+        return value
+    if not isinstance(native, Mapping) or set(native) != {
+        "schema_version",
+        "outcome",
+        "dropped_events",
+        "duration_ns",
+        "counter_scope",
+        "allocations",
+        "buffers",
+        "copies",
+        "calls",
+    }:
+        raise BenchmarkProtocolError("native observed resource census is incomplete")
+    if (
+        native.get("schema_version") != "qwen-mm-observation-v1"
+        or native.get("outcome") != "success"
+        or native.get("dropped_events") != 0
+        or not isinstance(native.get("counter_scope"), str)
+        or not native["counter_scope"]
+    ):
+        raise BenchmarkProtocolError("native observed resource census is not lossless")
+    duration_ns = _nonnegative_integer(
+        native.get("duration_ns"), field="native observation duration"
+    )
+    allocations = native.get("allocations")
+    allocation_fields = {
+        "allocation_count",
+        "allocated_bytes",
+        "copy_count",
+        "copied_bytes",
+        "transient_live_bytes",
+        "peak_transient_live_bytes",
+        "retained_final_output_bytes",
+    }
+    if not isinstance(allocations, Mapping) or set(allocations) != allocation_fields:
+        raise BenchmarkProtocolError("native allocation census is incomplete")
+    for field in allocation_fields:
+        _nonnegative_integer(allocations.get(field), field=f"native {field}")
+    buffers = native.get("buffers")
+    if not isinstance(buffers, Mapping) or set(buffers) != {
+        "count",
+        "total_bytes",
+        "bytes_by_class",
+        "records",
+    }:
+        raise BenchmarkProtocolError("native buffer census is incomplete")
+    count = _nonnegative_integer(buffers.get("count"), field="native buffer count")
+    total = _nonnegative_integer(buffers.get("total_bytes"), field="native buffer bytes")
+    by_class = buffers.get("bytes_by_class")
+    if not isinstance(by_class, Mapping) or any(
+        not isinstance(name, str)
+        or not name
+        or _nonnegative_integer(size, field="native buffer class bytes") < 0
+        for name, size in by_class.items()
+    ):
+        raise BenchmarkProtocolError("native buffer class census is invalid")
+    records = buffers.get("records")
+    if not isinstance(records, list) or len(records) != count:
+        raise BenchmarkProtocolError("native buffer record census is incomplete")
+    record_bytes_by_class: dict[str, int] = {}
+    for sequence, record in enumerate(records):
+        if not isinstance(record, Mapping) or set(record) != {
+            "sequence",
+            "name",
+            "class",
+            "scope",
+            "bytes",
+            "allocated_at_ns",
+            "released_at_ns",
+        }:
+            raise BenchmarkProtocolError("native buffer record is incomplete")
+        if (
+            record.get("sequence") != sequence
+            or not isinstance(record.get("name"), str)
+            or not record["name"]
+            or record.get("class") not in {"retained_output", "discarded_output", "transient"}
+            or not isinstance(record.get("scope"), Mapping)
+        ):
+            raise BenchmarkProtocolError("native buffer record is invalid")
+        _validate_resource_scope(record["scope"])
+        size = _nonnegative_integer(record.get("bytes"), field="native buffer record bytes")
+        allocated_at = _nonnegative_integer(
+            record.get("allocated_at_ns"), field="native buffer allocation timestamp"
+        )
+        released_at = _optional_nonnegative_integer(
+            record.get("released_at_ns"), field="native buffer release timestamp"
+        )
+        if allocated_at > duration_ns or (
+            released_at is not None and not allocated_at <= released_at <= duration_ns
+        ):
+            raise BenchmarkProtocolError("native buffer record lifetime is invalid")
+        buffer_class = str(record["class"])
+        record_bytes_by_class[buffer_class] = record_bytes_by_class.get(buffer_class, 0) + size
+    copies = native.get("copies")
+    if not isinstance(copies, list):
+        raise BenchmarkProtocolError("native copy record census is incomplete")
+    copied_bytes = 0
+    for sequence, copy_event in enumerate(copies):
+        if not isinstance(copy_event, Mapping) or set(copy_event) != {
+            "sequence",
+            "name",
+            "scope",
+            "bytes",
+        }:
+            raise BenchmarkProtocolError("native copy record is incomplete")
+        if (
+            copy_event.get("sequence") != sequence
+            or not isinstance(copy_event.get("name"), str)
+            or not copy_event["name"]
+            or not isinstance(copy_event.get("scope"), Mapping)
+        ):
+            raise BenchmarkProtocolError("native copy record is invalid")
+        _validate_resource_scope(copy_event["scope"])
+        copied_bytes += _nonnegative_integer(
+            copy_event.get("bytes"), field="native copy record bytes"
+        )
+    if (
+        allocations["allocation_count"] != count
+        or allocations["allocated_bytes"] != total
+        or sum(by_class.values()) != total
+        or record_bytes_by_class != dict(by_class)
+        or allocations["copy_count"] != len(copies)
+        or allocations["copied_bytes"] != copied_bytes
+        or allocations["retained_final_output_bytes"] != value["output_bytes"]
+    ):
+        raise BenchmarkProtocolError("native buffer and allocation censuses differ")
+    for adapter_field, native_field in (
+        ("allocation_count", "allocation_count"),
+        ("copy_count", "copy_count"),
+        ("copied_bytes", "copied_bytes"),
+        ("retained_final_output_bytes", "retained_final_output_bytes"),
+        ("peak_transient_live_bytes", "peak_transient_live_bytes"),
+    ):
+        if metrics[adapter_field] != allocations[native_field]:
+            raise BenchmarkProtocolError("native and adapter resource counters differ")
+    calls = native.get("calls")
+    call_fields = {
+        "public_python_calls",
+        "native_batch_calls",
+        "native_visual_calls",
+        "python_callbacks",
+        "hugging_face_calls",
+        "qwen_vl_utils_calls",
+        "pillow_calls",
+        "torchvision_calls",
+    }
+    if not isinstance(calls, Mapping) or set(calls) != call_fields:
+        raise BenchmarkProtocolError("native call census is incomplete")
+    for field in call_fields:
+        _nonnegative_integer(calls.get(field), field=f"native {field}")
+    if (
+        calls["public_python_calls"] != 1
+        or calls["native_batch_calls"] != 1
+        or any(
+            calls[field] != 0
+            for field in (
+                "python_callbacks",
+                "hugging_face_calls",
+                "qwen_vl_utils_calls",
+                "pillow_calls",
+                "torchvision_calls",
+            )
+        )
+    ):
+        raise BenchmarkProtocolError("native resource census observed fallback or extra work")
+    return value
+
+
+def _validate_instrumentation_free_worker(
+    implementation: Mapping[str, Any],
+    *,
+    implementation_name: str,
+    primary_adapter: str,
+    work_units: int,
+    protocol: Mapping[str, Any],
+) -> None:
+    expected_scope = {
+        "clocks": ["perf_counter_ns", "process_time_ns"],
+        "boundary": "adapter.run+required_output_normalization",
+        "instrumentation": "none",
+        "resource_census": "separate_after_all_timed_samples",
+    }
+    if implementation.get("timing_scope") != expected_scope:
+        raise BenchmarkProtocolError("benchmark worker timing scope is not instrumentation-free")
+    for field in ("warmups", "minimum_samples"):
+        expected = protocol.get(field)
+        observed = implementation.get(field)
+        if (
+            isinstance(observed, bool)
+            or not isinstance(observed, int)
+            or observed < (0 if field == "warmups" else 1)
+            or observed != expected
+        ):
+            raise BenchmarkProtocolError(f"benchmark worker {field} differs from protocol")
+    minimum_seconds = _finite_number(implementation.get("minimum_seconds"))
+    if minimum_seconds != _finite_number(protocol.get("minimum_seconds")):
+        raise BenchmarkProtocolError("benchmark worker minimum seconds differs from protocol")
+    samples = implementation.get("samples")
+    if not isinstance(samples, list) or len(samples) != implementation["minimum_samples"]:
+        raise BenchmarkProtocolError(
+            "benchmark worker did not retain exactly the declared raw samples"
+        )
+    raw_sample_elapsed_ms = 0.0
+    for sequence, sample in enumerate(samples):
+        if not isinstance(sample, Mapping) or set(sample) != set(TIMING_SAMPLE_FIELDS):
+            raise BenchmarkProtocolError("benchmark timing sample fields are invalid")
+        if sample.get("sequence") != sequence:
+            raise BenchmarkProtocolError("benchmark timing sample sequence is invalid")
+        wall = _finite_number(sample.get("wall_ms"), positive=True)
+        cpu = _finite_number(sample.get("cpu_ms"))
+        throughput = _finite_number(sample.get("throughput_per_s"), positive=True)
+        utilization = _finite_number(sample.get("core_utilization"))
+        if not math.isclose(throughput, work_units / (wall / 1_000), rel_tol=1e-12):
+            raise BenchmarkProtocolError("benchmark sample throughput differs from raw wall time")
+        if not math.isclose(utilization, cpu / wall, rel_tol=1e-12, abs_tol=1e-15):
+            raise BenchmarkProtocolError("benchmark sample utilization differs from raw clocks")
+        allowed_cores = float(
+            implementation["thread_settings"]["total_budget_model"]["total_budget"]
+        ) + float(protocol["cpu_utilization_tolerance_cores"])
+        if utilization > allowed_cores:
+            raise BenchmarkProtocolError("benchmark sample exceeded its total CPU-thread budget")
+        raw_sample_elapsed_ms += wall
+    timing_floor = implementation.get("timing_floor")
+    timing_floor_fields = {
+        "required_seconds",
+        "raw_sample_iteration_count",
+        "raw_sample_elapsed_wall_ms",
+        "supplemental_iteration_count",
+        "supplemental_elapsed_wall_ms",
+        "supplemental_elapsed_cpu_ms",
+        "total_iteration_count",
+        "total_elapsed_wall_ms",
+    }
+    if not isinstance(timing_floor, Mapping) or set(timing_floor) != timing_floor_fields:
+        raise BenchmarkProtocolError("benchmark timing-floor evidence is invalid")
+    supplemental_iterations = timing_floor.get("supplemental_iteration_count")
+    total_iterations = timing_floor.get("total_iteration_count")
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in (supplemental_iterations, total_iterations)
+    ):
+        raise BenchmarkProtocolError("benchmark timing-floor iteration counters are invalid")
+    supplemental_wall = _finite_number(timing_floor.get("supplemental_elapsed_wall_ms"))
+    supplemental_cpu = _finite_number(timing_floor.get("supplemental_elapsed_cpu_ms"))
+    total_wall = _finite_number(timing_floor.get("total_elapsed_wall_ms"), positive=True)
+    if (
+        _finite_number(timing_floor.get("required_seconds")) != minimum_seconds
+        or timing_floor.get("raw_sample_iteration_count") != len(samples)
+        or not math.isclose(
+            _finite_number(timing_floor.get("raw_sample_elapsed_wall_ms")),
+            raw_sample_elapsed_ms,
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        )
+        or total_iterations != len(samples) + supplemental_iterations
+        or not math.isclose(
+            total_wall, raw_sample_elapsed_ms + supplemental_wall, rel_tol=1e-12, abs_tol=1e-12
+        )
+    ):
+        raise BenchmarkProtocolError("benchmark timing-floor counters do not reconcile")
+    if supplemental_wall == 0.0:
+        if supplemental_iterations != 0 or supplemental_cpu != 0.0:
+            raise BenchmarkProtocolError("empty supplemental timing floor has nonzero counters")
+    elif supplemental_iterations == 0 or supplemental_cpu / supplemental_wall > allowed_cores:
+        raise BenchmarkProtocolError("supplemental timing floor exceeded its CPU-thread budget")
+    if total_wall / 1_000 + 1e-12 < minimum_seconds:
+        raise BenchmarkProtocolError("benchmark worker did not meet the elapsed-time floor")
+    census = _validate_resource_census(
+        implementation.get("resource_census"),
+        primary_adapter=primary_adapter,
+        implementation_name=implementation_name,
+    )
+    if implementation.get("summary") != summarize_samples(samples, census):
+        raise BenchmarkProtocolError("benchmark worker summary differs from raw samples/census")
+
+
 def _validate_case_bindings(
     result: Mapping[str, Any],
     pairs: Sequence[Mapping[str, Any]],
@@ -775,6 +1207,37 @@ def _validate_case_bindings(
         )
     ):
         raise BenchmarkProtocolError("benchmark protocol thread budget mapping is invalid")
+    for regime, budget in thread_mapping.items():
+        if regime == "one" and budget != 1:
+            raise BenchmarkProtocolError("one-thread regime must map to one thread")
+        if re.fullmatch(r"t[1-9][0-9]*", regime) and budget != int(regime[1:]):
+            raise BenchmarkProtocolError("explicit tN regime differs from its thread budget")
+    instrumentation_free = protocol.get("timing_protocol") is not None
+    if instrumentation_free:
+        if (
+            protocol.get("timing_protocol") != "instrumentation-free-v1"
+            or protocol.get("timing_sample_fields") != list(TIMING_SAMPLE_FIELDS)
+            or protocol.get("timing_floor_policy") != TIMING_FLOOR_POLICY
+            or protocol.get("resource_census_position") != "after_all_timed_samples"
+            or protocol.get("fixed_thread_environment") != list(THREAD_ENVIRONMENT_NAMES)
+            or protocol.get("cpu_utilization_tolerance_cores") != 0.25
+        ):
+            raise BenchmarkProtocolError("benchmark timing protocol metadata is invalid")
+        affinity_mapping = protocol.get("affinity_cpu_mapping")
+        if not isinstance(affinity_mapping, Mapping) or set(affinity_mapping) != set(
+            values["thread_regimes"]
+        ):
+            raise BenchmarkProtocolError("benchmark affinity mapping is incomplete")
+        for regime, cpus in affinity_mapping.items():
+            if cpus is not None and (
+                not isinstance(cpus, list)
+                or len(cpus) != thread_mapping[regime]
+                or any(isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in cpus)
+                or len(cpus) != len(set(cpus))
+            ):
+                raise BenchmarkProtocolError("benchmark affinity CPU mapping is invalid")
+    else:
+        affinity_mapping = {regime: None for regime in values["thread_regimes"]}
     unknown_cases = sorted(set(values["cases"]) - by_id.keys())
     if unknown_cases:
         raise BenchmarkProtocolError(
@@ -817,13 +1280,21 @@ def _validate_case_bindings(
             raise BenchmarkProtocolError(
                 f"authenticated benchmark case cannot be materialized: {case_id}"
             ) from error
+    if instrumentation_free and protocol.get("case_work_units") != {
+        case_id: payloads[case_id].work_units for case_id in values["cases"]
+    }:
+        raise BenchmarkProtocolError("benchmark case work units were relabeled")
     foreign_architecture = portable and result.get("architecture_family") != architecture_family()
+    process_ids: list[int] = []
+    worker_nonces: list[str] = []
     for pair in pairs:
         case_id = pair.get("case_id")
         if not isinstance(case_id, str) or case_id not in payloads:
             raise BenchmarkProtocolError("benchmark pair references an undeclared workload case")
         case = by_id[case_id]
         payload = payloads[case_id]
+        if instrumentation_free and pair.get("work_units") != payload.work_units:
+            raise BenchmarkProtocolError("benchmark pair work units were relabeled")
         for field, expected in (
             ("boundary", case["boundary"]),
             ("cache_mode", case["cache_mode"]),
@@ -838,6 +1309,19 @@ def _validate_case_bindings(
         expected_pair_id = f"{profile}/{case_id}/{build}/{regime}/{repetition}"
         if pair.get("pair_id") != expected_pair_id:
             raise BenchmarkProtocolError("benchmark pair coordinate labels do not match its ID")
+        schedule_index = (
+            (
+                values["profiles"].index(profile) * len(values["cases"])
+                + values["cases"].index(case_id)
+            )
+            * len(values["build_labels"])
+            + values["build_labels"].index(build)
+        ) * len(values["thread_regimes"]) + values["thread_regimes"].index(regime)
+        order_seed = seed + schedule_index
+        if pair.get("order_seed") != order_seed:
+            raise BenchmarkProtocolError("benchmark pair order seed differs from its raw schedule")
+        if pair.get("order") != randomized_orders(repetitions, seed=order_seed)[repetition]:
+            raise BenchmarkProtocolError("benchmark pair AB/BA order differs from its raw seed")
         thread_budget = pair.get("thread_budget")
         if (
             not isinstance(thread_budget, int)
@@ -876,7 +1360,10 @@ def _validate_case_bindings(
                 ("cache_mode", case["cache_mode"]),
                 ("release_name", case.get("release_name")),
                 ("logical_input_fingerprint", payload.logical_input_fingerprint),
+                ("messages_fingerprint", payload.messages_fingerprint),
             ]
+            if instrumentation_free:
+                expected_fields.append(("work_units", payload.work_units))
             if not (
                 foreign_architecture and case.get("source", {}).get("kind") == "generated_encoded"
             ):
@@ -891,11 +1378,90 @@ def _validate_case_bindings(
                 or thread_settings.get("budget") != thread_budget
             ):
                 raise BenchmarkProtocolError("benchmark worker thread budget differs from its pair")
-            expected_environment = {name: str(thread_budget) for name in THREAD_ENVIRONMENT_NAMES}
+            budget_model = total_thread_budget_model(str(expected_adapter), thread_budget)
+            expected_environment = (
+                budget_model["environment"]
+                if instrumentation_free
+                else {name: str(thread_budget) for name in THREAD_ENVIRONMENT_NAMES}
+            )
             if thread_settings.get("environment") != expected_environment:
                 raise BenchmarkProtocolError(
                     "benchmark worker thread environment is not exactly budget-pinned"
                 )
+            if instrumentation_free and thread_settings.get("total_budget_model") != budget_model:
+                raise BenchmarkProtocolError("benchmark worker total-thread model was relabeled")
+            if instrumentation_free:
+                expected_torch = (
+                    {
+                        "num_threads": budget_model["torch_thread_budget"],
+                        "num_interop_threads": 1,
+                    }
+                    if protocol.get("reference_adapter") == "official"
+                    else {}
+                )
+                if thread_settings.get("torch") != expected_torch:
+                    raise BenchmarkProtocolError(
+                        "benchmark worker Torch pools differ from the total-thread model"
+                    )
+            process_id = implementation.get("process_id")
+            if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+                raise BenchmarkProtocolError("benchmark worker process ID is invalid")
+            process_ids.append(process_id)
+            if instrumentation_free:
+                nonce = implementation.get("worker_nonce")
+                if (
+                    not isinstance(nonce, str)
+                    or len(nonce) != 64
+                    or any(character not in "0123456789abcdef" for character in nonce)
+                ):
+                    raise BenchmarkProtocolError("benchmark worker nonce is invalid")
+                worker_nonces.append(nonce)
+                affinity = implementation.get("affinity")
+                if not isinstance(affinity, Mapping):
+                    raise BenchmarkProtocolError("benchmark worker affinity attestation is missing")
+                requested = affinity_mapping[regime]
+                if affinity.get("requested_cpus") != requested:
+                    raise BenchmarkProtocolError("benchmark worker affinity request was relabeled")
+                worker_system = implementation.get("environment", {}).get("system")
+                if worker_system == "Linux":
+                    expected_status = "attested" if requested is not None else "observed"
+                    expected_mechanism = (
+                        "taskset+sched_getaffinity"
+                        if requested is not None
+                        else "sched_getaffinity"
+                    )
+                    observed = affinity.get("observed_cpus")
+                    if (
+                        affinity.get("status") != expected_status
+                        or affinity.get("mechanism") != expected_mechanism
+                        or affinity.get("reason") is not None
+                        or not isinstance(observed, list)
+                        or not observed
+                        or (requested is not None and observed != requested)
+                    ):
+                        raise BenchmarkProtocolError("Linux worker affinity was not child-attested")
+                elif worker_system == "Darwin":
+                    if (
+                        affinity.get("status") != "unavailable"
+                        or affinity.get("mechanism") is not None
+                        or affinity.get("observed_cpus") is not None
+                        or not isinstance(affinity.get("reason"), str)
+                    ):
+                        raise BenchmarkProtocolError(
+                            "macOS worker affinity must be explicitly unavailable"
+                        )
+                _validate_instrumentation_free_worker(
+                    implementation,
+                    implementation_name=implementation_name,
+                    primary_adapter=str(expected_adapter),
+                    work_units=payload.work_units,
+                    protocol=protocol,
+                )
+
+    if len(process_ids) != len(set(process_ids)):
+        raise BenchmarkProtocolError("benchmark workers did not use unique fresh process IDs")
+    if instrumentation_free and len(worker_nonces) != len(set(worker_nonces)):
+        raise BenchmarkProtocolError("benchmark workers did not use unique nonces")
 
     if list(summaries) != summarize_pairs(pairs, seed=seed):
         raise BenchmarkProtocolError("benchmark summaries do not match the authenticated pairs")
@@ -925,7 +1491,11 @@ def validate_result_portable(result: Mapping[str, Any]) -> None:
             raise BenchmarkProtocolError("benchmark pair lacks implementations")
         if set(implementations) != {"reference", "candidate"}:
             raise BenchmarkProtocolError("benchmark pair must contain reference and candidate")
-        for field in ("input_fingerprint", "logical_input_fingerprint"):
+        for field in (
+            "input_fingerprint",
+            "logical_input_fingerprint",
+            "messages_fingerprint",
+        ):
             fingerprints = {
                 implementation.get(field) for implementation in implementations.values()
             }
@@ -952,7 +1522,11 @@ def validate_result_portable(result: Mapping[str, Any]) -> None:
 
 
 def validate_result_authenticated_portable(
-    result: Mapping[str, Any], *, expected_runtime_identity: Mapping[str, Any]
+    result: Mapping[str, Any],
+    *,
+    expected_runtime_identity: Mapping[str, Any],
+    phase_c_report_override: Path | None = None,
+    phase_c_assets_root_override: Path | None = None,
 ) -> None:
     """Validate foreign-architecture evidence against an authenticated runtime.
 
@@ -992,28 +1566,53 @@ def validate_result_authenticated_portable(
                 "benchmark Phase C runtime differs from authenticated host evidence"
             )
         report_path = phase_c.get("report_path")
-        if (
-            not isinstance(report_path, str)
-            or not report_path
-            or Path(report_path).is_absolute()
-            or ".." in Path(report_path).parts
-        ):
-            raise BenchmarkProtocolError(
-                "portable benchmark Phase C report path must be safe and repository-relative"
-            )
+        if not isinstance(report_path, str) or not report_path:
+            raise BenchmarkProtocolError("portable benchmark Phase C report path is missing")
         root = repository_root().resolve()
-        durable_report = (root / report_path).resolve()
+        if phase_c_report_override is None:
+            if Path(report_path).is_absolute() or ".." in Path(report_path).parts:
+                raise BenchmarkProtocolError(
+                    "portable benchmark Phase C report path must be safe and repository-relative"
+                )
+            durable_report = (root / report_path).resolve()
+        else:
+            durable_report = phase_c_report_override.resolve()
         try:
-            durable_report.relative_to(root)
             report_sha256 = _sha256_path(durable_report)
+            if phase_c_report_override is None:
+                durable_report.relative_to(root)
         except (OSError, ValueError) as error:
             raise BenchmarkProtocolError(
-                "portable benchmark Phase C report is missing or escapes the repository"
+                "portable benchmark Phase C report is unavailable"
             ) from error
         if phase_c.get("report_sha256") != report_sha256:
             raise BenchmarkProtocolError(
                 "portable benchmark Phase C report hash differs from durable evidence"
             )
+        if phase_c_report_override is not None:
+            if phase_c_assets_root_override is None:
+                raise BenchmarkProtocolError(
+                    "archived Phase C validation requires its authenticated assets root"
+                )
+            try:
+                report = _load_json(durable_report)
+                authenticated = _validate_phase_c_report(
+                    report,
+                    root=root,
+                    assets_root=phase_c_assets_root_override.resolve(),
+                    candidate_identity={
+                        "resolved": True,
+                        "runtime_identity": dict(expected_runtime),
+                    },
+                )
+            except (json.JSONDecodeError, OSError, PhaseCGateError) as error:
+                raise BenchmarkProtocolError(
+                    "archived Phase C report failed authenticated validation"
+                ) from error
+            if authenticated != evidence:
+                raise BenchmarkProtocolError(
+                    "archived Phase C evidence differs from the benchmark gate witness"
+                )
         fingerprint = hashlib.sha256(
             _canonical_json({"report_sha256": report_sha256, "evidence": evidence})
         ).hexdigest()
@@ -1056,6 +1655,7 @@ def run_benchmark(
     thread_regimes: Sequence[str] = (),
     build_labels: Sequence[str] = (),
     production_thread_budget: int | None = None,
+    affinity_cpus: Sequence[int] | None = None,
     phase_c_report_path: Path | None = None,
     phase_c_assets_root: Path | None = None,
     phase_c_publish_report_path: Path | None = None,
@@ -1075,7 +1675,9 @@ def run_benchmark(
         tag=None if case_ids else str(defaults["tag"]),
     )
     candidate_identity = candidate_artifact_identity(candidate_adapter)
-    repetitions = process_repetitions or int(defaults["process_repetitions"])
+    repetitions = int(
+        defaults["process_repetitions"] if process_repetitions is None else process_repetitions
+    )
     effective_warmups = int(defaults["warmups"] if warmups is None else warmups)
     effective_samples = int(
         defaults["minimum_samples"] if minimum_samples is None else minimum_samples
@@ -1085,8 +1687,42 @@ def run_benchmark(
     )
     effective_regimes = list(thread_regimes or defaults["thread_regimes"])
     effective_builds = list(build_labels or defaults["build_labels"])
-    if not profiles or effective_warmups < 0 or effective_samples <= 0 or effective_seconds < 0:
+    if (
+        not profiles
+        or isinstance(effective_warmups, bool)
+        or effective_warmups < 0
+        or isinstance(effective_samples, bool)
+        or effective_samples <= 0
+        or not math.isfinite(effective_seconds)
+        or effective_seconds < 0
+        or repetitions <= 0
+        or len(effective_regimes) != len(set(effective_regimes))
+        or len(effective_builds) != len(set(effective_builds))
+    ):
         raise BenchmarkProtocolError("invalid benchmark protocol values")
+    affinity_pool = None if affinity_cpus is None else list(affinity_cpus)
+    if affinity_pool is not None and (
+        not affinity_pool
+        or any(
+            isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0 for cpu in affinity_pool
+        )
+        or len(affinity_pool) != len(set(affinity_pool))
+    ):
+        raise BenchmarkProtocolError("affinity CPUs must be unique non-negative integers")
+    thread_budget_mapping = {
+        regime: _thread_budget(regime, production_thread_budget=production_thread_budget)
+        for regime in effective_regimes
+    }
+    if affinity_pool is not None and max(thread_budget_mapping.values()) > len(affinity_pool):
+        raise BenchmarkProtocolError("affinity CPU pool is smaller than a requested thread regime")
+    affinity_mapping = {
+        regime: (
+            None
+            if affinity_pool is None
+            else sorted(affinity_pool)[: thread_budget_mapping[regime]]
+        )
+        for regime in effective_regimes
+    }
 
     pairs: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="qwen-mm-benchmark-v2-") as temporary:
@@ -1096,9 +1732,7 @@ def run_benchmark(
             for case in selected:
                 for build_label in effective_builds:
                     for regime in effective_regimes:
-                        thread_budget = _thread_budget(
-                            regime, production_thread_budget=production_thread_budget
-                        )
+                        thread_budget = thread_budget_mapping[regime]
                         orders = randomized_orders(repetitions, seed=seed + schedule_index)
                         schedule_index += 1
                         for repetition, order in enumerate(orders):
@@ -1121,6 +1755,8 @@ def run_benchmark(
                                     "warmups": effective_warmups,
                                     "minimum_samples": effective_samples,
                                     "minimum_seconds": effective_seconds,
+                                    "affinity_cpus": affinity_mapping[regime],
+                                    "worker_nonce": secrets.token_hex(32),
                                 }
                                 implementations[implementation] = _run_subprocess_worker(
                                     config=config,
@@ -1128,7 +1764,11 @@ def run_benchmark(
                                     case_id=case["case_id"],
                                     temporary_directory=temporary_directory,
                                 )
-                            for field in ("input_fingerprint", "logical_input_fingerprint"):
+                            for field in (
+                                "input_fingerprint",
+                                "logical_input_fingerprint",
+                                "messages_fingerprint",
+                            ):
                                 fingerprints = {
                                     result[field] for result in implementations.values()
                                 }
@@ -1153,11 +1793,13 @@ def run_benchmark(
                                     "release_name": case.get("release_name"),
                                     "boundary": case["boundary"],
                                     "cache_mode": case["cache_mode"],
+                                    "work_units": implementations["reference"]["work_units"],
                                     "build_label": build_label,
                                     "thread_regime": regime,
                                     "thread_budget": thread_budget,
                                     "repetition": repetition,
                                     "order": order,
+                                    "order_seed": seed + schedule_index - 1,
                                     "implementations": implementations,
                                     "paired_speedup_p50": reference_p50 / candidate_p50,
                                 }
@@ -1177,6 +1819,9 @@ def run_benchmark(
             "profile_models": {profile: model_registry[profile] for profile in profiles},
             "cases": [case["case_id"] for case in selected],
             "case_boundaries": {case["case_id"]: case["boundary"] for case in selected},
+            "case_work_units": {
+                case["case_id"]: materialize_case(case).work_units for case in selected
+            },
             "candidate_identity": candidate_identity,
             "process_repetitions": repetitions,
             "random_seed": seed,
@@ -1186,10 +1831,16 @@ def run_benchmark(
             "minimum_seconds": effective_seconds,
             "thread_regimes": effective_regimes,
             "thread_budget_mapping": {
-                regime: _thread_budget(regime, production_thread_budget=production_thread_budget)
-                for regime in effective_regimes
+                regime: thread_budget_mapping[regime] for regime in effective_regimes
             },
+            "affinity_cpu_mapping": affinity_mapping,
             "build_labels": effective_builds,
+            "timing_protocol": "instrumentation-free-v1",
+            "timing_sample_fields": list(TIMING_SAMPLE_FIELDS),
+            "timing_floor_policy": TIMING_FLOOR_POLICY,
+            "resource_census_position": "after_all_timed_samples",
+            "fixed_thread_environment": list(THREAD_ENVIRONMENT_NAMES),
+            "cpu_utilization_tolerance_cores": 0.25,
             "p99_minimum_samples": 100,
             "threshold_enforcement": "none; D4 owns release performance gates",
             "self_test_only": "synthetic" in {reference_adapter, candidate_adapter},
@@ -1273,6 +1924,15 @@ def _parse_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _parse_cpu_csv(value: str) -> list[int] | None:
+    if not value.strip():
+        return None
+    try:
+        return [int(item) for item in _parse_csv(value)]
+    except ValueError as error:
+        raise BenchmarkProtocolError("affinity CPUs must be comma-separated integers") from error
+
+
 def _worker_command(args: argparse.Namespace) -> None:
     config = _load_json(args.config)
     workload = load_workload(args.workload)
@@ -1298,6 +1958,7 @@ def _run_command(args: argparse.Namespace) -> None:
         thread_regimes=_parse_csv(args.thread_regimes),
         build_labels=_parse_csv(args.build_labels),
         production_thread_budget=args.production_thread_budget,
+        affinity_cpus=_parse_cpu_csv(args.affinity_cpus),
         phase_c_report_path=args.phase_c_report,
         phase_c_assets_root=args.phase_c_assets_root,
         phase_c_publish_report_path=args.phase_c_publish_report,
@@ -1330,6 +1991,11 @@ def main() -> None:
     run_parser.add_argument("--minimum-seconds", type=float)
     run_parser.add_argument("--thread-regimes", default="")
     run_parser.add_argument("--build-labels", default="")
+    run_parser.add_argument(
+        "--affinity-cpus",
+        default="",
+        help="ordered CPU pool; each tN worker is taskset-pinned to the first N CPUs on Linux",
+    )
     run_parser.add_argument(
         "--production-thread-budget",
         type=int,

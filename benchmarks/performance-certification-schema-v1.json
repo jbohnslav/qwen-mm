@@ -1,0 +1,923 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qwen-mm-performance-certification-v1",
+  "type": "object",
+  "required": [
+    "schema_id",
+    "schema_version",
+    "created_at",
+    "current_identity",
+    "captures",
+    "summaries",
+    "gates",
+    "certification_status",
+    "releasable",
+    "claims"
+  ],
+  "properties": {
+    "schema_id": {"const": "qwen-mm-performance-certification-v1"},
+    "schema_version": {"const": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "current_identity": {"$ref": "#/$defs/identity"},
+    "captures": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/capture"}
+    },
+    "summaries": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/summary"}
+    },
+    "gates": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/gate"}
+    },
+    "certification_status": {"enum": ["pass", "miss"]},
+    "releasable": {"type": "boolean"},
+    "claims": {
+      "type": "object",
+      "required": [
+        "architectures_aggregated",
+        "native_build_gating",
+        "video_performance",
+        "vllm_production"
+      ],
+      "properties": {
+        "architectures_aggregated": {"const": false},
+        "native_build_gating": {"const": false},
+        "video_performance": {"const": false},
+        "vllm_production": {"const": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonnegativeInteger": {"type": "integer", "minimum": 0},
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "positiveNumber": {"type": "number", "exclusiveMinimum": 0},
+    "identity": {
+      "type": "object",
+      "required": [
+        "source_revision",
+        "source_sha256",
+        "benchmark_schema_sha256",
+        "workload_sha256",
+        "profile_schema_sha256",
+        "model_registry_sha256",
+        "assets_sha256",
+        "protocol_sha256"
+      ],
+      "properties": {
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "workload_sha256": {"$ref": "#/$defs/sha256"},
+        "profile_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "model_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "assets_sha256": {"$ref": "#/$defs/sha256"},
+        "protocol_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "required": [
+        "label",
+        "optimization",
+        "wheel_sha256",
+        "native_sha256",
+        "build_command",
+        "rustflags"
+      ],
+      "properties": {
+        "label": {"enum": ["shipping", "native"]},
+        "optimization": {"enum": ["portable-release", "target-cpu=native"]},
+        "wheel_sha256": {"$ref": "#/$defs/sha256"},
+        "native_sha256": {"$ref": "#/$defs/sha256"},
+        "build_command": {"type": "string", "minLength": 1},
+        "rustflags": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "additionalProperties": false
+    },
+    "host": {
+      "type": "object",
+      "required": [
+        "host_fingerprint",
+        "baseline",
+        "system",
+        "machine",
+        "cpu_model",
+        "physical_cpu_count",
+        "logical_cpu_count",
+        "memory_bytes",
+        "controlled",
+        "provider",
+        "instance_type",
+        "allocation_id",
+        "affinity_available",
+        "affinity_source",
+        "affinity_unavailable_reason",
+        "allocated_cpu_count",
+        "allocated_memory_bytes",
+        "cgroup_sha256",
+        "physical_core_topology_sha256",
+        "physical_core_masks"
+      ],
+      "properties": {
+        "host_fingerprint": {"$ref": "#/$defs/sha256"},
+        "baseline": {"enum": ["current-m4", "controlled-linux-x86"]},
+        "system": {"enum": ["Darwin", "Linux"]},
+        "machine": {"enum": ["arm64", "x86_64"]},
+        "cpu_model": {"type": "string", "minLength": 1},
+        "physical_cpu_count": {"$ref": "#/$defs/positiveInteger"},
+        "logical_cpu_count": {"$ref": "#/$defs/positiveInteger"},
+        "memory_bytes": {"$ref": "#/$defs/positiveInteger"},
+        "controlled": {"const": true},
+        "provider": {"type": "string", "minLength": 1},
+        "instance_type": {"type": "string", "minLength": 1},
+        "allocation_id": {"type": "string", "minLength": 1},
+        "affinity_available": {"type": "boolean"},
+        "affinity_source": {"type": "string", "minLength": 1},
+        "affinity_unavailable_reason": {"type": ["string", "null"]},
+        "allocated_cpu_count": {"$ref": "#/$defs/positiveInteger"},
+        "allocated_memory_bytes": {"$ref": "#/$defs/positiveInteger"},
+        "cgroup_sha256": {"$ref": "#/$defs/sha256"},
+        "physical_core_topology_sha256": {"$ref": "#/$defs/sha256"},
+        "physical_core_masks": {
+          "type": "object",
+          "required": ["t1", "t2", "t4", "t8"],
+          "properties": {
+            "t1": {
+              "oneOf": [
+                {"type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonnegativeInteger"}},
+                {"type": "null"}
+              ]
+            },
+            "t2": {
+              "oneOf": [
+                {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/nonnegativeInteger"}},
+                {"type": "null"}
+              ]
+            },
+            "t4": {
+              "oneOf": [
+                {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/nonnegativeInteger"}},
+                {"type": "null"}
+              ]
+            },
+            "t8": {
+              "oneOf": [
+                {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/nonnegativeInteger"}},
+                {"type": "null"}
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "toolchain": {
+      "type": "object",
+      "required": ["rustc", "cargo", "python", "maturin", "os_release", "environment_sha256"],
+      "properties": {
+        "rustc": {"type": "string", "minLength": 1},
+        "cargo": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1},
+        "maturin": {"type": "string", "minLength": 1},
+        "os_release": {"type": "string", "minLength": 1},
+        "environment_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "required": ["PYTHONHASHSEED", "LC_ALL", "TZ"],
+      "properties": {
+        "PYTHONHASHSEED": {"type": "string", "minLength": 1},
+        "LC_ALL": {"type": "string", "minLength": 1},
+        "TZ": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "mode",
+        "process_repetitions",
+        "random_seed",
+        "bootstrap_resamples",
+        "order",
+        "warmups",
+        "minimum_samples",
+        "minimum_seconds",
+        "timing_instrumentation",
+        "timing_floor_policy",
+        "memory_pass",
+        "profiles",
+        "cases",
+        "thread_budgets",
+        "production_thread_budget",
+        "cache_policy"
+      ],
+      "properties": {
+        "mode": {"const": "dedicated"},
+        "process_repetitions": {"const": 5},
+        "random_seed": {"const": 20260731},
+        "bootstrap_resamples": {"const": 20000},
+        "order": {"const": "randomized AB/BA per process repetition"},
+        "warmups": {"const": 3},
+        "minimum_samples": {"const": 30},
+        "minimum_seconds": {"const": 5.0},
+        "timing_instrumentation": {"const": "none"},
+        "timing_floor_policy": {
+          "const": "minimum_samples one-operation latency samples; supplemental individually clocked exact-stability operations aggregate only to minimum_seconds and are excluded from latency distributions"
+        },
+        "memory_pass": {"const": "separate from timing"},
+        "profiles": {
+          "const": ["qwen3-vl-8b", "qwen3.5-9b"]
+        },
+        "cases": {
+          "const": [
+            "text_short",
+            "text_long",
+            "image1",
+            "image24",
+            "jpeg24_requests",
+            "ragged24",
+            "aligned24",
+            "minmax_boundaries",
+            "rgb24",
+            "repeat24_uncached",
+            "repeat24_cached",
+            "repeat24_separated",
+            "images_1",
+            "images_4",
+            "images_16",
+            "images_32",
+            "images_64"
+          ]
+        },
+        "thread_budgets": {"const": [1, 2, 4, 8]},
+        "production_thread_budget": {"const": 8},
+        "cache_policy": {
+          "const": "repeat24_cached unsupported/non-gating; uncached timing forbidden"
+        }
+      },
+      "additionalProperties": false
+    },
+    "phaseCReport": {
+      "type": "object",
+      "required": [
+        "status",
+        "report_sha256",
+        "source_sha256",
+        "wheel_sha256",
+        "native_sha256",
+        "assets_sha256",
+        "profiles",
+        "failed_cases",
+        "skipped_cases"
+      ],
+      "properties": {
+        "status": {"const": "pass"},
+        "report_sha256": {"$ref": "#/$defs/sha256"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "wheel_sha256": {"$ref": "#/$defs/sha256"},
+        "native_sha256": {"$ref": "#/$defs/sha256"},
+        "assets_sha256": {"$ref": "#/$defs/sha256"},
+        "profiles": {"const": ["qwen3-vl-8b", "qwen3.5-9b"]},
+        "failed_cases": {"const": 0},
+        "skipped_cases": {"const": 0}
+      },
+      "additionalProperties": false
+    },
+    "phaseC": {
+      "type": "object",
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"$ref": "#/$defs/phaseCReport"},
+        "after": {"$ref": "#/$defs/phaseCReport"}
+      },
+      "additionalProperties": false
+    },
+    "conformance": {
+      "type": "object",
+      "required": [
+        "passed",
+        "witness_sha256",
+        "input_sha256",
+        "messages_sha256",
+        "output_keys",
+        "dtypes",
+        "values_sha256",
+        "float_atol",
+        "tolerance_policy",
+        "all_timed_outputs_match",
+        "fallback_work",
+        "cache_used"
+      ],
+      "properties": {
+        "passed": {"const": true},
+        "witness_sha256": {"$ref": "#/$defs/sha256"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "messages_sha256": {"$ref": "#/$defs/sha256"},
+        "output_keys": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": {
+            "enum": [
+              "input_ids",
+              "attention_mask",
+              "mm_token_type_ids",
+              "pixel_values",
+              "image_grid_thw"
+            ]
+          }
+        },
+        "dtypes": {
+          "type": "object",
+          "minProperties": 3,
+          "maxProperties": 5,
+          "propertyNames": {
+            "enum": [
+              "input_ids",
+              "attention_mask",
+              "mm_token_type_ids",
+              "pixel_values",
+              "image_grid_thw"
+            ]
+          },
+          "additionalProperties": {"enum": ["int64", "float32"]}
+        },
+        "values_sha256": {"$ref": "#/$defs/sha256"},
+        "float_atol": {"enum": [0.000001, 0.007844]},
+        "tolerance_policy": {
+          "const": "exact integers; exact timed stability; pixel per-occurrence lossless=1e-6 otherwise workload float_atol"
+        },
+        "all_timed_outputs_match": {"const": true},
+        "fallback_work": {"const": false},
+        "cache_used": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "request_index",
+        "message_index",
+        "content_item_index",
+        "media_index",
+        "input_index"
+      ],
+      "properties": {
+        "request_index": {"type": ["integer", "null"], "minimum": 0},
+        "message_index": {"type": ["integer", "null"], "minimum": 0},
+        "content_item_index": {"type": ["integer", "null"], "minimum": 0},
+        "media_index": {"type": ["integer", "null"], "minimum": 0},
+        "input_index": {"type": ["integer", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "buffer": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "name",
+        "class",
+        "scope",
+        "bytes",
+        "allocated_at_ns",
+        "released_at_ns"
+      ],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "name": {
+          "enum": [
+            "input_ids",
+            "attention_mask",
+            "mm_token_type_ids",
+            "image_grid_thw",
+            "pixel_values",
+            "binding.owned_media",
+            "decoded_rgb",
+            "prepared_rgb",
+            "resize.packed_source",
+            "resize.horizontal.source_copy",
+            "resize.noop.source_copy",
+            "resize.horizontal.destination",
+            "resize.vertical.destination",
+            "resize.horizontal.weights_f64",
+            "resize.horizontal.bounds",
+            "resize.horizontal.coefficients_i32",
+            "resize.vertical.weights_f64",
+            "resize.vertical.bounds",
+            "resize.vertical.coefficients_i32"
+          ]
+        },
+        "class": {"enum": ["retained_output", "discarded_output", "transient"]},
+        "scope": {"$ref": "#/$defs/scope"},
+        "bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "allocated_at_ns": {"$ref": "#/$defs/nonnegativeInteger"},
+        "released_at_ns": {"type": ["integer", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "copy": {
+      "type": "object",
+      "required": ["sequence", "name", "scope", "bytes"],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "name": {
+          "enum": ["binding.owned_media", "resize.packed_source", "resize.noop.source_copy"]
+        },
+        "scope": {"$ref": "#/$defs/scope"},
+        "bytes": {"$ref": "#/$defs/nonnegativeInteger"}
+      },
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "required": [
+        "rss_before_bytes",
+        "rss_after_bytes",
+        "scoped_peak_rss_bytes",
+        "retained_output_bytes",
+        "external_transient_rss_bytes",
+        "native_counters_available",
+        "observation_duration_ns",
+        "allocation_count",
+        "allocated_bytes",
+        "copy_count",
+        "copied_bytes",
+        "transient_live_bytes",
+        "peak_transient_live_bytes",
+        "buffer_census_complete",
+        "dropped_events",
+        "buffers",
+        "copies"
+      ],
+      "properties": {
+        "rss_before_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "rss_after_bytes": {
+          "$ref": "#/$defs/nonnegativeInteger",
+          "description": "Post-operation RSS retained as context only; it is not subtracted from the transient envelope."
+        },
+        "scoped_peak_rss_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "retained_output_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "external_transient_rss_bytes": {
+          "$ref": "#/$defs/nonnegativeInteger",
+          "description": "Exactly max(0, scoped_peak_rss_bytes - rss_before_bytes - retained_output_bytes)."
+        },
+        "native_counters_available": {"type": "boolean"},
+        "observation_duration_ns": {"type": ["integer", "null"], "minimum": 0},
+        "allocation_count": {"type": ["integer", "null"], "minimum": 0},
+        "allocated_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "copy_count": {"type": ["integer", "null"], "minimum": 0},
+        "copied_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "transient_live_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "peak_transient_live_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "buffer_census_complete": {"type": "boolean"},
+        "dropped_events": {"type": ["integer", "null"], "minimum": 0},
+        "buffers": {"type": "array", "items": {"$ref": "#/$defs/buffer"}},
+        "copies": {"type": "array", "items": {"$ref": "#/$defs/copy"}}
+      },
+      "additionalProperties": false
+    },
+    "threadEnvironment": {
+      "type": "object",
+      "required": [
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "RAYON_NUM_THREADS"
+      ],
+      "properties": {
+        "OMP_NUM_THREADS": {"type": "string", "minLength": 1},
+        "MKL_NUM_THREADS": {"type": "string", "minLength": 1},
+        "OPENBLAS_NUM_THREADS": {"type": "string", "minLength": 1},
+        "VECLIB_MAXIMUM_THREADS": {"type": "string", "minLength": 1},
+        "NUMEXPR_NUM_THREADS": {"type": "string", "minLength": 1},
+        "RAYON_NUM_THREADS": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "threadControl": {
+      "type": "object",
+      "required": [
+        "owner",
+        "torch_intraop_threads",
+        "torch_interop_threads",
+        "processor_thread_budget",
+        "environment"
+      ],
+      "properties": {
+        "owner": {"enum": ["official-torch", "candidate-processor"]},
+        "torch_intraop_threads": {"$ref": "#/$defs/positiveInteger"},
+        "torch_interop_threads": {"const": 1},
+        "processor_thread_budget": {"type": ["integer", "null"], "minimum": 1},
+        "environment": {"$ref": "#/$defs/threadEnvironment"}
+      },
+      "additionalProperties": false
+    },
+    "sample": {
+      "type": "object",
+      "required": ["sequence", "wall_ms", "cpu_ms"],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/nonnegativeInteger"},
+        "wall_ms": {"$ref": "#/$defs/positiveNumber"},
+        "cpu_ms": {"$ref": "#/$defs/positiveNumber"}
+      },
+      "additionalProperties": false
+    },
+    "timingFloor": {
+      "type": "object",
+      "required": [
+        "required_seconds",
+        "raw_sample_iteration_count",
+        "raw_sample_elapsed_wall_ms",
+        "supplemental_iteration_count",
+        "supplemental_elapsed_wall_ms",
+        "supplemental_elapsed_cpu_ms",
+        "total_iteration_count",
+        "total_elapsed_wall_ms"
+      ],
+      "properties": {
+        "required_seconds": {"const": 5.0},
+        "raw_sample_iteration_count": {"$ref": "#/$defs/positiveInteger"},
+        "raw_sample_elapsed_wall_ms": {"$ref": "#/$defs/positiveNumber"},
+        "supplemental_iteration_count": {"$ref": "#/$defs/nonnegativeInteger"},
+        "supplemental_elapsed_wall_ms": {"type": "number", "minimum": 0},
+        "supplemental_elapsed_cpu_ms": {"type": "number", "minimum": 0},
+        "total_iteration_count": {"$ref": "#/$defs/positiveInteger"},
+        "total_elapsed_wall_ms": {"$ref": "#/$defs/positiveNumber"}
+      },
+      "additionalProperties": false
+    },
+    "affinity": {
+      "type": "object",
+      "required": ["available", "source", "requested_cpus", "observed_cpus"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "source": {"type": "string", "minLength": 1},
+        "requested_cpus": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonnegativeInteger"}
+        },
+        "observed_cpus": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonnegativeInteger"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "implementation": {
+      "type": "object",
+      "required": [
+        "process_nonce",
+        "process_pid",
+        "thread_budget",
+        "thread_control",
+        "affinity",
+        "samples",
+        "timing_floor",
+        "memory",
+        "pre_conformance",
+        "post_conformance"
+      ],
+      "properties": {
+        "process_nonce": {"$ref": "#/$defs/sha256"},
+        "process_pid": {"$ref": "#/$defs/positiveInteger"},
+        "thread_budget": {"enum": [1, 2, 4, 8]},
+        "thread_control": {"$ref": "#/$defs/threadControl"},
+        "affinity": {"$ref": "#/$defs/affinity"},
+        "samples": {
+          "type": "array",
+          "minItems": 30,
+          "maxItems": 30,
+          "items": {"$ref": "#/$defs/sample"}
+        },
+        "timing_floor": {"$ref": "#/$defs/timingFloor"},
+        "memory": {"$ref": "#/$defs/memory"},
+        "pre_conformance": {"$ref": "#/$defs/conformance"},
+        "post_conformance": {"$ref": "#/$defs/conformance"}
+      },
+      "additionalProperties": false
+    },
+    "pair": {
+      "type": "object",
+      "required": [
+        "pair_id",
+        "repetition",
+        "order",
+        "input_sha256",
+        "logical_input_sha256",
+        "messages_sha256",
+        "conformance_witness_sha256",
+        "implementations"
+      ],
+      "properties": {
+        "pair_id": {"type": "string", "minLength": 1},
+        "repetition": {"type": "integer", "minimum": 0, "maximum": 4},
+        "order": {
+          "oneOf": [
+            {"const": ["reference", "candidate"]},
+            {"const": ["candidate", "reference"]}
+          ]
+        },
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "logical_input_sha256": {"$ref": "#/$defs/sha256"},
+        "messages_sha256": {"$ref": "#/$defs/sha256"},
+        "conformance_witness_sha256": {"$ref": "#/$defs/sha256"},
+        "implementations": {
+          "type": "object",
+          "required": ["reference", "candidate"],
+          "properties": {
+            "reference": {"$ref": "#/$defs/implementation"},
+            "candidate": {"$ref": "#/$defs/implementation"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "profile",
+        "case_id",
+        "cache_mode",
+        "thread_budget",
+        "order_seed",
+        "work_units",
+        "support_status",
+        "support_reason",
+        "timing_kind",
+        "pairs"
+      ],
+      "properties": {
+        "profile": {"enum": ["qwen3-vl-8b", "qwen3.5-9b"]},
+        "case_id": {
+          "enum": [
+            "text_short",
+            "text_long",
+            "image1",
+            "image24",
+            "jpeg24_requests",
+            "ragged24",
+            "aligned24",
+            "minmax_boundaries",
+            "rgb24",
+            "repeat24_uncached",
+            "repeat24_cached",
+            "repeat24_separated",
+            "images_1",
+            "images_4",
+            "images_16",
+            "images_32",
+            "images_64"
+          ]
+        },
+        "cache_mode": {"enum": ["disabled", "enabled", "separated"]},
+        "thread_budget": {"enum": [1, 2, 4, 8]},
+        "order_seed": {"type": ["integer", "null"], "minimum": 0},
+        "work_units": {"$ref": "#/$defs/positiveInteger"},
+        "support_status": {"enum": ["supported", "unsupported"]},
+        "support_reason": {"type": ["string", "null"]},
+        "timing_kind": {"enum": ["uncached", "unsupported"]},
+        "pairs": {"type": "array", "items": {"$ref": "#/$defs/pair"}}
+      },
+      "additionalProperties": false
+    },
+    "capture": {
+      "type": "object",
+      "required": [
+        "capture_id",
+        "architecture",
+        "identity",
+        "build",
+        "host",
+        "toolchain",
+        "environment",
+        "commands",
+        "raw_archive_sha256",
+        "raw_archive_bytes",
+        "raw_manifest_sha256",
+        "raw_provenance_sha256",
+        "protocol",
+        "phase_c",
+        "observations"
+      ],
+      "properties": {
+        "capture_id": {"enum": ["arm64-shipping", "arm64-native", "x86_64-shipping", "x86_64-native"]},
+        "architecture": {"enum": ["arm64", "x86_64"]},
+        "identity": {"$ref": "#/$defs/identity"},
+        "build": {"$ref": "#/$defs/build"},
+        "host": {"$ref": "#/$defs/host"},
+        "toolchain": {"$ref": "#/$defs/toolchain"},
+        "environment": {"$ref": "#/$defs/environment"},
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "raw_archive_sha256": {"$ref": "#/$defs/sha256"},
+        "raw_archive_bytes": {"$ref": "#/$defs/positiveInteger"},
+        "raw_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "raw_provenance_sha256": {"$ref": "#/$defs/sha256"},
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "phase_c": {"$ref": "#/$defs/phaseC"},
+        "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}}
+      },
+      "additionalProperties": false
+    },
+    "distribution": {
+      "type": "object",
+      "required": ["p50", "p90"],
+      "properties": {
+        "p50": {"type": "number"},
+        "p90": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "wallDistribution": {
+      "type": "object",
+      "required": ["p50", "p90", "p99", "p99_qualified"],
+      "properties": {
+        "p50": {"type": "number"},
+        "p90": {"type": "number"},
+        "p99": {"type": ["number", "null"]},
+        "p99_qualified": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "implementationSummary": {
+      "type": "object",
+      "required": [
+        "sample_count",
+        "iteration_count",
+        "measured_seconds",
+        "wall_ms",
+        "cpu_ms",
+        "throughput_per_s",
+        "core_utilization"
+      ],
+      "properties": {
+        "sample_count": {"$ref": "#/$defs/positiveInteger"},
+        "iteration_count": {"$ref": "#/$defs/positiveInteger"},
+        "measured_seconds": {"$ref": "#/$defs/positiveNumber"},
+        "wall_ms": {"$ref": "#/$defs/wallDistribution"},
+        "cpu_ms": {"$ref": "#/$defs/distribution"},
+        "throughput_per_s": {"$ref": "#/$defs/distribution"},
+        "core_utilization": {"$ref": "#/$defs/distribution"}
+      },
+      "additionalProperties": false
+    },
+    "memorySummary": {
+      "type": "object",
+      "required": [
+        "rss_before_bytes",
+        "rss_after_bytes",
+        "scoped_peak_rss_bytes",
+        "external_transient_rss_bytes",
+        "native_counters_available",
+        "buffer_census_complete",
+        "peak_transient_live_bytes",
+        "retained_output_bytes",
+        "allocation_count",
+        "allocated_bytes",
+        "copy_count",
+        "copied_bytes"
+      ],
+      "properties": {
+        "rss_before_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "rss_after_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "scoped_peak_rss_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "external_transient_rss_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "native_counters_available": {"type": "boolean"},
+        "buffer_census_complete": {"type": "boolean"},
+        "peak_transient_live_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "retained_output_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "allocation_count": {"type": ["integer", "null"], "minimum": 0},
+        "allocated_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "copy_count": {"type": ["integer", "null"], "minimum": 0},
+        "copied_bytes": {"type": ["integer", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "measuredSummary": {
+      "type": "object",
+      "required": [
+        "architecture",
+        "build",
+        "profile",
+        "case_id",
+        "thread_budget",
+        "status",
+        "reason",
+        "reference",
+        "candidate",
+        "memory",
+        "paired_process_speedups",
+        "paired_memory_ratios",
+        "speedup_p50",
+        "speedup_bootstrap_95_ci"
+      ],
+      "properties": {
+        "architecture": {"enum": ["arm64", "x86_64"]},
+        "build": {"enum": ["shipping", "native"]},
+        "profile": {"enum": ["qwen3-vl-8b", "qwen3.5-9b"]},
+        "case_id": {"type": "string", "minLength": 1},
+        "thread_budget": {"enum": [1, 2, 4, 8]},
+        "status": {"const": "supported"},
+        "reason": {"const": null},
+        "reference": {"$ref": "#/$defs/implementationSummary"},
+        "candidate": {"$ref": "#/$defs/implementationSummary"},
+        "memory": {
+          "type": "object",
+          "required": ["reference", "candidate"],
+          "properties": {
+            "reference": {"$ref": "#/$defs/memorySummary"},
+            "candidate": {"$ref": "#/$defs/memorySummary"}
+          },
+          "additionalProperties": false
+        },
+        "paired_process_speedups": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {"type": "number"}
+        },
+        "paired_memory_ratios": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {"type": ["number", "null"], "minimum": 0}
+        },
+        "speedup_p50": {"type": "number"},
+        "speedup_bootstrap_95_ci": {
+          "type": "object",
+          "required": ["method", "resamples", "seed", "lower", "upper"],
+          "properties": {
+            "method": {"const": "deterministic paired process-median bootstrap"},
+            "resamples": {"const": 20000},
+            "seed": {"$ref": "#/$defs/nonnegativeInteger"},
+            "lower": {"type": "number"},
+            "upper": {"type": "number"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "unsupportedSummary": {
+      "type": "object",
+      "required": [
+        "architecture",
+        "build",
+        "profile",
+        "case_id",
+        "thread_budget",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "architecture": {"enum": ["arm64", "x86_64"]},
+        "build": {"enum": ["shipping", "native"]},
+        "profile": {"enum": ["qwen3-vl-8b", "qwen3.5-9b"]},
+        "case_id": {"const": "repeat24_cached"},
+        "thread_budget": {"enum": [1, 8]},
+        "status": {"const": "unsupported"},
+        "reason": {"const": "adapter_cache_supported_false; non-gating and not timed"}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "oneOf": [
+        {"$ref": "#/$defs/measuredSummary"},
+        {"$ref": "#/$defs/unsupportedSummary"}
+      ]
+    },
+    "gate": {
+      "type": "object",
+      "required": ["gate_id", "status", "reason"],
+      "properties": {
+        "gate_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["pass", "miss"]},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  }
+}

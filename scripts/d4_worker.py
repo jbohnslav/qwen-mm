@@ -20,12 +20,13 @@ if str(SCRIPT_DIRECTORY) not in sys.path:
 
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
+    D4_RANDOM_SEED,
     PRODUCTION_THREAD_BUDGET,
     THREAD_BUDGETS,
     D4CaptureError,
     installed_build_identity,
-    noise_assessment,
     normalized_capture_environment,
+    result_noise_assessment,
 )
 from profile_capture_support import (  # noqa: E402
     benchmark_validation_command,
@@ -117,6 +118,8 @@ def benchmark_command(
         ",".join(selected_cases),
         "--process-repetitions",
         "5",
+        "--seed",
+        str(D4_RANDOM_SEED),
         "--warmups",
         "3",
         "--minimum-samples",
@@ -224,42 +227,6 @@ def capture_plan(
             }
         )
     return plan
-
-
-def _result_noise(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Assess all five process repetitions without deleting any observation."""
-
-    groups: dict[tuple[str, str, str], list[float]] = {}
-    pairs = result.get("pairs")
-    if not isinstance(pairs, list):
-        raise D4CaptureError("benchmark result has no raw pairs")
-    for pair in pairs:
-        if not isinstance(pair, Mapping):
-            raise D4CaptureError("benchmark pair is invalid")
-        for implementation in ("reference", "candidate"):
-            try:
-                value = float(pair["implementations"][implementation]["summary"]["wall_ms"]["p50"])
-                key = (str(pair["profile_alias"]), str(pair["case_id"]), implementation)
-            except (KeyError, TypeError, ValueError) as error:
-                raise D4CaptureError("benchmark pair lacks a raw process median") from error
-            groups.setdefault(key, []).append(value)
-    assessments = []
-    for (profile, case, implementation), values in sorted(groups.items()):
-        assessment = noise_assessment(values)
-        assessments.append(
-            {
-                "profile_alias": profile,
-                "case_id": case,
-                "implementation": implementation,
-                **assessment,
-            }
-        )
-    return {
-        "rule_frozen_before_capture": True,
-        "sample_pruning": "forbidden",
-        "assessments": assessments,
-        "pass": all(item["pass"] for item in assessments),
-    }
 
 
 def _cached_unsupported_attestations(
@@ -401,7 +368,7 @@ def run_capture(
                 execute=True,
             )
             result = json.loads(result_path.read_text(encoding="utf-8"))
-            noise = _result_noise(result)
+            noise = result_noise_assessment(result)
             result_path.with_name("noise.json").write_text(
                 json.dumps(noise, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )

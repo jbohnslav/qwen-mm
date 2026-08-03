@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
@@ -23,11 +24,23 @@ def _base_files() -> dict[str, bytes]:
         for name in support.REQUIRED_BASE_MEMBERS
     }
     index = {
+        "architecture_family": "arm64",
         "build_labels": list(support.BUILD_LABELS),
         "thread_budgets": list(support.THREAD_BUDGETS),
         "files": sorted(set(files) - {"capture-index.json"}),
     }
     files["capture-index.json"] = (json.dumps(index) + "\n").encode()
+    files["provenance.json"] = (
+        json.dumps(
+            {
+                "architecture_family": "arm64",
+                "host": {
+                    "affinity": {"masks": {f"t{budget}": None for budget in support.THREAD_BUDGETS}}
+                },
+            }
+        )
+        + "\n"
+    ).encode()
     for label in support.BUILD_LABELS:
         files[f"captures/{label}/repeat24_cached-unsupported.json"] = (
             json.dumps(
@@ -56,25 +69,39 @@ def _base_files() -> dict[str, bytes]:
             )
             + "\n"
         ).encode()
-        for budget in support.THREAD_BUDGETS:
-            files[f"captures/{label}/t{budget}/noise.json"] = (
-                json.dumps(
-                    {
-                        "sample_pruning": "forbidden",
-                        "pass": True,
-                        "assessments": [
-                            {
-                                "pass": True,
-                                "observation_count": 5,
-                                "retained_observation_count": 5,
-                                "pruned_observation_count": 0,
-                            }
-                        ],
+        for budget_index, budget in enumerate(support.THREAD_BUDGETS, start=1):
+            result = {
+                "architecture_family": "arm64",
+                "created_at": f"2026-08-03T00:0{budget_index}:00+00:00",
+                "release_eligibility": {
+                    "phase_c": {
+                        "report_sha256": hashlib.sha256(
+                            files[f"phase-c/{label}/pre/report.json"]
+                        ).hexdigest()
                     }
-                )
-                + "\n"
+                },
+                "protocol": {
+                    "build_labels": [label],
+                    "candidate_identity": {"artifact_sha256": "c" * 64},
+                    "thread_regimes": [f"t{budget}"],
+                    "random_seed": support.D4_RANDOM_SEED,
+                },
+                "pairs": [
+                    {
+                        "profile_alias": "qwen3-vl-8b",
+                        "case_id": "text_short",
+                        "implementations": {
+                            implementation: {"summary": {"wall_ms": {"p50": 100.0}}}
+                            for implementation in ("reference", "candidate")
+                        },
+                    }
+                    for _ in range(5)
+                ],
+            }
+            files[f"captures/{label}/t{budget}/noise.json"] = (
+                json.dumps(support.result_noise_assessment(result)) + "\n"
             ).encode()
-            files[f"captures/{label}/t{budget}/result.json"] = b'{"pairs": []}\n'
+            files[f"captures/{label}/t{budget}/result.json"] = (json.dumps(result) + "\n").encode()
     index["files"] = sorted(set(files) - {"capture-index.json"})
     files["capture-index.json"] = (json.dumps(index) + "\n").encode()
     return files
@@ -245,6 +272,13 @@ class D4CaptureSupportTests(unittest.TestCase):
         self.assertEqual(provenance["mode"], "unavailable")
         self.assertTrue(all(value is None for value in provenance["masks"].values()))
 
+    def test_local_capture_requires_the_current_m4_baseline(self) -> None:
+        d4_local.assert_local_baseline(system="Darwin", machine="arm64", cpu_model="Apple M4")
+        with self.assertRaisesRegex(support.D4CaptureError, "M4 baseline"):
+            d4_local.assert_local_baseline(
+                system="Darwin", machine="arm64", cpu_model="Apple M3 Max"
+            )
+
     def test_modal_resource_attestation_requires_complete_reservation(self) -> None:
         masks = {budget: tuple(range(budget)) for budget in support.THREAD_BUDGETS}
         cgroups = {
@@ -280,24 +314,118 @@ class D4CaptureSupportTests(unittest.TestCase):
         noisy = support.noise_assessment([80.0, 90.0, 100.0, 110.0, 120.0])
         self.assertFalse(noisy["pass"])
 
-    def test_capture_archive_round_trip_and_tamper_rejection(self) -> None:
-        files = _base_files()
-        archive = support.create_capture_archive(files)
-        self.assertEqual(support.read_capture_archive(archive), files)
-        malformed = dict(files)
-        index = json.loads(malformed["capture-index.json"])
-        index["thread_budgets"] = [1, 8]
-        malformed["capture-index.json"] = json.dumps(index).encode()
-        with self.assertRaisesRegex(support.D4CaptureError, "build/thread matrix"):
-            support.read_capture_archive(support.create_capture_archive(malformed))
+    def test_archived_phase_c_must_bound_a_fresh_ordered_capture_window(self) -> None:
+        native_sha = "a" * 64
+        package_sha = "b" * 64
+        revision = "c" * 40
+        build = {
+            "runtime": {"native_sha256": native_sha},
+            "runtime_reconciliation": {"wheel_contents": {"package_artifact_sha256": package_sha}},
+        }
 
-        cached_tamper = _base_files()
-        cached_name = "captures/shipping/repeat24_cached-unsupported.json"
-        cached = json.loads(cached_tamper[cached_name])
-        cached["coordinates"][0]["candidate_cache_supported"] = True
-        cached_tamper[cached_name] = json.dumps(cached).encode()
-        with self.assertRaisesRegex(support.D4CaptureError, "zero timing"):
-            support.read_capture_archive(support.create_capture_archive(cached_tamper))
+        def report(created_at: str) -> bytes:
+            return json.dumps(
+                {
+                    "status": "pass",
+                    "passed": True,
+                    "created_at": created_at,
+                    "candidate": {
+                        "runtime_identity": {
+                            "native_artifact_sha256": native_sha,
+                            "package_artifact_sha256": package_sha,
+                        }
+                    },
+                    "scope": {
+                        "profiles": list(support.PROFILES),
+                        "skipped_case_ids": [],
+                        "declared_case_ids": [],
+                        "executed_case_ids": [],
+                    },
+                    "provenance": {
+                        "git": {
+                            "revision": revision,
+                            "gate_inputs_clean": True,
+                            "gate_input_status": [],
+                        }
+                    },
+                }
+            ).encode()
+
+        files = {
+            "builds/shipping/capture.json": json.dumps(
+                {"created_at": "2026-08-03T00:04:00+00:00"}
+            ).encode(),
+            "phase-c/shipping/pre/report.json": report("2026-08-03T00:01:00+00:00"),
+            "phase-c/shipping/post/report.json": report("2026-08-03T00:03:00+00:00"),
+        }
+        provenance = {
+            "started_at": "2026-08-03T00:00:00+00:00",
+            "completed_at": "2026-08-03T00:05:00+00:00",
+            "source_revision": revision,
+        }
+        support.validate_archived_phase_c(files, provenance, "shipping", build, assets_root=None)
+        files["phase-c/shipping/post/report.json"] = report("2026-08-03T00:00:30+00:00")
+        with self.assertRaisesRegex(support.D4CaptureError, "stale or inverted"):
+            support.validate_archived_phase_c(
+                files, provenance, "shipping", build, assets_root=None
+            )
+
+    def test_capture_archive_round_trip_and_tamper_rejection(self) -> None:
+        def phase_c_hashes(
+            files: dict[str, bytes],
+            _provenance: dict[str, object],
+            build_label: str,
+            _build: dict[str, object],
+            *,
+            assets_root: Path | None,
+        ) -> dict[str, str]:
+            del assets_root
+            return {
+                position: hashlib.sha256(
+                    files[f"phase-c/{build_label}/{position}/report.json"]
+                ).hexdigest()
+                for position in ("pre", "post")
+            } | {
+                "pre_created_at": "2026-08-03T00:00:00+00:00",
+                "post_created_at": "2026-08-03T00:05:00+00:00",
+                "capture_created_at": "2026-08-03T00:06:00+00:00",
+            }
+
+        with (
+            mock.patch("qwen_mm_reference.benchmark_v2.validate_result_portable"),
+            mock.patch.object(
+                support,
+                "validate_archived_build",
+                return_value={"_retained_benchmark_artifact": {"sha256": "c" * 64}},
+            ),
+            mock.patch.object(support, "validate_archived_phase_c", side_effect=phase_c_hashes),
+            mock.patch.object(support, "validate_d4_result_contract"),
+        ):
+            files = _base_files()
+            archive = support.create_capture_archive(files)
+            self.assertEqual(support.read_capture_archive(archive), files)
+            malformed = dict(files)
+            index = json.loads(malformed["capture-index.json"])
+            index["thread_budgets"] = [1, 8]
+            malformed["capture-index.json"] = json.dumps(index).encode()
+            with self.assertRaisesRegex(support.D4CaptureError, "build/thread matrix"):
+                support.read_capture_archive(support.create_capture_archive(malformed))
+
+            cached_tamper = _base_files()
+            cached_name = "captures/shipping/repeat24_cached-unsupported.json"
+            cached = json.loads(cached_tamper[cached_name])
+            cached["coordinates"][0]["candidate_cache_supported"] = True
+            cached_tamper[cached_name] = json.dumps(cached).encode()
+            with self.assertRaisesRegex(support.D4CaptureError, "zero timing"):
+                support.read_capture_archive(support.create_capture_archive(cached_tamper))
+
+            stale_timing = _base_files()
+            result_name = "captures/shipping/t1/result.json"
+            stale_result = json.loads(stale_timing[result_name])
+            stale_result["created_at"] = "2026-08-03T00:00:00+00:00"
+            stale_timing[result_name] = json.dumps(stale_result).encode()
+            with self.assertRaisesRegex(support.D4CaptureError, "timestamps are stale"):
+                support.read_capture_archive(support.create_capture_archive(stale_timing))
 
     def test_cpu_list_parser_fails_closed(self) -> None:
         self.assertEqual(support.parse_cpu_list("0-2,8,10-11"), {0, 1, 2, 8, 10, 11})
@@ -325,6 +453,8 @@ class D4CaptureSupportTests(unittest.TestCase):
             self.assertIn("dedicated", coordinate["command"])
             self.assertIn("5", coordinate["command"])
             self.assertIn("30", coordinate["command"])
+            seed_index = coordinate["command"].index("--seed")
+            self.assertEqual(coordinate["command"][seed_index + 1], str(support.D4_RANDOM_SEED))
 
 
 if __name__ == "__main__":

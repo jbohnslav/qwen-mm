@@ -126,6 +126,15 @@ def _sysctl(name: str, *, environment: dict[str, str]) -> str:
     return _capture(["sysctl", "-n", name], environment=environment)
 
 
+def assert_local_baseline(*, system: str, machine: str, cpu_model: str) -> None:
+    """Fail before building unless this is the declared current M4 baseline."""
+
+    if system != "Darwin" or machine.lower() not in {"arm64", "aarch64"}:
+        raise D4CaptureError("local D4 runner requires the controlled native macOS ARM host")
+    if "M4" not in cpu_model:
+        raise D4CaptureError("local D4 runner requires the current Apple M4 baseline")
+
+
 def build_plan(working_root: Path) -> dict[str, Any]:
     builds: dict[str, Any] = {}
     for label in BUILD_LABELS:
@@ -170,7 +179,9 @@ def _collect_files(artifact_root: Path) -> dict[str, bytes]:
 
 
 def execute_capture(*, output: Path, host_label: str) -> None:
-    if platform.system() != "Darwin" or platform.machine().lower() not in {"arm64", "aarch64"}:
+    system = platform.system()
+    machine = platform.machine()
+    if system != "Darwin" or machine.lower() not in {"arm64", "aarch64"}:
         raise D4CaptureError("local D4 runner requires the controlled native macOS ARM host")
     dirty = _git("status", "--short", "--untracked-files=all")
     if dirty:
@@ -181,6 +192,8 @@ def execute_capture(*, output: Path, host_label: str) -> None:
     source = source_payload_identity(REPOSITORY_ROOT)
     assets = assets_identity(ASSETS_ROOT)
     environment = normalized_capture_environment(os.environ)
+    cpu_model = _sysctl("machdep.cpu.brand_string", environment=environment)
+    assert_local_baseline(system=system, machine=machine, cpu_model=cpu_model)
     cargo_bin = _capture(
         [str(REPOSITORY_ROOT / "scripts/cargo.sh"), "--print-bin-dir"],
         environment=environment,
@@ -332,12 +345,12 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             "assets": assets,
             "capture_inputs": capture_input_identities(REPOSITORY_ROOT),
             "host": {
-                "system": platform.system(),
-                "machine": platform.machine(),
+                "system": system,
+                "machine": machine,
                 "platform": platform.platform(),
                 "uname": " ".join(platform.uname()),
                 "hostname": socket.gethostname(),
-                "cpu_model": _sysctl("machdep.cpu.brand_string", environment=environment),
+                "cpu_model": cpu_model,
                 "physical_cpu_count": int(_sysctl("hw.physicalcpu", environment=environment)),
                 "logical_cpu_count": int(_sysctl("hw.logicalcpu", environment=environment)),
                 "memory_bytes": int(_sysctl("hw.memsize", environment=environment)),
@@ -376,6 +389,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             output,
             expected_source=source,
             expected_assets=assets,
+            phase_c_assets_root=ASSETS_ROOT,
         )
 
 
