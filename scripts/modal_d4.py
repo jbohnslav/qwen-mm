@@ -23,8 +23,9 @@ LOCAL_ASSETS_ROOT = (LOCAL_ROOT / "reference/.cache/huggingface").resolve()
 REMOTE_ROOT = Path("/workspace/qwen-mm")
 REMOTE_ASSETS_ROOT = REMOTE_ROOT / "reference/.cache/huggingface"
 REMOTE_PYTHON = REMOTE_ROOT / ".venv/bin/python"
+SUPPORT_ROOT = REMOTE_ROOT if REMOTE_ROOT.is_dir() else LOCAL_ROOT
 
-sys.path.insert(0, str(LOCAL_ROOT / "scripts"))
+sys.path.insert(0, str(SUPPORT_ROOT / "scripts"))
 from d4_capture_support import (  # noqa: E402
     BASE_IMAGE,
     BUILD_LABELS,
