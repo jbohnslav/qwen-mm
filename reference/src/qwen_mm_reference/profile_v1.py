@@ -12,6 +12,7 @@ import platform
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -503,7 +504,7 @@ def _validate_wheel_runtime(wheel: bytes, runtime: Mapping[str, Any]) -> None:
         raise ProfileArtifactError("wheel members differ from the measured runtime identity")
 
 
-def _parse_collapsed(raw: str) -> tuple[str, int, int]:
+def _parse_collapsed(raw: str, *, required_frame: str | None = None) -> tuple[str, int, int]:
     stacks: dict[str, int] = defaultdict(int)
     for line in raw.splitlines():
         if not line.strip():
@@ -515,11 +516,28 @@ def _parse_collapsed(raw: str) -> tuple[str, int, int]:
             raise ProfileArtifactError("py-spy raw artifact is not collapsed-stack data") from error
         if not stack or count <= 0:
             raise ProfileArtifactError("py-spy collapsed stacks require positive sample counts")
+        if required_frame is not None and not any(
+            required_frame in frame for frame in stack.split(";")
+        ):
+            continue
         stacks[stack] += count
     if not stacks:
-        raise ProfileArtifactError("py-spy produced no sampled stacks")
+        qualifier = " containing the whole-operation boundary" if required_frame else ""
+        raise ProfileArtifactError(f"py-spy produced no sampled stacks{qualifier}")
     collapsed = "".join(f"{stack} {stacks[stack]}\n" for stack in sorted(stacks))
     return collapsed, sum(stacks.values()), len(stacks)
+
+
+def _parse_py_spy_summary(output: str) -> tuple[int, int]:
+    matches = re.findall(r"\bSamples:\s*(\d+)\s+Errors:\s*(\d+)\b", output)
+    if len(matches) != 1:
+        raise ProfileArtifactError("py-spy output lacks one unambiguous success summary")
+    samples, errors = (int(value) for value in matches[0])
+    if samples <= 0:
+        raise ProfileArtifactError("py-spy reported no samples")
+    if errors != 0:
+        raise ProfileArtifactError(f"py-spy reported {errors} sampling errors")
+    return samples, errors
 
 
 def _parse_macos_sample(raw: str) -> tuple[str, int, int]:
@@ -632,7 +650,13 @@ def _sample_worker(args: argparse.Namespace) -> None:
         BASELINE_ADAPTER,
         AdapterContext(config["profile_alias"], PROFILE_BUILD_LABEL, config["thread_budget"]),
     )
-    before = normalize_outputs(qwen_mm_profile_iteration(adapter, payload), payload)
+    runtime_identity = candidate_artifact_identity(BASELINE_ADAPTER).get("runtime_identity")
+    if not isinstance(runtime_identity, Mapping):
+        raise ProfileArtifactError("sample worker cannot resolve its candidate runtime identity")
+    # Setup and correctness checks deliberately bypass the stable stack marker.
+    # On x86 py-spy launches this finite process and records until it exits; only
+    # marked whole-operation samples are admitted to the canonical collapse.
+    before = normalize_outputs(adapter.run(payload), payload)
     before_signature = output_signature(before)
     del before
     ready = {
@@ -642,12 +666,39 @@ def _sample_worker(args: argparse.Namespace) -> None:
     }
     Path(config["ready_path"]).write_text(json.dumps(ready), encoding="utf-8")
     iterations = 0
-    stop_path = Path(config["stop_path"])
-    while not stop_path.exists():
-        sampled = qwen_mm_profile_iteration(adapter, payload)
-        iterations += 1
-        del sampled
-    after = normalize_outputs(qwen_mm_profile_iteration(adapter, payload), payload)
+    duration_seconds = config.get("duration_seconds")
+    measurement_window: dict[str, int] | None = None
+    if duration_seconds is None:
+        stop_path = Path(config["stop_path"])
+        while not stop_path.exists():
+            sampled = qwen_mm_profile_iteration(adapter, payload)
+            iterations += 1
+            del sampled
+    else:
+        if duration_seconds != SAMPLER_PROTOCOLS["x86_64"]["duration_seconds"]:
+            raise ProfileArtifactError("sample worker duration is not the frozen x86 protocol")
+        requested_duration_ns = duration_seconds * 1_000_000_000
+        started_ns = time.monotonic_ns()
+        deadline_ns = started_ns + requested_duration_ns
+        final_iteration_started_ns = started_ns
+        while True:
+            iteration_started_ns = time.monotonic_ns()
+            if iteration_started_ns >= deadline_ns:
+                break
+            final_iteration_started_ns = iteration_started_ns
+            sampled = qwen_mm_profile_iteration(adapter, payload)
+            iterations += 1
+            del sampled
+        completed_ns = time.monotonic_ns()
+        measurement_window = {
+            "requested_duration_ns": requested_duration_ns,
+            "started_ns": started_ns,
+            "deadline_ns": deadline_ns,
+            "final_iteration_started_ns": final_iteration_started_ns,
+            "completed_ns": completed_ns,
+        }
+    after = normalize_outputs(adapter.run(payload), payload)
+    postcheck_completed_ns = time.monotonic_ns()
     result = {
         "pid": os.getpid(),
         "iterations": iterations,
@@ -658,6 +709,17 @@ def _sample_worker(args: argparse.Namespace) -> None:
         "case_id": config["case_id"],
         "thread_budget": config["thread_budget"],
         "thread_settings": thread_settings,
+        "runtime_identity": dict(runtime_identity),
+        **(
+            {
+                "measurement_window": {
+                    **measurement_window,
+                    "postcheck_completed_ns": postcheck_completed_ns,
+                }
+            }
+            if measurement_window is not None
+            else {}
+        ),
     }
     Path(config["result_path"]).write_text(json.dumps(result), encoding="utf-8")
 
@@ -675,6 +737,101 @@ def _wait_for_path(path: Path, process: subprocess.Popen[str], timeout: float) -
         time.sleep(0.05)
     process.terminate()
     raise ProfileArtifactError("sample worker did not become ready before timeout")
+
+
+def _linux_process_command(pid: int) -> list[str] | None:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return None
+    return [item.decode(errors="surrogateescape") for item in raw.split(b"\0") if item]
+
+
+def _recorded_worker_pids(paths: Sequence[Path | None]) -> set[int]:
+    pids: set[int] = set()
+    for path in paths:
+        if path is None:
+            continue
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        pid = value.get("pid") if isinstance(value, Mapping) else None
+        if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
+            pids.add(pid)
+    return pids
+
+
+def _cleanup_authenticated_workers(pids: Sequence[int], worker_command: list[str]) -> int:
+    cleaned = 0
+    for pid in set(pids):
+        if _linux_process_command(pid) != worker_command:
+            continue
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        else:
+            cleaned += 1
+    return cleaned
+
+
+def _run_py_spy_child(
+    sampler_command: list[str],
+    worker_command: list[str],
+    *,
+    ready_path: Path | None = None,
+    result_path: Path | None = None,
+    timeout: float = 300.0,
+) -> subprocess.CompletedProcess[str]:
+    """Run a py-spy child capture with bounded, authenticated orphan cleanup."""
+
+    sampler = subprocess.Popen(
+        sampler_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    try:
+        stdout, stderr = sampler.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        try:
+            children_text = Path(f"/proc/{sampler.pid}/task/{sampler.pid}/children").read_text(
+                encoding="utf-8"
+            )
+            child_pids = [int(value) for value in children_text.split()]
+        except (OSError, ValueError):
+            child_pids = []
+        recorded_pids = _recorded_worker_pids((ready_path, result_path))
+        discovered_pids = [*child_pids, *recorded_pids]
+        sampler.kill()
+        cleaned = _cleanup_authenticated_workers(discovered_pids, worker_command)
+        try:
+            sampler.communicate(timeout=10.0)
+        except subprocess.TimeoutExpired:
+            # A surviving descendant can retain py-spy's PIPE descriptors even
+            # after py-spy itself is dead. Close our read ends and reap only the
+            # sampler process with a second bounded wait.
+            for stream in (sampler.stdout, sampler.stderr):
+                if stream is not None:
+                    stream.close()
+            try:
+                sampler.wait(timeout=10.0)
+            except subprocess.TimeoutExpired:
+                pass
+        cleanup = (
+            f"; terminated {cleaned} authenticated child worker(s)"
+            if discovered_pids
+            else "; no live child worker was discoverable for cleanup"
+        )
+        raise ProfileArtifactError(
+            f"py-spy child capture exceeded the {timeout:g} s timeout{cleanup}"
+        ) from error
+    result = subprocess.CompletedProcess(
+        sampler_command, sampler.returncode, stdout=stdout, stderr=stderr
+    )
+    if result.returncode != 0:
+        _cleanup_authenticated_workers(
+            list(_recorded_worker_pids((ready_path, result_path))), worker_command
+        )
+    return result
 
 
 def capture_sampled_profile(
@@ -737,6 +894,7 @@ def capture_sampled_profile(
             "ready_path": str(ready_path),
             "stop_path": str(stop_path),
             "result_path": str(result_path),
+            **({"duration_seconds": duration_seconds} if architecture == "x86_64" else {}),
         }
         config_path.write_text(json.dumps(config), encoding="utf-8")
         worker_command = [
@@ -747,13 +905,13 @@ def capture_sampled_profile(
             "--config",
             str(config_path),
         ]
-        worker = subprocess.Popen(
-            worker_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        try:
-            _wait_for_path(ready_path, worker, timeout=300.0)
-            ready = _load_json(ready_path)
-            if architecture == "arm64":
+        if architecture == "arm64":
+            worker = subprocess.Popen(
+                worker_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            try:
+                _wait_for_path(ready_path, worker, timeout=300.0)
+                ready = _load_json(ready_path)
                 sampler_command = [
                     str(binary_path),
                     str(ready["pid"]),
@@ -763,42 +921,76 @@ def capture_sampled_profile(
                     "-file",
                     str(raw_temporary),
                 ]
-            else:
-                sampler_command = [
-                    str(binary_path),
-                    "record",
-                    "--native",
-                    "--rate",
-                    str(rate_hz),
-                    "--duration",
-                    str(duration_seconds),
-                    "--format",
-                    "raw",
-                    "-o",
-                    str(raw_temporary),
-                    "--pid",
-                    str(ready["pid"]),
-                ]
-            sampler = subprocess.run(sampler_command, capture_output=True, text=True)
-            stop_path.write_text("stop\n", encoding="utf-8")
-            stdout, stderr = worker.communicate(timeout=300)
+                sampler = subprocess.run(sampler_command, capture_output=True, text=True)
+                stop_path.write_text("stop\n", encoding="utf-8")
+                stdout, stderr = worker.communicate(timeout=300)
+                if sampler.returncode != 0:
+                    raise ProfileArtifactError(
+                        f"{expected_sampler['name']} failed: {sampler.stderr.strip()}"
+                    )
+                if worker.returncode != 0:
+                    raise ProfileArtifactError(
+                        f"sample worker failed: stdout={stdout!r} stderr={stderr!r}"
+                    )
+                result = _load_json(result_path)
+            finally:
+                if worker.poll() is None:
+                    worker.terminate()
+                    worker.wait(timeout=10)
+        else:
+            # Linux ptrace policies commonly reject sibling attachment. Let
+            # py-spy create the finite worker so the target is its child; the
+            # worker's authenticated monotonic window controls the two-second
+            # whole-operation measurement and exits normally after post-check.
+            sampler_command = [
+                str(binary_path),
+                "record",
+                "--native",
+                "--rate",
+                str(rate_hz),
+                "--format",
+                "raw",
+                "-o",
+                str(raw_temporary),
+                "--",
+                *worker_command,
+            ]
+            sampler = _run_py_spy_child(
+                sampler_command,
+                worker_command,
+                ready_path=ready_path,
+                result_path=result_path,
+            )
             if sampler.returncode != 0:
                 raise ProfileArtifactError(
                     f"{expected_sampler['name']} failed: {sampler.stderr.strip()}"
                 )
-            if worker.returncode != 0:
+            reported_sample_count, sampler_errors = _parse_py_spy_summary(
+                f"{sampler.stdout}\n{sampler.stderr}"
+            )
+            if not ready_path.is_file() or not result_path.is_file():
                 raise ProfileArtifactError(
-                    f"sample worker failed: stdout={stdout!r} stderr={stderr!r}"
+                    "py-spy child worker exited without readiness/result provenance: "
+                    f"stdout={sampler.stdout!r} stderr={sampler.stderr!r}"
                 )
+            ready = _load_json(ready_path)
             result = _load_json(result_path)
-        finally:
-            if worker.poll() is None:
-                worker.terminate()
-                worker.wait(timeout=10)
+            if ready.get("pid") != result.get("pid"):
+                raise ProfileArtifactError("py-spy child worker PID changed during capture")
         raw = raw_temporary.read_text(encoding="utf-8")
-    collapsed, sample_count, unique_stacks = (
-        _parse_macos_sample(raw) if architecture == "arm64" else _parse_collapsed(raw)
-    )
+    if architecture == "arm64":
+        collapsed, sample_count, unique_stacks = _parse_macos_sample(raw)
+        sampler_errors = 0
+        reported_sample_count = None
+    else:
+        _, raw_sample_count, _ = _parse_collapsed(raw)
+        if raw_sample_count != reported_sample_count:
+            raise ProfileArtifactError(
+                "py-spy raw sample total differs from its reported success summary"
+            )
+        collapsed, sample_count, unique_stacks = _parse_collapsed(
+            raw, required_frame="qwen_mm_profile_iteration"
+        )
     if architecture == "x86_64" and "qwen_mm_profile_iteration" not in collapsed:
         raise ProfileArtifactError("sampled stacks omit the whole-operation Python boundary marker")
     native_markers = ("qwen_mm_core::", "qwen_mm_python::")
@@ -842,6 +1034,7 @@ def capture_sampled_profile(
             ),
             "command": shlex.join(worker_command),
             "target_pid": result["pid"],
+            "runtime_identity": result["runtime_identity"],
         },
         "sampler": {
             "name": expected_sampler["name"],
@@ -854,7 +1047,7 @@ def capture_sampled_profile(
             "duration_seconds": duration_seconds,
             "sample_count": sample_count,
             "unique_stacks": unique_stacks,
-            "errors": 0,
+            "errors": sampler_errors,
             "install_provenance": (
                 "macOS system /usr/bin/sample authenticated by executable hash"
                 if architecture == "arm64"
@@ -866,7 +1059,10 @@ def capture_sampled_profile(
                     "conversion_version": expected_sampler["conversion_version"],
                 }
                 if architecture == "arm64"
-                else {"rate_hz": rate_hz}
+                else {
+                    "rate_hz": rate_hz,
+                    "reported_sample_count": reported_sample_count,
+                }
             ),
         },
         "artifacts": {
@@ -1213,6 +1409,21 @@ def validate_sampled_profile(
     ):
         raise ProfileArtifactError("sampled profile does not prove its native sampler capture")
     command = shlex.split(str(sampler.get("command", "")))
+    worker = sampled.get("worker")
+    if not isinstance(worker, Mapping) or worker.get("target_pid", 0) <= 0:
+        raise ProfileArtifactError("sample worker PID provenance is invalid")
+    worker_command = shlex.split(str(worker.get("command", "")))
+    if (
+        len(worker_command) != 6
+        or not worker_command[0]
+        or worker_command[1:5]
+        != ["-m", "qwen_mm_reference.profile_v1", "_sample_worker", "--config"]
+        or not worker_command[5]
+        or worker_command[5].startswith("-")
+    ):
+        raise ProfileArtifactError(
+            "sample worker command does not have the frozen authenticated shape"
+        )
     if architecture == "x86_64":
         if (
             sampler.get("version") != "py-spy 0.4.1"
@@ -1221,18 +1432,27 @@ def validate_sampled_profile(
             or "conversion_version" in sampler
         ):
             raise ProfileArtifactError("x86 sampled profile is not pinned py-spy evidence")
-        required_command = {
+        expected_prefix = [
+            str(sampler.get("binary_path")),
             "record",
             "--native",
             "--rate",
             str(expected_sampler["rate_hz"]),
-            "--duration",
-            str(expected_sampler["duration_seconds"]),
             "--format",
             "raw",
-            "--pid",
-            str(sampled["worker"]["target_pid"]),
-        }
+            "-o",
+        ]
+        if (
+            len(command) != len(expected_prefix) + 2 + len(worker_command)
+            or command[: len(expected_prefix)] != expected_prefix
+            or not command[len(expected_prefix)]
+            or command[len(expected_prefix)].startswith("-")
+            or command[len(expected_prefix) + 1] != "--"
+            or command[len(expected_prefix) + 2 :] != worker_command
+        ):
+            raise ProfileArtifactError(
+                "x86 sampler command does not exactly launch the authenticated child protocol"
+            )
     else:
         if (
             "PROGRAM:sample" not in sampler["version"]
@@ -1249,12 +1469,12 @@ def validate_sampled_profile(
             "-mayDie",
             "-file",
         }
-    if (
-        not command
-        or command[0] != sampler.get("binary_path")
-        or not required_command <= set(command)
-    ):
-        raise ProfileArtifactError("sampler command does not bind native/raw/rate/duration/PID")
+        if (
+            not command
+            or command[0] != sampler.get("binary_path")
+            or not required_command <= set(command)
+        ):
+            raise ProfileArtifactError("sampler command does not bind native/raw/rate protocol")
     raw_path, raw_bytes = _read_authenticated_artifact(sampled["artifacts"]["raw"])
     collapsed_path, collapsed_bytes = _read_authenticated_artifact(
         sampled["artifacts"]["collapsed"]
@@ -1268,9 +1488,17 @@ def validate_sampled_profile(
         collapsed = collapsed_bytes.decode()
     except UnicodeDecodeError as error:
         raise ProfileArtifactError("sampled profile artifacts must be UTF-8") from error
-    expected_collapsed, sample_count, unique_stacks = (
-        _parse_macos_sample(raw) if architecture == "arm64" else _parse_collapsed(raw)
-    )
+    if architecture == "arm64":
+        expected_collapsed, sample_count, unique_stacks = _parse_macos_sample(raw)
+    else:
+        _, raw_sample_count, _ = _parse_collapsed(raw)
+        if sampler.get("reported_sample_count") != raw_sample_count:
+            raise ProfileArtifactError(
+                "py-spy raw sample total differs from its reported sample count"
+            )
+        expected_collapsed, sample_count, unique_stacks = _parse_collapsed(
+            raw, required_frame="qwen_mm_profile_iteration"
+        )
     if collapsed != expected_collapsed:
         raise ProfileArtifactError("collapsed profile is not the canonical reduction of raw stacks")
     expected_samples = (
@@ -1316,20 +1544,9 @@ def validate_sampled_profile(
         raise ProfileArtifactError("native sampled frames represent less than 1% of samples")
     if sampled.get("rankings") != rankings:
         raise ProfileArtifactError("sampled self/inclusive rankings do not match raw stacks")
-    worker = sampled.get("worker")
-    if not isinstance(worker, Mapping) or worker.get("target_pid", 0) <= 0:
-        raise ProfileArtifactError("sample worker PID provenance is invalid")
     worker_path, _ = _read_authenticated_artifact(worker["source"])
     if worker_path.resolve() != Path(__file__).resolve():
         raise ProfileArtifactError("sample worker source is not the profile_v1 implementation")
-    worker_command = shlex.split(str(worker.get("command", "")))
-    if (
-        "qwen_mm_reference.profile_v1" not in worker_command
-        or "_sample_worker" not in worker_command
-    ):
-        raise ProfileArtifactError(
-            "sample worker command does not execute the authenticated worker"
-        )
     _, worker_result_bytes = _read_authenticated_artifact(worker.get("result", {}))
     try:
         worker_result = json.loads(worker_result_bytes)
@@ -1344,11 +1561,48 @@ def validate_sampled_profile(
         "profile_alias": sampled["profile_alias"],
         "case_id": sampled["case_id"],
         "thread_budget": sampled["thread_budget"],
+        "runtime_identity": worker["runtime_identity"],
     }
     if not isinstance(worker_result, Mapping) or any(
         worker_result.get(name) != value for name, value in expected_worker_fields.items()
     ):
         raise ProfileArtifactError("sample worker result differs from bundled provenance")
+    measurement_window = worker_result.get("measurement_window")
+    if architecture == "x86_64":
+        expected_window_fields = {
+            "requested_duration_ns",
+            "started_ns",
+            "deadline_ns",
+            "final_iteration_started_ns",
+            "completed_ns",
+            "postcheck_completed_ns",
+        }
+        if not isinstance(measurement_window, Mapping) or set(measurement_window) != (
+            expected_window_fields
+        ):
+            raise ProfileArtifactError("x86 worker lacks its authenticated measurement window")
+        if any(
+            not isinstance(measurement_window[name], int)
+            or isinstance(measurement_window[name], bool)
+            for name in expected_window_fields
+        ):
+            raise ProfileArtifactError("x86 worker measurement timestamps must be integers")
+        requested_ns = expected_sampler["duration_seconds"] * 1_000_000_000
+        started_ns = measurement_window["started_ns"]
+        deadline_ns = measurement_window["deadline_ns"]
+        final_iteration_started_ns = measurement_window["final_iteration_started_ns"]
+        completed_ns = measurement_window["completed_ns"]
+        postcheck_completed_ns = measurement_window["postcheck_completed_ns"]
+        if (
+            measurement_window["requested_duration_ns"] != requested_ns
+            or deadline_ns - started_ns != requested_ns
+            or not started_ns <= final_iteration_started_ns < deadline_ns
+            or completed_ns < deadline_ns
+            or postcheck_completed_ns < completed_ns
+        ):
+            raise ProfileArtifactError("x86 worker measurement window violates the 2 s protocol")
+    elif measurement_window is not None:
+        raise ProfileArtifactError("ARM attach worker unexpectedly claims x86 duration control")
     _validate_thread_settings(
         worker_result.get("thread_settings"),
         sampled["thread_budget"],
@@ -1653,6 +1907,11 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             raise ProfileArtifactError(
                 "profile capture does not cover the protocol coordinate matrix"
             )
+        sampled_build_runtime = (
+            capture.get("build", {}).get("candidate_identity", {}).get("runtime_identity")
+        )
+        if not isinstance(sampled_build_runtime, Mapping):
+            raise ProfileArtifactError("profile build lacks its candidate runtime identity")
         sampled_coordinates = {
             (
                 sampled["profile_alias"],
@@ -1686,6 +1945,10 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
                 protocol=protocol,
                 observed_signatures=observed_signatures,
             )
+            if sampled["worker"]["runtime_identity"] != sampled_build_runtime:
+                raise ProfileArtifactError(
+                    "sample worker runtime differs from the capture's profiled build runtime"
+                )
             sampled_coordinate = (
                 sampled["profile_alias"],
                 sampled["case_id"],

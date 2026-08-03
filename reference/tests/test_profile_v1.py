@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -24,6 +25,8 @@ from qwen_mm_reference.profile_v1 import (
     _artifact_identity,
     _parse_collapsed,
     _parse_macos_sample,
+    _parse_py_spy_summary,
+    _run_py_spy_child,
     _source_identity,
     _source_tree_digest_at_revision,
     _source_tree_digest_excluding,
@@ -361,6 +364,117 @@ class ObservationValidationTests(unittest.TestCase):
 
 
 class SampleValidationTests(unittest.TestCase):
+    def test_py_spy_child_timeout_kills_authenticated_worker(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+        cleanup_done = False
+
+        class TimedOutSampler:
+            pid = 4321
+            returncode = -9
+
+            def __init__(self) -> None:
+                self.killed = False
+                self.communicate_timeouts: list[float | None] = []
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                self.communicate_timeouts.append(timeout)
+                if len(self.communicate_timeouts) == 1:
+                    raise subprocess.TimeoutExpired(["py-spy"], timeout)
+                if not cleanup_done:
+                    raise AssertionError("pipe reaping ran before authenticated worker cleanup")
+                return "", ""
+
+            def kill(self) -> None:
+                self.killed = True
+
+        sampler = TimedOutSampler()
+
+        def mark_cleanup(pid: int, requested_signal: int) -> None:
+            nonlocal cleanup_done
+            cleanup_done = True
+
+        with (
+            patch("qwen_mm_reference.profile_v1.subprocess.Popen", return_value=sampler),
+            patch("qwen_mm_reference.profile_v1.Path.read_text", return_value="123"),
+            patch(
+                "qwen_mm_reference.profile_v1._linux_process_command",
+                return_value=worker_command,
+            ),
+            patch("qwen_mm_reference.profile_v1.os.kill", side_effect=mark_cleanup) as kill,
+        ):
+            with self.assertRaisesRegex(ProfileArtifactError, "5 s timeout"):
+                _run_py_spy_child(["py-spy", "record"], worker_command, timeout=5.0)
+        self.assertTrue(sampler.killed)
+        self.assertEqual(sampler.communicate_timeouts, [5.0, 10.0])
+        kill.assert_called_once_with(123, signal.SIGKILL)
+
+    def test_py_spy_nonzero_exit_kills_only_authenticated_recorded_worker(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class FailedSampler:
+            returncode = 1
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                return "", "failed"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            ready_path = Path(temporary) / "ready.json"
+            ready_path.write_text(json.dumps({"pid": 321}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=FailedSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    return_value=worker_command,
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                result = _run_py_spy_child(
+                    ["py-spy", "record"], worker_command, ready_path=ready_path
+                )
+        self.assertEqual(result.returncode, 1)
+        kill.assert_called_once_with(321, signal.SIGKILL)
+
+    def test_py_spy_nonzero_exit_never_kills_command_mismatch(self) -> None:
+        worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
+
+        class FailedSampler:
+            returncode = 1
+
+            def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+                return "", "failed"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            result_path = Path(temporary) / "result.json"
+            result_path.write_text(json.dumps({"pid": 654}), encoding="utf-8")
+            with (
+                patch(
+                    "qwen_mm_reference.profile_v1.subprocess.Popen",
+                    return_value=FailedSampler(),
+                ),
+                patch(
+                    "qwen_mm_reference.profile_v1._linux_process_command",
+                    return_value=["python", "unrelated.py"],
+                ),
+                patch("qwen_mm_reference.profile_v1.os.kill") as kill,
+            ):
+                result = _run_py_spy_child(
+                    ["py-spy", "record"], worker_command, result_path=result_path
+                )
+        self.assertEqual(result.returncode, 1)
+        kill.assert_not_called()
+
+    def test_py_spy_summary_rejects_errors_and_ambiguity(self) -> None:
+        self.assertEqual(_parse_py_spy_summary("Wrote raw data. Samples: 217 Errors: 0"), (217, 0))
+        with self.assertRaisesRegex(ProfileArtifactError, "sampling errors"):
+            _parse_py_spy_summary("Samples: 217 Errors: 1")
+        with self.assertRaisesRegex(ProfileArtifactError, "unambiguous"):
+            _parse_py_spy_summary("no summary")
+        with self.assertRaisesRegex(ProfileArtifactError, "unambiguous"):
+            _parse_py_spy_summary("Samples: 1 Errors: 0\nSamples: 2 Errors: 0")
+
     def test_macos_sample_call_graph_reduces_to_canonical_stacks(self) -> None:
         raw = """Analysis of sampling python every 1 milliseconds
 Call graph:
@@ -393,12 +507,16 @@ Total number in stack (recursive counted multiple, when >=5):
 
     def test_raw_reduction_and_rankings_are_authenticated(self) -> None:
         raw = (
+            "profile_v1.setup;adapter.load 17\n"
             "qwen_mm_profile_iteration;qwen_mm_core::QwenImageProcessor::prepare_batch 60\n"
             "qwen_mm_profile_iteration;qwen_mm_python::binding::prepare_batch 40\n"
+            "profile_v1.postcheck;adapter.run 11\n"
         )
-        collapsed, count, unique = _parse_collapsed(raw)
+        collapsed, count, unique = _parse_collapsed(raw, required_frame="qwen_mm_profile_iteration")
         self.assertEqual(count, 100)
         self.assertEqual(unique, 2)
+        self.assertNotIn("setup", collapsed)
+        self.assertNotIn("postcheck", collapsed)
         rankings = _stack_rankings(collapsed)
         self.assertEqual(rankings["sample_count"], 100)
         self.assertEqual(rankings["inclusive"][0]["frame"], "qwen_mm_profile_iteration")
@@ -406,10 +524,12 @@ Total number in stack (recursive counted multiple, when >=5):
     def test_validator_reopens_raw_and_recomputes_collapsed_rankings(self) -> None:
         root = Path(__file__).resolve().parents[2]
         raw = (
+            "profile_v1.setup;adapter.load 17\n"
             "qwen_mm_profile_iteration;qwen_mm_core::QwenImageProcessor::prepare_batch 60\n"
             "qwen_mm_profile_iteration;qwen_mm_python::binding::prepare_batch 40\n"
+            "profile_v1.postcheck;adapter.run 11\n"
         )
-        collapsed, count, unique = _parse_collapsed(raw)
+        collapsed, count, unique = _parse_collapsed(raw, required_frame="qwen_mm_profile_iteration")
         signature = {
             "input_ids": {
                 "dtype": "int64",
@@ -418,6 +538,13 @@ Total number in stack (recursive counted multiple, when >=5):
                 "nbytes": 32,
                 "sha256": "a" * 64,
             }
+        }
+        runtime_identity = {
+            "package": "qwen_mm",
+            "version": "0.1.0",
+            "package_artifact_sha256": "c" * 64,
+            "native_module": "qwen_mm._native",
+            "native_artifact_sha256": "d" * 64,
         }
         with tempfile.TemporaryDirectory(prefix=".profile-v1-test-", dir=root) as temporary:
             directory = Path(temporary)
@@ -441,6 +568,15 @@ Total number in stack (recursive counted multiple, when >=5):
                     "environment": {name: "1" for name in THREAD_ENVIRONMENT_NAMES},
                     "torch": {},
                 },
+                "runtime_identity": runtime_identity,
+                "measurement_window": {
+                    "requested_duration_ns": 2_000_000_000,
+                    "started_ns": 100,
+                    "deadline_ns": 2_000_000_100,
+                    "final_iteration_started_ns": 2_000_000_099,
+                    "completed_ns": 2_000_000_110,
+                    "postcheck_completed_ns": 2_000_000_120,
+                },
             }
             result_path.write_text(json.dumps(worker_result), encoding="utf-8")
             worker_path = Path(__import__("qwen_mm_reference.profile_v1", fromlist=["x"]).__file__)
@@ -460,6 +596,7 @@ Total number in stack (recursive counted multiple, when >=5):
                     "result": _artifact_identity(result_path),
                     "command": "python -m qwen_mm_reference.profile_v1 _sample_worker --config x",
                     "target_pid": 123,
+                    "runtime_identity": runtime_identity,
                 },
                 "sampler": {
                     "name": "py-spy",
@@ -468,13 +605,15 @@ Total number in stack (recursive counted multiple, when >=5):
                     "binary_sha256": hashlib.sha256(b"py-spy").hexdigest(),
                     "binary_bytes": 6,
                     "command": (
-                        "/usr/local/bin/py-spy record --native --rate 99 --duration 2 --format raw "
-                        "-o capture.raw --pid 123"
+                        "/usr/local/bin/py-spy record --native --rate 99 --format raw "
+                        "-o capture.raw -- python -m qwen_mm_reference.profile_v1 "
+                        "_sample_worker --config x"
                     ),
                     "native": True,
                     "rate_hz": 99,
                     "duration_seconds": 2,
                     "sample_count": count,
+                    "reported_sample_count": 128,
                     "unique_stacks": unique,
                     "errors": 0,
                     "install_provenance": "py-spy==0.4.1 test executable",
@@ -492,6 +631,89 @@ Total number in stack (recursive counted multiple, when >=5):
                 protocol=protocol,
                 observed_signatures={coordinate: signature},
             )
+
+            attached = copy.deepcopy(sampled)
+            attached["sampler"]["command"] = (
+                "/usr/local/bin/py-spy record --native --rate 99 --duration 2 "
+                "--format raw -o capture.raw --pid 123"
+            )
+            with self.assertRaisesRegex(ProfileArtifactError, "exactly launch"):
+                validate_sampled_profile(
+                    attached,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            duplicate_rate = copy.deepcopy(sampled)
+            duplicate_rate["sampler"]["command"] = duplicate_rate["sampler"]["command"].replace(
+                "--format raw", "--rate 99 --format raw"
+            )
+            with self.assertRaisesRegex(ProfileArtifactError, "exactly launch"):
+                validate_sampled_profile(
+                    duplicate_rate,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            relabeled_output = copy.deepcopy(sampled)
+            relabeled_output["sampler"]["command"] = relabeled_output["sampler"]["command"].replace(
+                "-o capture.raw", "--output capture.raw"
+            )
+            with self.assertRaisesRegex(ProfileArtifactError, "exactly launch"):
+                validate_sampled_profile(
+                    relabeled_output,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            extra_worker_token = copy.deepcopy(sampled)
+            extra_worker_token["worker"]["command"] += " --extra"
+            with self.assertRaisesRegex(ProfileArtifactError, "frozen authenticated shape"):
+                validate_sampled_profile(
+                    extra_worker_token,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            wrong_reported_total = copy.deepcopy(sampled)
+            wrong_reported_total["sampler"]["reported_sample_count"] += 1
+            with self.assertRaisesRegex(ProfileArtifactError, "reported sample count"):
+                validate_sampled_profile(
+                    wrong_reported_total,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            reported_errors = copy.deepcopy(sampled)
+            reported_errors["sampler"]["errors"] = 1
+            with self.assertRaisesRegex(ProfileArtifactError, "native sampler capture"):
+                validate_sampled_profile(
+                    reported_errors,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            wrong_runtime = copy.deepcopy(sampled)
+            wrong_runtime["worker"]["runtime_identity"]["native_artifact_sha256"] = "e" * 64
+            with self.assertRaisesRegex(ProfileArtifactError, "worker result"):
+                validate_sampled_profile(
+                    wrong_runtime,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+
+            tampered_window = copy.deepcopy(worker_result)
+            tampered_window["measurement_window"]["deadline_ns"] += 1
+            result_path.write_text(json.dumps(tampered_window), encoding="utf-8")
+            invalid_window = copy.deepcopy(sampled)
+            invalid_window["worker"]["result"] = _artifact_identity(result_path)
+            with self.assertRaisesRegex(ProfileArtifactError, "2 s protocol"):
+                validate_sampled_profile(
+                    invalid_window,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
+            result_path.write_text(json.dumps(worker_result), encoding="utf-8")
 
             tampered = copy.deepcopy(sampled)
             tampered["rankings"]["self"][0]["samples"] += 1
@@ -661,7 +883,10 @@ class BundleValidationTests(unittest.TestCase):
                     )
                     version = "py-spy 0.4.1"
                     binary_path = "/opt/py-spy/bin/py-spy"
-                    command = f"{binary_path} record --native --rate 99 --duration 2 --format raw -o x --pid 123"
+                    command = (
+                        f"{binary_path} record --native --rate 99 --format raw -o x -- "
+                        "python -m qwen_mm_reference.profile_v1 _sample_worker --config x"
+                    )
                     sampler_extra = {"rate_hz": 99}
                 else:
                     raw = """Analysis of sampling python every 1 milliseconds
@@ -697,6 +922,21 @@ Total number in stack (recursive counted multiple, when >=5):
                     "case_id": case_id,
                     "thread_budget": budget,
                     "thread_settings": thread_settings(budget),
+                    "runtime_identity": runtime,
+                    **(
+                        {
+                            "measurement_window": {
+                                "requested_duration_ns": 2_000_000_000,
+                                "started_ns": 100,
+                                "deadline_ns": 2_000_000_100,
+                                "final_iteration_started_ns": 2_000_000_099,
+                                "completed_ns": 2_000_000_110,
+                                "postcheck_completed_ns": 2_000_000_120,
+                            }
+                        }
+                        if architecture == "x86_64"
+                        else {}
+                    ),
                 }
                 result_path.write_text(json.dumps(worker_result), encoding="utf-8")
                 sampled_profiles.append(
@@ -716,6 +956,7 @@ Total number in stack (recursive counted multiple, when >=5):
                             "result": _artifact_identity(result_path),
                             "command": "python -m qwen_mm_reference.profile_v1 _sample_worker --config x",
                             "target_pid": 123,
+                            "runtime_identity": runtime,
                         },
                         "sampler": {
                             "name": SAMPLER_PROTOCOLS[architecture]["name"],
@@ -727,6 +968,9 @@ Total number in stack (recursive counted multiple, when >=5):
                             "native": True,
                             "duration_seconds": 2,
                             "sample_count": count,
+                            **(
+                                {"reported_sample_count": count} if architecture == "x86_64" else {}
+                            ),
                             "unique_stacks": unique,
                             "errors": 0,
                             "install_provenance": "synthetic authenticated sampler fixture",
@@ -998,6 +1242,24 @@ Total number in stack (recursive counted multiple, when >=5):
                         mutate(tampered)
                         with self.assertRaises(ProfileArtifactError):
                             validate_bundle(tampered, require_arm_x86=True)
+
+                sampled_runtime_tamper = copy.deepcopy(bundle)
+                sampled_worker = sampled_runtime_tamper["captures"][0]["sampled_profiles"][0][
+                    "worker"
+                ]
+                wrong_runtime = {
+                    **sampled_worker["runtime_identity"],
+                    "native_artifact_sha256": "e" * 64,
+                }
+                original_result_path = root / sampled_worker["result"]["path"]
+                tampered_result = json.loads(original_result_path.read_text(encoding="utf-8"))
+                tampered_result["runtime_identity"] = wrong_runtime
+                tampered_result_path = Path(temporary) / "runtime-tampered-worker.json"
+                tampered_result_path.write_text(json.dumps(tampered_result), encoding="utf-8")
+                sampled_worker["runtime_identity"] = wrong_runtime
+                sampled_worker["result"] = _artifact_identity(tampered_result_path)
+                with self.assertRaisesRegex(ProfileArtifactError, "profiled build runtime"):
+                    validate_bundle(sampled_runtime_tamper, require_arm_x86=True)
 
                 packaged = copy.deepcopy(bundle)
                 for capture in packaged["captures"]:

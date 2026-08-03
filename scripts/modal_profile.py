@@ -6,6 +6,7 @@ import importlib.metadata
 import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import socket
@@ -135,18 +136,15 @@ def _capture(command: list[str]) -> str:
 
 
 def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, str]) -> None:
-    """Fail before the 24-cell run when the container forbids sibling ptrace."""
+    """Prove native py-spy can profile a child before the 24-cell run."""
 
     with tempfile.TemporaryDirectory(prefix="qwen-mm-py-spy-preflight-") as directory:
         temporary = Path(directory)
         raw = temporary / "preflight.raw"
-        worker = subprocess.Popen(
-            [str(python), "-c", "import qwen_mm._native, time; time.sleep(5)"],
-            cwd=REMOTE_ROOT,
-            env=environment,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        program = (
+            "import qwen_mm._native, time; "
+            "deadline=time.monotonic()+1.0; value=0; "
+            "exec('while time.monotonic() < deadline:\\n value += 1')"
         )
         command = [
             "py-spy",
@@ -154,14 +152,14 @@ def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, st
             "--native",
             "--rate",
             "99",
-            "--duration",
-            "1",
             "--format",
             "raw",
             "-o",
             str(raw),
-            "--pid",
-            str(worker.pid),
+            "--",
+            str(python),
+            "-c",
+            program,
         ]
         result = subprocess.run(
             command,
@@ -171,22 +169,28 @@ def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, st
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
+            timeout=30,
         )
-        worker.terminate()
-        worker_stdout, worker_stderr = worker.communicate(timeout=10)
         raw_text = raw.read_text(encoding="utf-8") if raw.is_file() else ""
-        rendered = (
-            "$ "
-            + shlex.join(command)
-            + "\n"
-            + result.stdout
-            + f"\nworker stdout: {worker_stdout}\nworker stderr: {worker_stderr}\n"
-        )
+        rendered = "$ " + shlex.join(command) + "\n" + result.stdout
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text(rendered, encoding="utf-8")
-        if result.returncode != 0 or not raw_text.strip():
+        summary = re.findall(r"\bSamples:\s*(\d+)\s+Errors:\s*(\d+)\b", result.stdout)
+        try:
+            raw_samples = sum(
+                int(line.rsplit(" ", 1)[1]) for line in raw_text.splitlines() if line.strip()
+            )
+        except (IndexError, ValueError):
+            raw_samples = -1
+        summary_valid = (
+            len(summary) == 1
+            and int(summary[0][0]) > 0
+            and int(summary[0][1]) == 0
+            and raw_samples == int(summary[0][0])
+        )
+        if result.returncode != 0 or not raw_text.strip() or not summary_valid:
             raise RuntimeError(
-                "native py-spy attach preflight failed; Modal must permit sibling ptrace "
+                "native py-spy child-launch preflight failed "
                 f"before the full D1 matrix (see {log_path})"
             )
 

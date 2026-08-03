@@ -16,6 +16,18 @@
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "nonnegativeInteger": {"type": "integer", "minimum": 0},
+    "runtimeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version", "package_artifact_sha256", "native_module", "native_artifact_sha256"],
+      "properties": {
+        "package": {"const": "qwen_mm"},
+        "version": {"type": "string", "minLength": 1},
+        "package_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "native_module": {"const": "qwen_mm._native"},
+        "native_artifact_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
@@ -213,12 +225,13 @@
         "worker": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["source", "result", "command", "target_pid"],
+          "required": ["source", "result", "command", "target_pid", "runtime_identity"],
           "properties": {
             "source": {"$ref": "#/$defs/artifact"},
             "result": {"$ref": "#/$defs/artifact"},
             "command": {"type": "string", "minLength": 1},
-            "target_pid": {"type": "integer", "minimum": 1}
+            "target_pid": {"type": "integer", "minimum": 1},
+            "runtime_identity": {"$ref": "#/$defs/runtimeIdentity"}
           }
         },
         "sampler": {
@@ -238,6 +251,7 @@
             "conversion_version": {"const": "macos-sample-callgraph-v1"},
             "duration_seconds": {"const": 2},
             "sample_count": {"type": "integer", "minimum": 1},
+            "reported_sample_count": {"type": "integer", "minimum": 1},
             "unique_stacks": {"type": "integer", "minimum": 1},
             "errors": {"const": 0},
             "install_provenance": {"type": "string", "minLength": 1}
@@ -245,7 +259,7 @@
           "allOf": [
             {
               "if": {"properties": {"name": {"const": "py-spy"}}},
-              "then": {"required": ["rate_hz"], "properties": {"version": {"const": "py-spy 0.4.1"}}},
+              "then": {"required": ["rate_hz", "reported_sample_count"], "properties": {"version": {"const": "py-spy 0.4.1"}}},
               "else": {"required": ["interval_ms", "conversion_version"], "properties": {"binary_path": {"const": "/usr/bin/sample"}}}
             }
           ]

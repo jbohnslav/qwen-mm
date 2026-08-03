@@ -24,7 +24,17 @@ make profile-d1-modal-archive
 
 The ARM command requires native Apple silicon and `/usr/bin/sample`. The Modal
 CLI must already be authenticated. The x86 runner performs a short native
-`py-spy==0.4.1` attach preflight before starting the 24 sampled coordinates.
+`py-spy==0.4.1` direct-child preflight before starting the 24 sampled
+coordinates. For each x86 coordinate, py-spy launches the authenticated worker
+it profiles at 99 Hz. The worker performs unmarked setup, records a monotonic
+two-second dispatch deadline, and starts marked whole-operation iterations only
+before that deadline. A final operation started before the deadline completes
+at its whole-operation boundary; then the worker performs an unmarked output
+post-check and exits naturally. Raw setup and post-check stacks are retained as
+sampler evidence but excluded from the canonical collapse and rankings. The
+bundled worker result authenticates the window, runtime identity, and pre/post
+signatures.
+
 Each command writes an integrity-validated ZIP under `/tmp` by default. Archive
 validation enforces a 90 MiB compressed return cap, an explicit durable-member
 allowlist, and hashes every member. Phase C scratch output is never archived.
