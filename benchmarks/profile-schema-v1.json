@@ -159,7 +159,7 @@
         "samplers": {
           "const": {
             "arm64": {"name": "sample", "native": true, "duration_seconds": 2, "interval_ms": 1, "conversion_version": "macos-sample-callgraph-v1"},
-            "x86_64": {"name": "py-spy", "native": true, "rate_hz": 99, "duration_seconds": 2}
+            "x86_64": {"name": "py-spy", "native": false, "dependency": "py-spy==0.4.1", "binary_path": "/workspace/qwen-mm/.venv/bin/py-spy", "rate_hz": 99, "duration_seconds": 2}
           }
         },
         "build_labels": {"const": ["profiled-release"]},
@@ -201,8 +201,8 @@
       "required": ["sample_count", "native_sample_count", "native_sample_share", "inclusive", "self"],
       "properties": {
         "sample_count": {"type": "integer", "minimum": 1},
-        "native_sample_count": {"type": "integer", "minimum": 1},
-        "native_sample_share": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "native_sample_count": {"type": "integer", "minimum": 0},
+        "native_sample_share": {"type": "number", "minimum": 0, "maximum": 1},
         "inclusive": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/rankingRow"}},
         "self": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/rankingRow"}}
       }
@@ -245,7 +245,7 @@
             "binary_sha256": {"$ref": "#/$defs/sha256"},
             "binary_bytes": {"type": "integer", "minimum": 1},
             "command": {"type": "string", "minLength": 1},
-            "native": {"const": true},
+            "native": {"type": "boolean"},
             "rate_hz": {"const": 99},
             "interval_ms": {"const": 1},
             "conversion_version": {"const": "macos-sample-callgraph-v1"},
@@ -259,8 +259,8 @@
           "allOf": [
             {
               "if": {"properties": {"name": {"const": "py-spy"}}},
-              "then": {"required": ["rate_hz", "reported_sample_count"], "properties": {"version": {"const": "py-spy 0.4.1"}}},
-              "else": {"required": ["interval_ms", "conversion_version"], "properties": {"binary_path": {"const": "/usr/bin/sample"}}}
+              "then": {"required": ["rate_hz", "reported_sample_count"], "properties": {"version": {"const": "py-spy 0.4.1"}, "native": {"const": false}}},
+              "else": {"required": ["interval_ms", "conversion_version"], "properties": {"binary_path": {"const": "/usr/bin/sample"}, "native": {"const": true}}}
             }
           ]
         },

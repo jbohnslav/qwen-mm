@@ -1,10 +1,12 @@
-# Phase D1 native profile evidence
+# Phase D1 profile evidence
 
 Phase D1 captures the complete two-profile, six-case matrix on native macOS
 ARM64 and native Linux x86-64. Each host uses thread budgets 1 and 4, three
-bounded observations per coordinate, and one OS-sampled whole-operation profile
-per coordinate. The same single `profiled-release` wheel on a host must pass a
-fresh Phase C run and the paired real A5 benchmark before profiling.
+bounded observations per coordinate, and one whole-operation sampled profile
+per coordinate. ARM uses native `/usr/bin/sample`; x86 uses Python-only py-spy
+alongside the native stage instrumentation. The same single `profiled-release`
+wheel on a host must pass a fresh Phase C run and the paired real A5 benchmark
+before profiling.
 
 The x86 lane is one ephemeral Modal function with 8 physical CPU cores and 32
 GiB of memory. It is not a service and stops when the capture returns. Modal is
@@ -23,22 +25,31 @@ make profile-d1-modal-archive
 ```
 
 The ARM command requires native Apple silicon and `/usr/bin/sample`. The Modal
-CLI must already be authenticated. The x86 runner performs a short native
-`py-spy==0.4.1` direct-child preflight before starting the 24 sampled
-coordinates. For each x86 coordinate, py-spy launches the authenticated worker
-it profiles at 99 Hz. The worker performs unmarked setup, records a monotonic
-two-second dispatch deadline, and starts marked whole-operation iterations only
-before that deadline. A final operation started before the deadline completes
-at its whole-operation boundary; then the worker performs an unmarked output
-post-check and publishes its authenticated result while remaining alive. The
-controller verifies the result PID and exact worker command, signals only
-py-spy, and requires py-spy to stop cleanly with its child no longer live. This
-avoids the child-exit wait race in py-spy 0.4.1 without accepting a nonzero
-sampler exit. Raw setup, post-check, and brief control-wait stacks are retained
-as sampler evidence but excluded from the canonical collapse and rankings. The
-bundled worker result authenticates the window, runtime identity, and pre/post
+CLI must already be authenticated. The x86 runner uses the exact
+`py-spy==0.4.1` executable installed from the locked root development group; the
+Modal image does not install a separate system copy. It performs a short
+Python-only direct-child preflight before starting the 24 sampled coordinates.
+For each x86 coordinate, py-spy launches the authenticated worker it profiles at
+99 Hz. The worker performs unmarked setup, records a monotonic two-second
+dispatch deadline, and starts marked whole-operation iterations only before
+that deadline. A final operation started before the deadline completes at its
+whole-operation boundary; then the worker performs an unmarked output post-check
+and publishes its authenticated result while remaining alive. The controller
+verifies the result PID and exact worker command, signals only py-spy, and
+requires py-spy to stop cleanly with its child no longer live. This avoids the
+child-exit wait race in py-spy 0.4.1 without accepting a nonzero sampler exit.
+Raw setup, post-check, and brief control-wait stacks are retained as sampler
+evidence but excluded from the canonical collapse and rankings. The bundled
+worker result authenticates the window, runtime identity, and pre/post
 signatures; validation still requires zero sampling errors and exact agreement
 between the reported and raw sample totals.
+
+The x86 sampled stacks deliberately rank the stable Python whole-operation
+boundary without py-spy's native unwinder. Rust bottlenecks on x86 are ranked
+from the paired native request/media stage spans, allocation and copy counters,
+and retained/transient buffer lifetimes captured for the same matrix and wheel.
+ARM's native samples provide an additional binding/core stack view. Reports must
+not relabel Python-only x86 stacks as native samples.
 
 Each command writes an integrity-validated ZIP under `/tmp` by default. Archive
 validation enforces a 90 MiB compressed return cap, an explicit durable-member

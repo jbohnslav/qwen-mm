@@ -31,6 +31,8 @@ PROFILE_BUILD_LABEL = "profiled-release"
 PROFILE_REPETITIONS = 3
 PROFILE_EVENT_CAPACITY = 4096
 PY_SPY_VERSION = "0.4.1"
+PY_SPY_DEPENDENCY = "py-spy==0.4.1"
+PY_SPY_BINARY_PATH = "/workspace/qwen-mm/.venv/bin/py-spy"
 PY_SPY_RATE_HZ = 99
 PY_SPY_DURATION_SECONDS = 2
 
@@ -628,7 +630,9 @@ def validate_capture_provenance(value: Mapping[str, Any], *, architecture: str =
             {
                 "name": "py-spy",
                 "version": PY_SPY_VERSION,
-                "native": True,
+                "native": False,
+                "dependency": PY_SPY_DEPENDENCY,
+                "binary_path": PY_SPY_BINARY_PATH,
                 "rate_hz": PY_SPY_RATE_HZ,
                 "duration_seconds": PY_SPY_DURATION_SECONDS,
             }
@@ -911,12 +915,13 @@ def validate_profile_artifact(value: bytes, *, architecture: str = "x86_64") -> 
         for item in sampled
     }
     if sampled_coordinates != expected_coordinates or len(sampled) != len(expected_coordinates):
-        raise ProfileCaptureArtifactError("native sampled profile matrix is incomplete")
+        raise ProfileCaptureArtifactError("sampled profile matrix is incomplete")
     for item in sampled:
         sampler = item.get("sampler", {})
         expected_sampler = "py-spy" if architecture == "x86_64" else "sample"
-        if sampler.get("name") != expected_sampler or sampler.get("native") is not True:
-            raise ProfileCaptureArtifactError("sampled profile does not use the native sampler")
+        expected_native = architecture == "arm64"
+        if sampler.get("name") != expected_sampler or sampler.get("native") is not expected_native:
+            raise ProfileCaptureArtifactError("sampled profile does not use the frozen sampler")
         for identity in (
             item.get("worker", {}).get("result", {}),
             item.get("artifacts", {}).get("raw", {}),

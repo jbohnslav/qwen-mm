@@ -16,6 +16,7 @@ dependencies = [
 dev = [
     "maturin==1.14.1",
     "pre-commit>=4.6.1",
+    "py-spy==0.4.1",
     "ruff>=0.16.1",
 ]
 

@@ -68,7 +68,9 @@ SAMPLER_PROTOCOLS = {
     },
     "x86_64": {
         "name": "py-spy",
-        "native": True,
+        "native": False,
+        "dependency": "py-spy==0.4.1",
+        "binary_path": "/workspace/qwen-mm/.venv/bin/py-spy",
         "rate_hz": 99,
         "duration_seconds": 2,
     },
@@ -961,11 +963,13 @@ def capture_sampled_profile(
     if expected_sampler is None or duration_seconds != expected_sampler["duration_seconds"]:
         raise ProfileArtifactError("D1 sampler settings do not match the architecture protocol")
     if architecture == "x86_64" and rate_hz != expected_sampler["rate_hz"]:
-        raise ProfileArtifactError("D1 x86 sampler is frozen to native py-spy at 99 Hz for 2 s")
+        raise ProfileArtifactError("D1 x86 sampler is frozen to Python py-spy at 99 Hz for 2 s")
     binary = "/usr/bin/sample" if architecture == "arm64" else shutil.which(py_spy)
     if binary is None:
         raise ProfileArtifactError(f"cannot resolve sampler binary: {py_spy}")
     binary_path = Path(binary).resolve()
+    if architecture == "x86_64" and str(binary_path) != expected_sampler["binary_path"]:
+        raise ProfileArtifactError("D1 x86 sampler is not the locked workspace py-spy executable")
     binary_sha256 = _sha256_path(binary_path)
     binary_bytes = binary_path.stat().st_size
     if architecture == "arm64":
@@ -1056,7 +1060,6 @@ def capture_sampled_profile(
             sampler_command = [
                 str(binary_path),
                 "record",
-                "--native",
                 "--rate",
                 str(rate_hz),
                 "--format",
@@ -1107,8 +1110,6 @@ def capture_sampled_profile(
     collapsed_frames = [
         frame for line in collapsed.splitlines() for frame in line.rsplit(" ", 1)[0].split(";")
     ]
-    if not any(_is_qwen_native_frame(frame) for frame in collapsed_frames):
-        raise ProfileArtifactError("sampled stacks contain no qwen-mm native frames")
     if architecture == "arm64" and (
         not any(marker in collapsed for marker in ("PyEval", "eval_frame"))
         or not any(_is_qwen_core_frame(frame) for frame in collapsed_frames)
@@ -1157,7 +1158,7 @@ def capture_sampled_profile(
             "binary_sha256": binary_sha256,
             "binary_bytes": binary_bytes,
             "command": shlex.join(sampler_command),
-            "native": True,
+            "native": expected_sampler["native"],
             "duration_seconds": duration_seconds,
             "sample_count": sample_count,
             "unique_stacks": unique_stacks,
@@ -1165,7 +1166,7 @@ def capture_sampled_profile(
             "install_provenance": (
                 "macOS system /usr/bin/sample authenticated by executable hash"
                 if architecture == "arm64"
-                else "py-spy==0.4.1 authenticated by version and executable hash"
+                else "locked dev dependency py-spy==0.4.1 authenticated by version and executable hash"
             ),
             **(
                 {
@@ -1510,7 +1511,7 @@ def validate_sampled_profile(
         raise ProfileArtifactError("sampled profile architecture/sampler protocol is invalid")
     if (
         sampler.get("name") != expected_sampler["name"]
-        or sampler.get("native") is not True
+        or sampler.get("native") is not expected_sampler["native"]
         or sampler.get("duration_seconds") != expected_sampler["duration_seconds"]
         or sampler.get("errors") != 0
         or not isinstance(sampler.get("version"), str)
@@ -1521,7 +1522,7 @@ def validate_sampled_profile(
         or len(sampler["binary_sha256"]) != 64
         or sampler.get("binary_bytes", 0) <= 0
     ):
-        raise ProfileArtifactError("sampled profile does not prove its native sampler capture")
+        raise ProfileArtifactError("sampled profile does not prove its frozen sampler capture")
     command = shlex.split(str(sampler.get("command", "")))
     worker = sampled.get("worker")
     if not isinstance(worker, Mapping) or worker.get("target_pid", 0) <= 0:
@@ -1541,6 +1542,7 @@ def validate_sampled_profile(
     if architecture == "x86_64":
         if (
             sampler.get("version") != "py-spy 0.4.1"
+            or sampler.get("binary_path") != expected_sampler["binary_path"]
             or sampler.get("rate_hz") != expected_sampler["rate_hz"]
             or "interval_ms" in sampler
             or "conversion_version" in sampler
@@ -1549,7 +1551,6 @@ def validate_sampled_profile(
         expected_prefix = [
             str(sampler.get("binary_path")),
             "record",
-            "--native",
             "--rate",
             str(expected_sampler["rate_hz"]),
             "--format",
@@ -1639,15 +1640,16 @@ def validate_sampled_profile(
         raise ProfileArtifactError(
             "macOS samples omit CPython/binding/core whole-boundary evidence"
         )
-    if not any(_is_qwen_native_frame(frame) for frame in collapsed_frames):
-        raise ProfileArtifactError("sampled stacks omit native qwen-mm frames")
-    native_frames = {frame for frame in collapsed_frames if _is_qwen_native_frame(frame)}
-    symbolized = [frame for frame in native_frames if _is_symbolized_qwen_native_frame(frame)]
-    if not symbolized:
-        raise ProfileArtifactError("native sampled frames are unsymbolized offsets/unknowns only")
     rankings = _stack_rankings(collapsed)
-    if rankings["native_sample_share"] < 0.01:
-        raise ProfileArtifactError("native sampled frames represent less than 1% of samples")
+    if architecture == "arm64":
+        native_frames = {frame for frame in collapsed_frames if _is_qwen_native_frame(frame)}
+        symbolized = [frame for frame in native_frames if _is_symbolized_qwen_native_frame(frame)]
+        if not symbolized:
+            raise ProfileArtifactError(
+                "native sampled frames are unsymbolized offsets/unknowns only"
+            )
+        if rankings["native_sample_share"] < 0.01:
+            raise ProfileArtifactError("native sampled frames represent less than 1% of samples")
     if sampled.get("rankings") != rankings:
         raise ProfileArtifactError("sampled self/inclusive rankings do not match raw stacks")
     worker_path, _ = _read_authenticated_artifact(worker["source"])
@@ -2487,7 +2489,9 @@ def render_report(bundle: Mapping[str, Any]) -> str:
                 f"- Build evidence: wheel `{capture['build']['wheel']['sha256']}`; native "
                 f"`{runtime['native_artifact_sha256']}`; log `{capture['build']['log']['sha256']}`.",
                 f"- Capture command: `{capture['capture_command']}`",
-                f"- Sampler: `{sampler['version']}`; binary `{sampler['binary_sha256']}`; "
+                f"- Sampler: `{sampler['version']}`; mode "
+                f"`{'native' if sampler['native'] else 'Python-only'}`; binary "
+                f"`{sampler['binary_sha256']}`; "
                 f"representative full command `{sampler['command']}`. Per-coordinate commands are "
                 "retained in the bundle.",
                 f"- Phase C: `pass`; report `{capture['phase_c_report']['sha256']}`; gate "

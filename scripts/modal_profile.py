@@ -9,6 +9,7 @@ import platform
 import re
 import shlex
 import shutil
+import site
 import socket
 import subprocess
 import sys
@@ -24,6 +25,7 @@ LOCAL_ASSETS_ROOT = LOCAL_ROOT / "reference/.cache/huggingface"
 REMOTE_ROOT = Path("/workspace/qwen-mm")
 REMOTE_ASSETS_ROOT = REMOTE_ROOT / "reference/.cache/huggingface"
 REMOTE_PYTHON = REMOTE_ROOT / ".venv/bin/python"
+REMOTE_PY_SPY = REMOTE_ROOT / ".venv/bin/py-spy"
 BASE_IMAGE = "python@sha256:28255a3ace7eb4c48bc1b57b90af29e1bc82b4fd6c60614a8e3dce61b87ff941"
 BASE_IMAGE_TAG = "python:3.11.15-slim-bookworm"
 MODAL_CPU = 8.0
@@ -80,7 +82,6 @@ profile_image = (
         f"| sh -s -- -y --profile minimal --default-toolchain {RUST_VERSION}",
         f"curl -LsSf https://astral.sh/uv/{UV_VERSION}/install.sh "
         "| env UV_INSTALL_DIR=/usr/local/bin sh",
-        f"uv pip install --system --default-index {PYPI_INDEX} py-spy==0.4.1",
     )
     .env(
         {
@@ -90,7 +91,8 @@ profile_image = (
     )
     .add_local_dir(str(LOCAL_ROOT), remote_path=str(REMOTE_ROOT), copy=True, ignore=_source_ignore)
     .run_commands(
-        f"cd {REMOTE_ROOT} && uv sync --locked --all-packages --default-index {PYPI_INDEX}",
+        f"cd {REMOTE_ROOT} && uv sync --locked --all-packages --group dev "
+        f"--default-index {PYPI_INDEX}",
     )
     # Phase C authenticates committed inputs with git show, so ship repository
     # metadata separately from the fingerprinted source and offline assets.
@@ -137,9 +139,23 @@ def _capture(command: list[str]) -> str:
     ).stdout.strip()
 
 
-def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, str]) -> None:
-    """Prove native py-spy can profile a child before the 24-cell run."""
+def _preflight_py_spy(
+    *, python: Path, py_spy: Path, log_path: Path, environment: dict[str, str]
+) -> None:
+    """Prove locked Python-only py-spy can profile a child before the 24-cell run."""
 
+    # The Modal function itself runs with Modal's system interpreter while all
+    # locked project tools live in REMOTE_PYTHON's venv. Process that venv's
+    # .pth files before importing the shared lifecycle controller.
+    site_packages = subprocess.run(
+        [str(python), "-c", "import site; print(site.getsitepackages()[0])"],
+        cwd=REMOTE_ROOT,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    site.addsitedir(site_packages)
     from qwen_mm_reference.profile_v1 import _run_py_spy_child
 
     with tempfile.TemporaryDirectory(prefix="qwen-mm-py-spy-preflight-") as directory:
@@ -160,9 +176,8 @@ def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, st
             str(result_path),
         ]
         command = [
-            "py-spy",
+            str(py_spy),
             "record",
-            "--native",
             "--rate",
             "99",
             "--format",
@@ -200,7 +215,7 @@ def _preflight_py_spy(*, python: Path, log_path: Path, environment: dict[str, st
         )
         if result.returncode != 0 or not raw_text.strip() or not summary_valid:
             raise RuntimeError(
-                "native py-spy child-launch preflight failed "
+                "Python-only py-spy child-launch preflight failed "
                 f"before the full D1 matrix (see {log_path})"
             )
 
@@ -374,6 +389,7 @@ def run_d1_profile(
     )
     _preflight_py_spy(
         python=REMOTE_PYTHON,
+        py_spy=REMOTE_PY_SPY,
         log_path=path(support.LOG_DIRECTORY / "sampler-preflight.log"),
         environment=environment,
     )
@@ -465,6 +481,7 @@ def run_d1_profile(
         source_digest=expected_source_digest,
         output=path(support.PROFILE_BUNDLE),
         benchmark_phase_c_source_report=path(support.PHASE_C_REPORT),
+        py_spy=str(REMOTE_PY_SPY),
     )
     _run_logged(
         profile,
@@ -578,7 +595,7 @@ def run_d1_profile(
             "base_image_reference": BASE_IMAGE,
             "rust_version": RUST_VERSION,
             "uv_version": _capture(["uv", "--version"]),
-            "py_spy_version": _capture(["py-spy", "--version"]),
+            "py_spy_version": _capture([str(REMOTE_PY_SPY), "--version"]),
             "python_version": platform.python_version(),
         },
         "modal": {
@@ -607,7 +624,9 @@ def run_d1_profile(
             "sampler": {
                 "name": "py-spy",
                 "version": support.PY_SPY_VERSION,
-                "native": True,
+                "native": False,
+                "dependency": support.PY_SPY_DEPENDENCY,
+                "binary_path": str(REMOTE_PY_SPY),
                 "rate_hz": support.PY_SPY_RATE_HZ,
                 "duration_seconds": support.PY_SPY_DURATION_SECONDS,
             },

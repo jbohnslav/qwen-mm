@@ -810,8 +810,8 @@ Total number in stack (recursive counted multiple, when >=5):
     def test_raw_reduction_and_rankings_are_authenticated(self) -> None:
         raw = (
             "profile_v1.setup;adapter.load 17\n"
-            "qwen_mm_profile_iteration;qwen_mm_core::QwenImageProcessor::prepare_batch 60\n"
-            "qwen_mm_profile_iteration;qwen_mm_python::binding::prepare_batch 40\n"
+            "qwen_mm_profile_iteration;qwen_mm.benchmark.Adapter.run 60\n"
+            "qwen_mm_profile_iteration;qwen_mm_reference.profile_v1.normalize 40\n"
             "profile_v1.postcheck;adapter.run 11\n"
         )
         collapsed, count, unique = _parse_collapsed(raw, required_frame="qwen_mm_profile_iteration")
@@ -827,8 +827,8 @@ Total number in stack (recursive counted multiple, when >=5):
         root = Path(__file__).resolve().parents[2]
         raw = (
             "profile_v1.setup;adapter.load 17\n"
-            "qwen_mm_profile_iteration;qwen_mm_core::QwenImageProcessor::prepare_batch 60\n"
-            "qwen_mm_profile_iteration;qwen_mm_python::binding::prepare_batch 40\n"
+            "qwen_mm_profile_iteration;qwen_mm.benchmark.Adapter.run 60\n"
+            "qwen_mm_profile_iteration;qwen_mm_reference.profile_v1.normalize 40\n"
             "profile_v1.postcheck;adapter.run 11\n"
         )
         collapsed, count, unique = _parse_collapsed(raw, required_frame="qwen_mm_profile_iteration")
@@ -903,15 +903,15 @@ Total number in stack (recursive counted multiple, when >=5):
                 "sampler": {
                     "name": "py-spy",
                     "version": "py-spy 0.4.1",
-                    "binary_path": "/usr/local/bin/py-spy",
+                    "binary_path": SAMPLER_PROTOCOLS["x86_64"]["binary_path"],
                     "binary_sha256": hashlib.sha256(b"py-spy").hexdigest(),
                     "binary_bytes": 6,
                     "command": (
-                        "/usr/local/bin/py-spy record --native --rate 99 --format raw "
+                        "/workspace/qwen-mm/.venv/bin/py-spy record --rate 99 --format raw "
                         "-o capture.raw -- python -m qwen_mm_reference.profile_v1 "
                         "_sample_worker --config x"
                     ),
-                    "native": True,
+                    "native": False,
                     "rate_hz": 99,
                     "duration_seconds": 2,
                     "sample_count": count,
@@ -933,10 +933,21 @@ Total number in stack (recursive counted multiple, when >=5):
                 protocol=protocol,
                 observed_signatures={coordinate: signature},
             )
+            self.assertEqual(sampled["rankings"]["native_sample_count"], 0)
+            self.assertEqual(sampled["rankings"]["native_sample_share"], 0.0)
+
+            relabeled_native = copy.deepcopy(sampled)
+            relabeled_native["sampler"]["native"] = True
+            with self.assertRaisesRegex(ProfileArtifactError, "frozen sampler capture"):
+                validate_sampled_profile(
+                    relabeled_native,
+                    protocol=protocol,
+                    observed_signatures={coordinate: signature},
+                )
 
             attached = copy.deepcopy(sampled)
             attached["sampler"]["command"] = (
-                "/usr/local/bin/py-spy record --native --rate 99 --duration 2 "
+                "/workspace/qwen-mm/.venv/bin/py-spy record --rate 99 --duration 2 "
                 "--format raw -o capture.raw --pid 123"
             )
             with self.assertRaisesRegex(ProfileArtifactError, "exactly launch"):
@@ -988,7 +999,7 @@ Total number in stack (recursive counted multiple, when >=5):
 
             reported_errors = copy.deepcopy(sampled)
             reported_errors["sampler"]["errors"] = 1
-            with self.assertRaisesRegex(ProfileArtifactError, "native sampler capture"):
+            with self.assertRaisesRegex(ProfileArtifactError, "frozen sampler capture"):
                 validate_sampled_profile(
                     reported_errors,
                     protocol=protocol,
@@ -1180,13 +1191,13 @@ class BundleValidationTests(unittest.TestCase):
                 if architecture == "x86_64":
                     raw = (
                         "qwen_mm_profile_iteration;"
-                        "qwen_mm_python::binding::prepare_batch;"
-                        "qwen_mm_core::processor::execute 100\n"
+                        "qwen_mm.benchmark.Adapter.run;"
+                        "qwen_mm_reference.profile_v1.normalize 100\n"
                     )
                     version = "py-spy 0.4.1"
-                    binary_path = "/opt/py-spy/bin/py-spy"
+                    binary_path = SAMPLER_PROTOCOLS["x86_64"]["binary_path"]
                     command = (
-                        f"{binary_path} record --native --rate 99 --format raw -o x -- "
+                        f"{binary_path} record --rate 99 --format raw -o x -- "
                         "python -m qwen_mm_reference.profile_v1 _sample_worker --config x"
                     )
                     sampler_extra = {"rate_hz": 99}
@@ -1267,7 +1278,7 @@ Total number in stack (recursive counted multiple, when >=5):
                             "binary_sha256": hashlib.sha256(binary_path.encode()).hexdigest(),
                             "binary_bytes": 100,
                             "command": command,
-                            "native": True,
+                            "native": SAMPLER_PROTOCOLS[architecture]["native"],
                             "duration_seconds": 2,
                             "sample_count": count,
                             **(

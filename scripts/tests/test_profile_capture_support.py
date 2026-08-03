@@ -56,7 +56,9 @@ def _provenance() -> dict[str, object]:
             "sampler": {
                 "name": "py-spy",
                 "version": support.PY_SPY_VERSION,
-                "native": True,
+                "native": False,
+                "dependency": support.PY_SPY_DEPENDENCY,
+                "binary_path": support.PY_SPY_BINARY_PATH,
                 "rate_hz": support.PY_SPY_RATE_HZ,
                 "duration_seconds": support.PY_SPY_DURATION_SECONDS,
             },
@@ -201,7 +203,8 @@ class CommandConstructionTests(unittest.TestCase):
             "benchmarks/profile-evidence-v1/x86_64/phase-c/report.json",
         )
 
-    def test_profile_capture_command_freezes_24_native_x86_coordinates(self) -> None:
+    def test_profile_capture_command_freezes_24_python_x86_coordinates(self) -> None:
+        py_spy = "/runtime/.venv/bin/py-spy"
         command = support.profile_capture_command(
             python=self.python,
             workload=Path("workload.json"),
@@ -216,11 +219,12 @@ class CommandConstructionTests(unittest.TestCase):
             source_digest="b" * 64,
             output=Path("profile.json"),
             benchmark_phase_c_source_report=Path("scratch/phase-c.json"),
+            py_spy=py_spy,
         )
         self.assertEqual(len(support.matrix_coordinates()), 24)
         self.assertEqual(support.command_value(command, "--thread-budgets"), "1,4")
         self.assertEqual(support.command_value(command, "--repetitions"), "3")
-        self.assertEqual(support.command_value(command, "--py-spy"), "py-spy")
+        self.assertEqual(support.command_value(command, "--py-spy"), py_spy)
         self.assertEqual(
             support.command_value(command, "--artifact-publish-directory"), "target/published"
         )
@@ -235,6 +239,17 @@ class CommandConstructionTests(unittest.TestCase):
                 "target/published"
             )
         )
+
+    def test_modal_runner_uses_locked_venv_py_spy_without_system_install(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        source = (root / "scripts/modal_profile.py").read_text(encoding="utf-8")
+        self.assertIn('REMOTE_PY_SPY = REMOTE_ROOT / ".venv/bin/py-spy"', source)
+        self.assertIn("py_spy=str(REMOTE_PY_SPY)", source)
+        self.assertIn("uv sync --locked --all-packages --group dev", source)
+        self.assertNotIn("uv pip install --system", source)
+        self.assertIn('"py-spy==0.4.1"', (root / "pyproject.toml").read_text(encoding="utf-8"))
+        lock = (root / "uv.lock").read_text(encoding="utf-8")
+        self.assertIn('name = "py-spy"\nversion = "0.4.1"', lock)
 
     def test_final_host_paths_are_committable_and_architecture_separated(self) -> None:
         arm = support.host_paths("arm64")
