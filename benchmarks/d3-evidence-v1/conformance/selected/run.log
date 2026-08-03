@@ -1,0 +1,20 @@
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /private/tmp/qwen-mm-d3-no-lut.fGk40p/repo/.venv/bin/python3
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling qwen-mm-core v0.1.0 (/private/tmp/qwen-mm-d3-no-lut.fGk40p/repo/crates/qwen-mm-core)
+   Compiling qwen-mm-python v0.1.0 (/private/tmp/qwen-mm-d3-no-lut.fGk40p/repo/crates/qwen-mm-python)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.09s
+📦 Built wheel for abi3 Python ≥ 3.11 to /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-phase-c.h230HT/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl
+Using CPython 3.11.15 interpreter at: .venv/bin/python3
+Creating virtual environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-phase-c.h230HT/candidate
+Activate with: source /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-phase-c.h230HT/candidate/bin/activate
+Using Python 3.11.15 environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-phase-c.h230HT/candidate
+Resolved 2 packages in 2ms
+Prepared 1 package in 25ms
+Installed 2 packages in 10ms
+ + numpy==2.4.6
+ + qwen-mm==0.1.0 (from file:///var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-phase-c.h230HT/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl)
+{"cases": 290, "status": "pass"}
+valid Phase C report: /tmp/qwen-mm-d3-no-lut.fGk40p/selected-results/report.json

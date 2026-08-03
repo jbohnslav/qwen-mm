@@ -1,0 +1,3750 @@
+{
+  "candidate": {
+    "environment": {
+      "abi_tag": "cpython-311",
+      "implementation": "CPython",
+      "installed_origin": true,
+      "native_origin": "lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+      "numpy": "2.4.6",
+      "package_origin": "lib/python3.11/site-packages/qwen_mm/__init__.py",
+      "platform": "macOS-26.5.2-arm64-arm-64bit",
+      "python": "3.11.15"
+    },
+    "gate_invocation_identity": {
+      "entrypoint": "qwen_mm:Processor",
+      "forbidden_modules": [
+        "PIL",
+        "torch",
+        "torchvision",
+        "transformers",
+        "qwen_vl_utils"
+      ],
+      "python_isolated_mode": true
+    },
+    "runtime_identity": {
+      "native_artifact_sha256": "acae2fff3c903d3edecb67b3c6951bef75fd4cb1dff58b9c25c006c6f3065c71",
+      "native_module": "qwen_mm._native",
+      "package": "qwen_mm",
+      "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+      "version": "0.1.0"
+    },
+    "wheel": {
+      "bound_runtime_identity": {
+        "native_artifact_sha256": "acae2fff3c903d3edecb67b3c6951bef75fd4cb1dff58b9c25c006c6f3065c71",
+        "native_module": "qwen_mm._native",
+        "package": "qwen_mm",
+        "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
+        "version": "0.1.0"
+      },
+      "build_command": "maturin build --locked",
+      "filename": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+      "sha256": "ce02af3c594bbd1fc86d660799dd9148e7e3a0ce9cff4b496adb3affc25a2e2a",
+      "tag": "cp311-abi3-macosx_11_0_arm64"
+    }
+  },
+  "comparator": {
+    "diagnostic_fields": [
+      "maximum_absolute_error",
+      "maximum_ulp_error",
+      "rmse",
+      "absolute_error_percentiles",
+      "count_over_threshold",
+      "first_difference"
+    ],
+    "final_lossy_atol": 0.007844090461730957,
+    "final_strict_atol": 1e-06,
+    "policy_id": "qwen-mm-compat-v1-comparison",
+    "prepared_lossless_absolute_byte_error_max": 0,
+    "prepared_lossy_absolute_byte_error_max": 1
+  },
+  "contract_id": "qwen-mm-compat-v1",
+  "created_at": "2026-08-03T16:54:43.905184+00:00",
+  "fixture_authentication": [
+    {
+      "candidate_executed": false,
+      "case_id": "rule:round-half-0-even",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:round-half-2-even",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:round-half-2-even-down",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:round-half-4-even",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:resize-default-min-below",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:resize-default-min-edge",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:resize-explicit-min",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:resize-explicit-max",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:resize-exact-budget",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:aspect-ratio-200",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:aspect-ratio-over-200",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:explicit-dimensions-paired",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:explicit-dimensions-unpaired",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:image-placeholder-count",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:checked-product-largest",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    },
+    {
+      "candidate_executed": false,
+      "case_id": "rule:checked-product-overflow",
+      "classification": "helper-only oracle fixture; installed-boundary mapping is recorded separately",
+      "issues": [],
+      "passed": true,
+      "profile": "both",
+      "tier": "reference-fixture-authentication"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "1ef7f1d81b7e6f140fc45868d10870e10ce2aa92c7fc58fd2f0ec7253d847ce2"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "0b65b2c5bdce6f0b6e2b3606a2416d21a40d5387f345e353ffced390a8b4bdae"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "9c29c2e904e33ca7553885da1cb47c76f757ff038c6e68c5b7f5b766281e33d5"
+    },
+    {
+      "path": "crates/qwen-mm-core/Cargo.toml",
+      "sha256": "885efbefc009d645dae182a0d90bc272ef417ce246cb829c22afd3d86b832c25"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/error.rs",
+      "sha256": "95613de6f95faa75b3c667d72196e50f04cc4878f2d44e14bf2e31b0e363f29c"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/geometry.rs",
+      "sha256": "f5c712dcf7f97e55ecc6bea8c8cd1d898d3e5f60c61fa53c1254c802f9961174"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/lib.rs",
+      "sha256": "9721a44082bc8f6747f1a3d11b882fd0be7607dee5425280c23c8002291cc2f0"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/limits.rs",
+      "sha256": "f67640fc840f89137819fbf36d59cf2fd16c5bde25b4f28079493cd76713e19c"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/media.rs",
+      "sha256": "2d73e873df11207f496ee80360688ae7a08049b5ea2f3e1140144f9c7b86efb7"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/media_conformance_tests.rs",
+      "sha256": "ce071cc949d811e34a00a0c14317cea65e9f46e6afb76841ee56fb74a62dbf90"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/observability.rs",
+      "sha256": "8b13e78769646b82c8db4002a61eec91717f87397717170cba7228aaf69f898e"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/output.rs",
+      "sha256": "c37108beb3af617dcb50bc99ebae95e1cbffc00cbcad10d3527dc26d6512ad9e"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/patchify.rs",
+      "sha256": "14b56cc8196d0bb9b21625ffe8a45a5bcad4ca6c675ac49cbe715d750ca813e0"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/patchify_conformance_tests.rs",
+      "sha256": "ddfcbc76b5168248f23446dbc85d8ab14d29ef9aaadf2b4f02450536a8a83c48"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/processor.rs",
+      "sha256": "cecef350e9900e813d34801412ff6a700da2d0b144e702f7159e51dd0e829822"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/profile.rs",
+      "sha256": "8b78b0edd8646c270d7777550063b99cfc350d604e5f4578d13157ae0d7bff46"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/request.rs",
+      "sha256": "ece4ecc273822f423756ee8916e5c4ef78bbc2f70c316a99968cee56b0103526"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/resize.rs",
+      "sha256": "9910e7d62d85bab8115f67f82f085120ee6ace8dde2c6550ccc00612ecadd5ae"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/text.rs",
+      "sha256": "7894e23baf3d406968565866820200602ed04655d6983e2f24e77fe87bb7a625"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/text_conformance_tests.rs",
+      "sha256": "010d24486f21c163c212139f1aaefd64442593035fc252542c33d6d6ad961b09"
+    },
+    {
+      "path": "crates/qwen-mm-python/Cargo.toml",
+      "sha256": "a86563e4cdc26397b3f3d7618435c16c2a882c585e59717c06dbd88a052fcd70"
+    },
+    {
+      "path": "crates/qwen-mm-python/python/qwen_mm/__init__.py",
+      "sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16"
+    },
+    {
+      "path": "crates/qwen-mm-python/python/qwen_mm/benchmark.py",
+      "sha256": "09ef61a2c96b11333c151e223f429a1ef3fadae8fa507708fccbb26db67c9621"
+    },
+    {
+      "path": "crates/qwen-mm-python/src/errors.rs",
+      "sha256": "eb28207958a44b38783c48be9db00c5eb1daa277ca89f74a8a13a06f13380092"
+    },
+    {
+      "path": "crates/qwen-mm-python/src/input.rs",
+      "sha256": "573dace8dff216f2a0f4b90b3ecda78597a1934092429edc6cf5f1bab6d9953b"
+    },
+    {
+      "path": "crates/qwen-mm-python/src/lib.rs",
+      "sha256": "2068f19ff0b2505c9b1378923ca3350f58739c1bed118d35ae3ec3ce67d87fc0"
+    },
+    {
+      "path": "crates/qwen-mm-python/src/output.rs",
+      "sha256": "5e0490282fc59d87234102255e850e7c614912a7971658eef7f6388d79f92e64"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-00.jpg",
+      "sha256": "0dab566cfa90aa54750ff5386014c3ca21d53312accd2c028599910838b9c587"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-01.jpg",
+      "sha256": "e4d035fea7baee3547e7dbcffbad84fdb83528209d368b9fe31ef91562c9cfa5"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-02.jpg",
+      "sha256": "9572e3372fec3de4feb6ce705b8c9266072d0d03243e417524c856045bc9e7ab"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-03.jpg",
+      "sha256": "545c7eb7d9a0b4e84cce7133927beb91a0e21b52a9dd0b6f34f34c80fce6ac02"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-04.jpg",
+      "sha256": "9ffa2cb8ee8c04e3ce59d829853a31b44cfc93376fb32c521c7853bc1972fbab"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-05.jpg",
+      "sha256": "08539805d6a908823d9545bae265e31aac6af68a546c836a69ae1e7a27449ce7"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-06.jpg",
+      "sha256": "d035ada8893c4921f2c67d97e87915228d45acf9a6d1072b9a09b615bc8c105f"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-07.jpg",
+      "sha256": "4d33c96ecc262a7a2611937cf979bd08b919d4c29832d3a482565003cf0cc9b2"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-08.jpg",
+      "sha256": "9d0fe89c7f6e2286a9c99c3a5a0eed340a2552ef57faf2cc91f63295d3abf376"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-09.jpg",
+      "sha256": "5f60d7eeb5c2a5530f938bf8e2a572345420b2934479db3348416710286795b0"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-10.jpg",
+      "sha256": "ae904b26f0c2b51431fd39bc2c2dc500ad20f9ec4ee7f083419386aa9c9e2182"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-11.jpg",
+      "sha256": "c14de14041978db3c8faa91168232429752b679b543db679db0767f32badd397"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-12.jpg",
+      "sha256": "fb1d7cb4468cc0b70587c4750510290bba63987e35dc5b6229ffce97dff94395"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-13.jpg",
+      "sha256": "70ce724a849b4c4a373ad61df6da37a8795907547a8710dcfd9a1fca38a420de"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-14.jpg",
+      "sha256": "41d04951e23469351a75cdb926daea021d72d2e637eb149bf6ecc96a168a9d9d"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-15.jpg",
+      "sha256": "cd77ca0f3b09232914976e8ab8158796d7bfac7b245cf5cc249c6c5e7c62d3ae"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-16.jpg",
+      "sha256": "c8a0fbeca02f3a72ac0663e2fc829bcb0ed01b1c4094104280bbe22521ccbaab"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-17.jpg",
+      "sha256": "2dc902e28c0846d72ab21016899a97f571adc74e0893b623d3d41df27fe1dfd4"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-18.jpg",
+      "sha256": "7ff8a918a41c47a0993331fddf360eebec6e2b0b6917c381bdb12d56620a0191"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-19.jpg",
+      "sha256": "d562a06075c5175db0db7bda55394dab8ae158b89d1abf3dee47b40ff3035fb6"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-20.jpg",
+      "sha256": "2de69e4fce95560f555ee51f427b0d387c8f1fde232e2f8ad66cea233843074a"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-21.jpg",
+      "sha256": "9ef953464dc484883ab9217a05348f6fe20d46b49add4e5df88c9649a648483e"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-22.jpg",
+      "sha256": "0af922062818d0f19df027d39fe68e01853cc41c4811f8edc8b33dd2a939aca1"
+    },
+    {
+      "path": "fixtures/baseline/image24/image-23.jpg",
+      "sha256": "1b7aea15a38eee68907b602acff72a566c1700dc7fe2d4d8dae172e8cfaa7728"
+    },
+    {
+      "path": "fixtures/baseline/manifest.json",
+      "sha256": "81cce48b507c0d717c22ec8c26aa88d359e3ddb6245451891fe001709323c316"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "e3022058e2f562c652ece2fa4d269509f437897fdeb99ff3e3adf77d3ade8be3"
+    },
+    {
+      "path": "reference/cases/v1/assets/not-an-image.bin",
+      "sha256": "23270a4a6fce4a315c19edcf775f04ec2fffafa3b9620e4ae9e1a1fffef38ab7"
+    },
+    {
+      "path": "reference/cases/v1/corrupt-image.json",
+      "sha256": "de69e321b7d6d9a66543c6a225149b42bd35a8bbe3e86f6c3da68e2f9f763bd2"
+    },
+    {
+      "path": "reference/cases/v1/image24.json",
+      "sha256": "a6021141062f857231ed4c3dccd71be7f8da9c88f5712c7d41e272c9ad51a4df"
+    },
+    {
+      "path": "reference/cases/v1/multimodal-smoke.json",
+      "sha256": "b3935766c8998a05e37d06004e4221ec68c5db40ff548110a40c82876194e24e"
+    },
+    {
+      "path": "reference/cases/v1/text-smoke.json",
+      "sha256": "a197b11d571287e49968ca2ccbf5771ef4c61fcbb8f555ee1af3ee147b5f2d36"
+    },
+    {
+      "path": "reference/compatibility/v1.json",
+      "sha256": "01c03d10feb34313525f0c4fd08abeaa11151a20b1e87ad57a65ff677ad1cc06"
+    },
+    {
+      "path": "reference/conformance/v1/chat.json",
+      "sha256": "d18383c64de0a3eab54aed9bbf594befb2d756f73db7925646da5cb2f2f2e5e8"
+    },
+    {
+      "path": "reference/conformance/v1/corpus.json",
+      "sha256": "136a0f66716f44ad52e23274dc90b1652292da826f704de177d0c25e33097c0d"
+    },
+    {
+      "path": "reference/conformance/v1/rules.json",
+      "sha256": "84c6a0bee74053c841b0f56742f7d5c5db7f5e1defc1308e03471ba3613d9e05"
+    },
+    {
+      "path": "reference/goldens/schema-v1.json",
+      "sha256": "03e493ca94b1c75fa1f191aa128997a037ce2ad99a31cda18dc4474a4e397c28"
+    },
+    {
+      "path": "reference/goldens/v1/qwen3-vl-8b/corrupt-image/manifest.json",
+      "sha256": "187c3657f4dd71285649cc35787eacb07e9c7bf4d6a272ea6990ef3e387503c9"
+    },
+    {
+      "path": "reference/goldens/v1/qwen3-vl-8b/image24/manifest.json",
+      "sha256": "ef37d8ca17bcd593190653ebbe83f84efb37f42e7edd83343517898f79bea301"
+    },
+    {
+      "path": "reference/goldens/v1/qwen3-vl-8b/multimodal-smoke/manifest.json",
+      "sha256": "434d75302a35d46e6b55bc1373edbd3edb41cb649c788b1ec3a4bee0496c40b7"
+    },
+    {
+      "path": "reference/goldens/v1/qwen3-vl-8b/text-smoke/manifest.json",
+      "sha256": "3b6bb828cd468faa5a6d5885d303c35082290d56fbbcccb04151fa27a740f30e"
+    },
+    {
+      "path": "reference/goldens/v1/qwen3.5-9b/text-smoke/manifest.json",
+      "sha256": "ec45548b9895a30bd632220765629619835f10935e83f3e8593343be4570be49"
+    },
+    {
+      "path": "reference/media/v1/encoded.bin",
+      "sha256": "efaec0c1995bc84a48fdc5f462266c3d3f0e0f116fcf61d13581396bf56c67a8"
+    },
+    {
+      "path": "reference/media/v1/manifest.json",
+      "sha256": "5c4a260ee611feafd8cf23f3bcf0622e479172dc15f928267e63c71fceea7627"
+    },
+    {
+      "path": "reference/media/v1/prepared-rgb8.bin",
+      "sha256": "8fdea5c4ca27959cd79543948287d3ae7b6cc55a3cbb3099af7c90220fd20aaa"
+    },
+    {
+      "path": "reference/models.json",
+      "sha256": "5db78e1f1b8fa170e172607271bdfca8ef1e874ed55b7a8801c4f65f7054b79a"
+    },
+    {
+      "path": "reference/phase-b/v1/expected.bin",
+      "sha256": "e4260c96e4691a1cd2297c3cacb5af0ce1a7a0a97bd2025c439ffa7486879980"
+    },
+    {
+      "path": "reference/phase-b/v1/manifest.json",
+      "sha256": "bc07075ff2802ba49c3ff622d631b69a1168fba0aa08c117e6acf6cd04768b06"
+    },
+    {
+      "path": "reference/phase-b/v1/sources.bin",
+      "sha256": "2274b7c28f4218ecb27d105500608a1677c9492efc742927871547faf1aea7f2"
+    },
+    {
+      "path": "reference/phase-c/v1/schema-v1.json",
+      "sha256": "75502062fe14c021ea8d8bee93b35eaf94b69ba195a123ef2946f59004f25751"
+    },
+    {
+      "path": "reference/pyproject.toml",
+      "sha256": "bafb62885b7847de4fe770ca77975ae1f2ccf5c90d1d67d790f52f116d84caad"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/__init__.py",
+      "sha256": "9bfa8361a17204f34ae3a2b1704c4c00ec74e124fde04e3db2ab4886a5c0b106"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/bench.py",
+      "sha256": "237b12e95a0f3bcdc1baa9311554dee33c24a2b15fc1f219e8127acbb51dae1d"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/benchmark_protocol.py",
+      "sha256": "781d052597713a65dac1821dcb3d4d920970301b0a2f054293a488ec835d381a"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/benchmark_v2.py",
+      "sha256": "5413daec0c240683f8dd269a3d742b850579182c5c87c5d4150b243a245261b7"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/chat_conformance.py",
+      "sha256": "7af3854a471dc1e0d547b78e8271bee685176552ff0100cb30382dd31c67fc21"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/conformance.py",
+      "sha256": "8b29cc79952d29f46b3764dce607a04ff9319042089573f210ca02c1352f731d"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/corpus.py",
+      "sha256": "5ae8f7843c84c229509dd52eed6fceeb60baf099b79e7e3f5ae9f4fa30a4105a"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/fixtures.py",
+      "sha256": "fce9acb196a75b89d6e22de18051195c74df368745b83f0a33bced56d170cf6d"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/golden.py",
+      "sha256": "0e44b62081a5879d691e64b7349e10b4ac810b3f00c7b15b2621e6cbaf502d7f"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/media_conformance.py",
+      "sha256": "54990f2387e20a8ceff38f0abc9144c0f854a02bfb3e320751ae6653db0b3101"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/phase_b_conformance.py",
+      "sha256": "006a16fd50a54dcdc8504e6625b3c3fa2a1135d37cbffcc20f26cebf4089c91d"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/phase_c_conformance.py",
+      "sha256": "104bcc2cddccfd7088fd06b97fc6f1975e9e0ee3625d67c7bee1d6687b12e994"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/profile_v1.py",
+      "sha256": "a5af353c7608c943d30d016115d7b4d57d8f7b92fe9f3a1b28cd099a989a31c2"
+    },
+    {
+      "path": "reference/src/qwen_mm_reference/resize_conformance.py",
+      "sha256": "deb9191b6f0465d268fc493ce0faaacb5f8dfbadea10e20e1b7418fc96bf03c9"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "sha256": "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
+    },
+    {
+      "path": "scripts/cargo.sh",
+      "sha256": "13c8e0e72ef13d6a92ab67927c6ef62855268e3fb3c6242e23eb7574a5a95212"
+    },
+    {
+      "path": "scripts/test-phase-c-conformance.sh",
+      "sha256": "64c035c25ff0faccf3ecd90545756b5747777fdabcfbcab0264479e914c573f7"
+    },
+    {
+      "path": "scripts/with-cargo.sh",
+      "sha256": "97b1da365496ff10ebc0d51d68f3511962c07c3ad242ce86abd1f09362ae3f0d"
+    },
+    {
+      "path": "uv.lock",
+      "sha256": "fa439b84c91f8112716cd7ec5837e1ed4f5f0d0fa17280977768d21bc1320a56"
+    }
+  ],
+  "installed_boundary_rule_map": {
+    "aspect-ratio-200": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:aspect-ratio-200",
+        "geometry:qwen3.5-9b:aspect-ratio-200"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:aspect-ratio-200"
+    },
+    "aspect-ratio-over-200": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:aspect-ratio-over-200",
+        "geometry:qwen3.5-9b:aspect-ratio-over-200"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:aspect-ratio-over-200"
+    },
+    "checked-product-largest": {
+      "candidate_case_ids": [],
+      "classification": "intrinsic-helper-only",
+      "fixture_authentication_id": "rule:checked-product-largest"
+    },
+    "checked-product-overflow": {
+      "candidate_case_ids": [
+        "arithmetic:qwen3-vl-8b:explicit-resized-pixel-overflow",
+        "arithmetic:qwen3.5-9b:explicit-resized-pixel-overflow"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:checked-product-overflow"
+    },
+    "explicit-dimensions-paired": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:explicit-paired",
+        "geometry:qwen3.5-9b:explicit-paired"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:explicit-dimensions-paired"
+    },
+    "explicit-dimensions-unpaired": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:explicit-unpaired",
+        "geometry:qwen3.5-9b:explicit-unpaired"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:explicit-dimensions-unpaired"
+    },
+    "image-placeholder-count": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:exact-budget",
+        "geometry:qwen3.5-9b:exact-budget"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:image-placeholder-count"
+    },
+    "resize-default-min-below": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:default-min-below",
+        "geometry:qwen3.5-9b:default-min-below"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:resize-default-min-below"
+    },
+    "resize-default-min-edge": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:default-min-edge",
+        "geometry:qwen3.5-9b:default-min-edge"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:resize-default-min-edge"
+    },
+    "resize-exact-budget": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:exact-budget",
+        "geometry:qwen3.5-9b:exact-budget"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:resize-exact-budget"
+    },
+    "resize-explicit-max": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:explicit-max",
+        "geometry:qwen3.5-9b:explicit-max"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:resize-explicit-max"
+    },
+    "resize-explicit-min": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:explicit-min",
+        "geometry:qwen3.5-9b:explicit-min"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:resize-explicit-min"
+    },
+    "round-half-0-even": {
+      "candidate_case_ids": [],
+      "classification": "intrinsic-helper-only",
+      "fixture_authentication_id": "rule:round-half-0-even"
+    },
+    "round-half-2-even": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:tie-48-up-even",
+        "geometry:qwen3.5-9b:tie-48-up-even"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:round-half-2-even"
+    },
+    "round-half-2-even-down": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:tie-80-down-even",
+        "geometry:qwen3.5-9b:tie-80-down-even"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:round-half-2-even-down"
+    },
+    "round-half-4-even": {
+      "candidate_case_ids": [
+        "geometry:qwen3-vl-8b:tie-112-up-even",
+        "geometry:qwen3.5-9b:tie-112-up-even"
+      ],
+      "classification": "installed-boundary",
+      "fixture_authentication_id": "rule:round-half-4-even"
+    }
+  },
+  "passed": true,
+  "phase_e_exclusions": [
+    "golden:qwen3-vl-8b/multimodal-smoke:raw-video-component",
+    "chat:qwen3-vl-8b-visual-padding:mixed-video-case",
+    "chat:qwen3.5-9b-visual-padding:mixed-video-case",
+    "live:visual-occurrence-order:image-video-interleave-leg",
+    "live:resource-and-overflow-matrix:raw_frames",
+    "rule:nframes-half-up-to-even",
+    "rule:nframes-half-down-to-even",
+    "rule:fps-default-min",
+    "rule:fps-clamped-max",
+    "rule:fps-and-nframes-exclusive",
+    "rule:nframes-below-factor",
+    "rule:sample-indices-five",
+    "rule:video-placeholder-count"
+  ],
+  "profile_assets": {
+    "qwen3-vl-8b": {
+      "directory": "models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+      "files": [
+        {
+          "name": "chat_template.json",
+          "sha256": "5c72a170d2a4a1a3bc5adad2e689ae28138a9700e5b8c96c0266331e86c0acce"
+        },
+        {
+          "name": "config.json",
+          "sha256": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661"
+        },
+        {
+          "name": "merges.txt",
+          "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+        },
+        {
+          "name": "preprocessor_config.json",
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        {
+          "name": "tokenizer.json",
+          "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
+        },
+        {
+          "name": "tokenizer_config.json",
+          "sha256": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+        },
+        {
+          "name": "video_preprocessor_config.json",
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        {
+          "name": "vocab.json",
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+        }
+      ],
+      "fingerprint": "9e2e515f166fdad60e68528aadd7ef2a410724b74855f1b90dfbe1eadcaa7ae1",
+      "model_id": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b"
+    },
+    "qwen3.5-9b": {
+      "directory": "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "files": [
+        {
+          "name": "chat_template.jinja",
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+        },
+        {
+          "name": "config.json",
+          "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+        },
+        {
+          "name": "merges.txt",
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+        },
+        {
+          "name": "preprocessor_config.json",
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        {
+          "name": "tokenizer.json",
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        },
+        {
+          "name": "tokenizer_config.json",
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+        },
+        {
+          "name": "video_preprocessor_config.json",
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        {
+          "name": "vocab.json",
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+        }
+      ],
+      "fingerprint": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5",
+      "model_id": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a"
+    }
+  },
+  "provenance": {
+    "command": "make phase-c-conformance",
+    "git": {
+      "gate_input_status": [],
+      "gate_inputs_clean": true,
+      "revision": "44c5cffd8b8263c7d6488784a32aac9817e23be0"
+    },
+    "platform": {
+      "byte_order": "little",
+      "implementation": "CPython",
+      "machine": "arm64",
+      "python": "3.11.15",
+      "release": "25.5.0",
+      "system": "Darwin"
+    }
+  },
+  "results": [
+    {
+      "candidate_executed": true,
+      "case_id": "arithmetic:qwen3-vl-8b:explicit-resized-pixel-overflow",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-arithmetic"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "arithmetic:qwen3.5-9b:explicit-resized-pixel-overflow",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-arithmetic"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-8b-batch-padding-identity",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-8b-batch-padding-permutation-0",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-8b-batch-padding-permutation-1",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-8b-roles-tools",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-8b-text-adversarial",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-literal-image-token",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-rejected-reasoning",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-rejected-template",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3-vl-rejected-thinking",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-batch-padding-identity",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-batch-padding-permutation-0",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-batch-padding-permutation-1",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-reasoning-extraction",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-roles-tools",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-text-adversarial",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-thinking-default",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-thinking-false",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-9b-thinking-true",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-literal-image-token",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-literal-video-token",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:qwen3.5-rejected-truncation",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "chat:unknown-profile",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen-unknown",
+      "tier": "live-chat"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:aspect-ratio-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:aspect-ratio-over-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:default-min-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:default-min-edge",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:exact-budget",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:explicit-max",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:explicit-min",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:explicit-paired",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:explicit-unpaired",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:tie-112-up-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:tie-48-up-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3-vl-8b:tie-80-down-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:aspect-ratio-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:aspect-ratio-over-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:default-min-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:default-min-edge",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:exact-budget",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:explicit-max",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:explicit-min",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:explicit-paired",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:explicit-unpaired",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:tie-112-up-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:tie-48-up-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "geometry:qwen3.5-9b:tie-80-down-even",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "installed-geometry-rule"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3-vl-8b:corrupt-image",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3-vl-8b:image24",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3-vl-8b:text-smoke",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3.5-9b:corrupt-image",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3.5-9b:image24",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "golden:qwen3.5-9b:text-smoke",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-golden"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3-vl-8b:identity",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3-vl-8b:permutation-0",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3-vl-8b:permutation-1",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3.5-9b:identity",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3.5-9b:permutation-0",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "heterogeneous:qwen3.5-9b:permutation-1",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-heterogeneous-permutation"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:apng-animated-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:apng-malformed-control-length",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:apng-malformed-zero-frames",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:gif-codec-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-cmyk-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-declared-png-mismatch",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-1-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-2-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-3-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-4-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-5-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-6-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-7-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-exif-orientation-8-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-luma-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-malformed-baseline-precision",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-malformed-excluded-component-sampling",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-malformed-zero-components",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-missing-terminal-eoi",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-rgb-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:jpeg-ycck-adobe-transform-2",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-16bit-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-la-rejected-by-v1-envelope",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-luma-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-luma-trns-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-malformed-crc-before-excluded-la",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-malformed-method-before-excluded-la",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-malformed-reserved-color-type",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-malformed-rgb-bit-depth",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-palette-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-pixel-bomb-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-rgb-trns-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-unusual-aspect-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:png-valid-aspect-201-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-animated-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-chunk-outside-declared-riff",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossless-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossless-rgb-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossless-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossy-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossy-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-lossy-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-malformed-extended-length",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-malformed-lossless-version",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-malformed-reserved-animation-flags",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3-vl-8b:webp-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:apng-animated-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:apng-malformed-control-length",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:apng-malformed-zero-frames",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:gif-codec-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-cmyk-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-declared-png-mismatch",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-1-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-2-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-3-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-4-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-5-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-6-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-7-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-exif-orientation-8-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-luma-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-malformed-baseline-precision",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-malformed-excluded-component-sampling",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-malformed-zero-components",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-missing-terminal-eoi",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-rgb-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:jpeg-ycck-adobe-transform-2",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-16bit-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-la-rejected-by-v1-envelope",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-luma-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-luma-trns-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-malformed-crc-before-excluded-la",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-malformed-method-before-excluded-la",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-malformed-reserved-color-type",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-malformed-rgb-bit-depth",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-palette-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-pixel-bomb-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-rgb-trns-ignored",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-unusual-aspect-200",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:png-valid-aspect-201-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-animated-rejected",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-chunk-outside-declared-riff",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossless-rgb-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossless-rgb-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossless-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossy-aligned-no-op",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossy-off-grid-resize",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-lossy-rgba-white-composite",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-malformed-extended-length",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-malformed-lossless-version",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-malformed-reserved-animation-flags",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-oversized-header",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "media:qwen3.5-9b:webp-truncated",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-media"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3-vl-8b:interleaved-codecs",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3-vl-8b:one-jpeg",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3-vl-8b:one-raw-rgb",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3-vl-8b:repeat-index-order",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3-vl-8b:text-only",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3.5-9b:interleaved-codecs",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3.5-9b:one-jpeg",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3.5-9b:one-raw-rgb",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3.5-9b:repeat-index-order",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "phase-b:qwen3.5-9b:text-only",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "committed-phase-b"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3-vl-8b:channel-sliced-invalid",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3-vl-8b:contiguous-hwc",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3-vl-8b:negative-row-stride",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3-vl-8b:row-padded-hwc",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3.5-9b:channel-sliced-invalid",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3.5-9b:contiguous-hwc",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3.5-9b:negative-row-stride",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "raw-layout:qwen3.5-9b:row-padded-hwc",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-raw-layout"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:content_items:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:content_items:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:content_items:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:decoded_pixels:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:decoded_pixels:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:decoded_pixels:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:edge_length:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:edge_length:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:edge_length:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_item:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_item:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:encoded_bytes_item:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_request:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_request:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:media_occurrences_request:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:messages:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:messages:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:messages:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:output_bytes:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:output_bytes:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:output_bytes:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:prepared_pixels:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:prepared_pixels:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:prepared_pixels:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:requests:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:requests:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:requests:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:text_bytes:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:text_bytes:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:text_bytes:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_request:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_request:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3-vl-8b:tokens_request:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:content_items:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:content_items:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:content_items:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:decoded_pixels:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:decoded_pixels:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:decoded_pixels:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:edge_length:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:edge_length:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:edge_length:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_item:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_item:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:encoded_bytes_item:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_request:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_request:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:media_occurrences_request:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:messages:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:messages:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:messages:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:output_bytes:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:output_bytes:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:output_bytes:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:prepared_pixels:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:prepared_pixels:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:prepared_pixels:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:requests:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:requests:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:requests:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:text_bytes:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:text_bytes:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:text_bytes:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_batch:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_batch:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_batch:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_request:at",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_request:one-above",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "resource:qwen3.5-9b:tokens_request:one-below",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-resource-boundary"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:invalid-role",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:message-missing-role",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:message-unknown-key",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:messages-not-list",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:missing-image-reference",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:mixed-valid-invalid-batch",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:out-of-range-image-reference",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:request-missing-messages",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:request-unknown-key",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3-vl-8b:wrong-content-type",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3-vl-8b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:invalid-role",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:message-missing-role",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:message-unknown-key",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:messages-not-list",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:missing-image-reference",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:mixed-valid-invalid-batch",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:out-of-range-image-reference",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:request-missing-messages",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:request-unknown-key",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    },
+    {
+      "candidate_executed": true,
+      "case_id": "schema-error:qwen3.5-9b:wrong-content-type",
+      "issues": [],
+      "passed": true,
+      "profile": "qwen3.5-9b",
+      "tier": "live-schema-error"
+    }
+  ],
+  "schema_id": "qwen-mm-phase-c-conformance-report-v1",
+  "schema_version": 1,
+  "scope": {
+    "declared_case_ids": [
+      "arithmetic:qwen3-vl-8b:explicit-resized-pixel-overflow",
+      "arithmetic:qwen3.5-9b:explicit-resized-pixel-overflow",
+      "chat:qwen3-vl-8b-batch-padding-identity",
+      "chat:qwen3-vl-8b-batch-padding-permutation-0",
+      "chat:qwen3-vl-8b-batch-padding-permutation-1",
+      "chat:qwen3-vl-8b-roles-tools",
+      "chat:qwen3-vl-8b-text-adversarial",
+      "chat:qwen3-vl-literal-image-token",
+      "chat:qwen3-vl-rejected-reasoning",
+      "chat:qwen3-vl-rejected-template",
+      "chat:qwen3-vl-rejected-thinking",
+      "chat:qwen3.5-9b-batch-padding-identity",
+      "chat:qwen3.5-9b-batch-padding-permutation-0",
+      "chat:qwen3.5-9b-batch-padding-permutation-1",
+      "chat:qwen3.5-9b-reasoning-extraction",
+      "chat:qwen3.5-9b-roles-tools",
+      "chat:qwen3.5-9b-text-adversarial",
+      "chat:qwen3.5-9b-thinking-default",
+      "chat:qwen3.5-9b-thinking-false",
+      "chat:qwen3.5-9b-thinking-true",
+      "chat:qwen3.5-literal-image-token",
+      "chat:qwen3.5-literal-video-token",
+      "chat:qwen3.5-rejected-truncation",
+      "chat:unknown-profile",
+      "geometry:qwen3-vl-8b:aspect-ratio-200",
+      "geometry:qwen3-vl-8b:aspect-ratio-over-200",
+      "geometry:qwen3-vl-8b:default-min-below",
+      "geometry:qwen3-vl-8b:default-min-edge",
+      "geometry:qwen3-vl-8b:exact-budget",
+      "geometry:qwen3-vl-8b:explicit-max",
+      "geometry:qwen3-vl-8b:explicit-min",
+      "geometry:qwen3-vl-8b:explicit-paired",
+      "geometry:qwen3-vl-8b:explicit-unpaired",
+      "geometry:qwen3-vl-8b:tie-112-up-even",
+      "geometry:qwen3-vl-8b:tie-48-up-even",
+      "geometry:qwen3-vl-8b:tie-80-down-even",
+      "geometry:qwen3.5-9b:aspect-ratio-200",
+      "geometry:qwen3.5-9b:aspect-ratio-over-200",
+      "geometry:qwen3.5-9b:default-min-below",
+      "geometry:qwen3.5-9b:default-min-edge",
+      "geometry:qwen3.5-9b:exact-budget",
+      "geometry:qwen3.5-9b:explicit-max",
+      "geometry:qwen3.5-9b:explicit-min",
+      "geometry:qwen3.5-9b:explicit-paired",
+      "geometry:qwen3.5-9b:explicit-unpaired",
+      "geometry:qwen3.5-9b:tie-112-up-even",
+      "geometry:qwen3.5-9b:tie-48-up-even",
+      "geometry:qwen3.5-9b:tie-80-down-even",
+      "golden:qwen3-vl-8b:corrupt-image",
+      "golden:qwen3-vl-8b:image24",
+      "golden:qwen3-vl-8b:text-smoke",
+      "golden:qwen3.5-9b:corrupt-image",
+      "golden:qwen3.5-9b:image24",
+      "golden:qwen3.5-9b:text-smoke",
+      "heterogeneous:qwen3-vl-8b:identity",
+      "heterogeneous:qwen3-vl-8b:permutation-0",
+      "heterogeneous:qwen3-vl-8b:permutation-1",
+      "heterogeneous:qwen3.5-9b:identity",
+      "heterogeneous:qwen3.5-9b:permutation-0",
+      "heterogeneous:qwen3.5-9b:permutation-1",
+      "media:qwen3-vl-8b:apng-animated-rejected",
+      "media:qwen3-vl-8b:apng-malformed-control-length",
+      "media:qwen3-vl-8b:apng-malformed-zero-frames",
+      "media:qwen3-vl-8b:gif-codec-rejected",
+      "media:qwen3-vl-8b:jpeg-cmyk-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-declared-png-mismatch",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-1-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-2-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-3-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-4-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-5-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-6-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-7-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-8-ignored",
+      "media:qwen3-vl-8b:jpeg-luma-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-malformed-baseline-precision",
+      "media:qwen3-vl-8b:jpeg-malformed-excluded-component-sampling",
+      "media:qwen3-vl-8b:jpeg-malformed-zero-components",
+      "media:qwen3-vl-8b:jpeg-missing-terminal-eoi",
+      "media:qwen3-vl-8b:jpeg-oversized-header",
+      "media:qwen3-vl-8b:jpeg-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-rgb-off-grid-resize",
+      "media:qwen3-vl-8b:jpeg-truncated",
+      "media:qwen3-vl-8b:jpeg-ycck-adobe-transform-2",
+      "media:qwen3-vl-8b:png-16bit-rejected",
+      "media:qwen3-vl-8b:png-la-rejected-by-v1-envelope",
+      "media:qwen3-vl-8b:png-luma-off-grid-resize",
+      "media:qwen3-vl-8b:png-luma-trns-ignored",
+      "media:qwen3-vl-8b:png-malformed-crc-before-excluded-la",
+      "media:qwen3-vl-8b:png-malformed-method-before-excluded-la",
+      "media:qwen3-vl-8b:png-malformed-reserved-color-type",
+      "media:qwen3-vl-8b:png-malformed-rgb-bit-depth",
+      "media:qwen3-vl-8b:png-oversized-header",
+      "media:qwen3-vl-8b:png-palette-rejected",
+      "media:qwen3-vl-8b:png-pixel-bomb-header",
+      "media:qwen3-vl-8b:png-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:png-rgb-trns-ignored",
+      "media:qwen3-vl-8b:png-rgba-white-composite",
+      "media:qwen3-vl-8b:png-truncated",
+      "media:qwen3-vl-8b:png-unusual-aspect-200",
+      "media:qwen3-vl-8b:png-valid-aspect-201-rejected",
+      "media:qwen3-vl-8b:webp-animated-rejected",
+      "media:qwen3-vl-8b:webp-chunk-outside-declared-riff",
+      "media:qwen3-vl-8b:webp-lossless-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:webp-lossless-rgb-off-grid-resize",
+      "media:qwen3-vl-8b:webp-lossless-rgba-white-composite",
+      "media:qwen3-vl-8b:webp-lossy-aligned-no-op",
+      "media:qwen3-vl-8b:webp-lossy-off-grid-resize",
+      "media:qwen3-vl-8b:webp-lossy-rgba-white-composite",
+      "media:qwen3-vl-8b:webp-malformed-extended-length",
+      "media:qwen3-vl-8b:webp-malformed-lossless-version",
+      "media:qwen3-vl-8b:webp-malformed-reserved-animation-flags",
+      "media:qwen3-vl-8b:webp-oversized-header",
+      "media:qwen3-vl-8b:webp-truncated",
+      "media:qwen3.5-9b:apng-animated-rejected",
+      "media:qwen3.5-9b:apng-malformed-control-length",
+      "media:qwen3.5-9b:apng-malformed-zero-frames",
+      "media:qwen3.5-9b:gif-codec-rejected",
+      "media:qwen3.5-9b:jpeg-cmyk-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-declared-png-mismatch",
+      "media:qwen3.5-9b:jpeg-exif-orientation-1-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-2-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-3-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-4-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-5-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-6-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-7-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-8-ignored",
+      "media:qwen3.5-9b:jpeg-luma-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-malformed-baseline-precision",
+      "media:qwen3.5-9b:jpeg-malformed-excluded-component-sampling",
+      "media:qwen3.5-9b:jpeg-malformed-zero-components",
+      "media:qwen3.5-9b:jpeg-missing-terminal-eoi",
+      "media:qwen3.5-9b:jpeg-oversized-header",
+      "media:qwen3.5-9b:jpeg-rgb-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-rgb-off-grid-resize",
+      "media:qwen3.5-9b:jpeg-truncated",
+      "media:qwen3.5-9b:jpeg-ycck-adobe-transform-2",
+      "media:qwen3.5-9b:png-16bit-rejected",
+      "media:qwen3.5-9b:png-la-rejected-by-v1-envelope",
+      "media:qwen3.5-9b:png-luma-off-grid-resize",
+      "media:qwen3.5-9b:png-luma-trns-ignored",
+      "media:qwen3.5-9b:png-malformed-crc-before-excluded-la",
+      "media:qwen3.5-9b:png-malformed-method-before-excluded-la",
+      "media:qwen3.5-9b:png-malformed-reserved-color-type",
+      "media:qwen3.5-9b:png-malformed-rgb-bit-depth",
+      "media:qwen3.5-9b:png-oversized-header",
+      "media:qwen3.5-9b:png-palette-rejected",
+      "media:qwen3.5-9b:png-pixel-bomb-header",
+      "media:qwen3.5-9b:png-rgb-aligned-no-op",
+      "media:qwen3.5-9b:png-rgb-trns-ignored",
+      "media:qwen3.5-9b:png-rgba-white-composite",
+      "media:qwen3.5-9b:png-truncated",
+      "media:qwen3.5-9b:png-unusual-aspect-200",
+      "media:qwen3.5-9b:png-valid-aspect-201-rejected",
+      "media:qwen3.5-9b:webp-animated-rejected",
+      "media:qwen3.5-9b:webp-chunk-outside-declared-riff",
+      "media:qwen3.5-9b:webp-lossless-rgb-aligned-no-op",
+      "media:qwen3.5-9b:webp-lossless-rgb-off-grid-resize",
+      "media:qwen3.5-9b:webp-lossless-rgba-white-composite",
+      "media:qwen3.5-9b:webp-lossy-aligned-no-op",
+      "media:qwen3.5-9b:webp-lossy-off-grid-resize",
+      "media:qwen3.5-9b:webp-lossy-rgba-white-composite",
+      "media:qwen3.5-9b:webp-malformed-extended-length",
+      "media:qwen3.5-9b:webp-malformed-lossless-version",
+      "media:qwen3.5-9b:webp-malformed-reserved-animation-flags",
+      "media:qwen3.5-9b:webp-oversized-header",
+      "media:qwen3.5-9b:webp-truncated",
+      "phase-b:qwen3-vl-8b:interleaved-codecs",
+      "phase-b:qwen3-vl-8b:one-jpeg",
+      "phase-b:qwen3-vl-8b:one-raw-rgb",
+      "phase-b:qwen3-vl-8b:repeat-index-order",
+      "phase-b:qwen3-vl-8b:text-only",
+      "phase-b:qwen3.5-9b:interleaved-codecs",
+      "phase-b:qwen3.5-9b:one-jpeg",
+      "phase-b:qwen3.5-9b:one-raw-rgb",
+      "phase-b:qwen3.5-9b:repeat-index-order",
+      "phase-b:qwen3.5-9b:text-only",
+      "raw-layout:qwen3-vl-8b:channel-sliced-invalid",
+      "raw-layout:qwen3-vl-8b:contiguous-hwc",
+      "raw-layout:qwen3-vl-8b:negative-row-stride",
+      "raw-layout:qwen3-vl-8b:row-padded-hwc",
+      "raw-layout:qwen3.5-9b:channel-sliced-invalid",
+      "raw-layout:qwen3.5-9b:contiguous-hwc",
+      "raw-layout:qwen3.5-9b:negative-row-stride",
+      "raw-layout:qwen3.5-9b:row-padded-hwc",
+      "resource:qwen3-vl-8b:content_items:at",
+      "resource:qwen3-vl-8b:content_items:one-above",
+      "resource:qwen3-vl-8b:content_items:one-below",
+      "resource:qwen3-vl-8b:decoded_pixels:at",
+      "resource:qwen3-vl-8b:decoded_pixels:one-above",
+      "resource:qwen3-vl-8b:decoded_pixels:one-below",
+      "resource:qwen3-vl-8b:edge_length:at",
+      "resource:qwen3-vl-8b:edge_length:one-above",
+      "resource:qwen3-vl-8b:edge_length:one-below",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:at",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:one-above",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:one-below",
+      "resource:qwen3-vl-8b:encoded_bytes_item:at",
+      "resource:qwen3-vl-8b:encoded_bytes_item:one-above",
+      "resource:qwen3-vl-8b:encoded_bytes_item:one-below",
+      "resource:qwen3-vl-8b:media_occurrences_batch:at",
+      "resource:qwen3-vl-8b:media_occurrences_batch:one-above",
+      "resource:qwen3-vl-8b:media_occurrences_batch:one-below",
+      "resource:qwen3-vl-8b:media_occurrences_request:at",
+      "resource:qwen3-vl-8b:media_occurrences_request:one-above",
+      "resource:qwen3-vl-8b:media_occurrences_request:one-below",
+      "resource:qwen3-vl-8b:messages:at",
+      "resource:qwen3-vl-8b:messages:one-above",
+      "resource:qwen3-vl-8b:messages:one-below",
+      "resource:qwen3-vl-8b:output_bytes:at",
+      "resource:qwen3-vl-8b:output_bytes:one-above",
+      "resource:qwen3-vl-8b:output_bytes:one-below",
+      "resource:qwen3-vl-8b:prepared_pixels:at",
+      "resource:qwen3-vl-8b:prepared_pixels:one-above",
+      "resource:qwen3-vl-8b:prepared_pixels:one-below",
+      "resource:qwen3-vl-8b:requests:at",
+      "resource:qwen3-vl-8b:requests:one-above",
+      "resource:qwen3-vl-8b:requests:one-below",
+      "resource:qwen3-vl-8b:text_bytes:at",
+      "resource:qwen3-vl-8b:text_bytes:one-above",
+      "resource:qwen3-vl-8b:text_bytes:one-below",
+      "resource:qwen3-vl-8b:tokens_batch:at",
+      "resource:qwen3-vl-8b:tokens_batch:one-above",
+      "resource:qwen3-vl-8b:tokens_batch:one-below",
+      "resource:qwen3-vl-8b:tokens_request:at",
+      "resource:qwen3-vl-8b:tokens_request:one-above",
+      "resource:qwen3-vl-8b:tokens_request:one-below",
+      "resource:qwen3.5-9b:content_items:at",
+      "resource:qwen3.5-9b:content_items:one-above",
+      "resource:qwen3.5-9b:content_items:one-below",
+      "resource:qwen3.5-9b:decoded_pixels:at",
+      "resource:qwen3.5-9b:decoded_pixels:one-above",
+      "resource:qwen3.5-9b:decoded_pixels:one-below",
+      "resource:qwen3.5-9b:edge_length:at",
+      "resource:qwen3.5-9b:edge_length:one-above",
+      "resource:qwen3.5-9b:edge_length:one-below",
+      "resource:qwen3.5-9b:encoded_bytes_batch:at",
+      "resource:qwen3.5-9b:encoded_bytes_batch:one-above",
+      "resource:qwen3.5-9b:encoded_bytes_batch:one-below",
+      "resource:qwen3.5-9b:encoded_bytes_item:at",
+      "resource:qwen3.5-9b:encoded_bytes_item:one-above",
+      "resource:qwen3.5-9b:encoded_bytes_item:one-below",
+      "resource:qwen3.5-9b:media_occurrences_batch:at",
+      "resource:qwen3.5-9b:media_occurrences_batch:one-above",
+      "resource:qwen3.5-9b:media_occurrences_batch:one-below",
+      "resource:qwen3.5-9b:media_occurrences_request:at",
+      "resource:qwen3.5-9b:media_occurrences_request:one-above",
+      "resource:qwen3.5-9b:media_occurrences_request:one-below",
+      "resource:qwen3.5-9b:messages:at",
+      "resource:qwen3.5-9b:messages:one-above",
+      "resource:qwen3.5-9b:messages:one-below",
+      "resource:qwen3.5-9b:output_bytes:at",
+      "resource:qwen3.5-9b:output_bytes:one-above",
+      "resource:qwen3.5-9b:output_bytes:one-below",
+      "resource:qwen3.5-9b:prepared_pixels:at",
+      "resource:qwen3.5-9b:prepared_pixels:one-above",
+      "resource:qwen3.5-9b:prepared_pixels:one-below",
+      "resource:qwen3.5-9b:requests:at",
+      "resource:qwen3.5-9b:requests:one-above",
+      "resource:qwen3.5-9b:requests:one-below",
+      "resource:qwen3.5-9b:text_bytes:at",
+      "resource:qwen3.5-9b:text_bytes:one-above",
+      "resource:qwen3.5-9b:text_bytes:one-below",
+      "resource:qwen3.5-9b:tokens_batch:at",
+      "resource:qwen3.5-9b:tokens_batch:one-above",
+      "resource:qwen3.5-9b:tokens_batch:one-below",
+      "resource:qwen3.5-9b:tokens_request:at",
+      "resource:qwen3.5-9b:tokens_request:one-above",
+      "resource:qwen3.5-9b:tokens_request:one-below",
+      "schema-error:qwen3-vl-8b:invalid-role",
+      "schema-error:qwen3-vl-8b:message-missing-role",
+      "schema-error:qwen3-vl-8b:message-unknown-key",
+      "schema-error:qwen3-vl-8b:messages-not-list",
+      "schema-error:qwen3-vl-8b:missing-image-reference",
+      "schema-error:qwen3-vl-8b:mixed-valid-invalid-batch",
+      "schema-error:qwen3-vl-8b:out-of-range-image-reference",
+      "schema-error:qwen3-vl-8b:request-missing-messages",
+      "schema-error:qwen3-vl-8b:request-unknown-key",
+      "schema-error:qwen3-vl-8b:wrong-content-type",
+      "schema-error:qwen3.5-9b:invalid-role",
+      "schema-error:qwen3.5-9b:message-missing-role",
+      "schema-error:qwen3.5-9b:message-unknown-key",
+      "schema-error:qwen3.5-9b:messages-not-list",
+      "schema-error:qwen3.5-9b:missing-image-reference",
+      "schema-error:qwen3.5-9b:mixed-valid-invalid-batch",
+      "schema-error:qwen3.5-9b:out-of-range-image-reference",
+      "schema-error:qwen3.5-9b:request-missing-messages",
+      "schema-error:qwen3.5-9b:request-unknown-key",
+      "schema-error:qwen3.5-9b:wrong-content-type"
+    ],
+    "executed_case_ids": [
+      "arithmetic:qwen3-vl-8b:explicit-resized-pixel-overflow",
+      "arithmetic:qwen3.5-9b:explicit-resized-pixel-overflow",
+      "chat:qwen3-vl-8b-batch-padding-identity",
+      "chat:qwen3-vl-8b-batch-padding-permutation-0",
+      "chat:qwen3-vl-8b-batch-padding-permutation-1",
+      "chat:qwen3-vl-8b-roles-tools",
+      "chat:qwen3-vl-8b-text-adversarial",
+      "chat:qwen3-vl-literal-image-token",
+      "chat:qwen3-vl-rejected-reasoning",
+      "chat:qwen3-vl-rejected-template",
+      "chat:qwen3-vl-rejected-thinking",
+      "chat:qwen3.5-9b-batch-padding-identity",
+      "chat:qwen3.5-9b-batch-padding-permutation-0",
+      "chat:qwen3.5-9b-batch-padding-permutation-1",
+      "chat:qwen3.5-9b-reasoning-extraction",
+      "chat:qwen3.5-9b-roles-tools",
+      "chat:qwen3.5-9b-text-adversarial",
+      "chat:qwen3.5-9b-thinking-default",
+      "chat:qwen3.5-9b-thinking-false",
+      "chat:qwen3.5-9b-thinking-true",
+      "chat:qwen3.5-literal-image-token",
+      "chat:qwen3.5-literal-video-token",
+      "chat:qwen3.5-rejected-truncation",
+      "chat:unknown-profile",
+      "geometry:qwen3-vl-8b:aspect-ratio-200",
+      "geometry:qwen3-vl-8b:aspect-ratio-over-200",
+      "geometry:qwen3-vl-8b:default-min-below",
+      "geometry:qwen3-vl-8b:default-min-edge",
+      "geometry:qwen3-vl-8b:exact-budget",
+      "geometry:qwen3-vl-8b:explicit-max",
+      "geometry:qwen3-vl-8b:explicit-min",
+      "geometry:qwen3-vl-8b:explicit-paired",
+      "geometry:qwen3-vl-8b:explicit-unpaired",
+      "geometry:qwen3-vl-8b:tie-112-up-even",
+      "geometry:qwen3-vl-8b:tie-48-up-even",
+      "geometry:qwen3-vl-8b:tie-80-down-even",
+      "geometry:qwen3.5-9b:aspect-ratio-200",
+      "geometry:qwen3.5-9b:aspect-ratio-over-200",
+      "geometry:qwen3.5-9b:default-min-below",
+      "geometry:qwen3.5-9b:default-min-edge",
+      "geometry:qwen3.5-9b:exact-budget",
+      "geometry:qwen3.5-9b:explicit-max",
+      "geometry:qwen3.5-9b:explicit-min",
+      "geometry:qwen3.5-9b:explicit-paired",
+      "geometry:qwen3.5-9b:explicit-unpaired",
+      "geometry:qwen3.5-9b:tie-112-up-even",
+      "geometry:qwen3.5-9b:tie-48-up-even",
+      "geometry:qwen3.5-9b:tie-80-down-even",
+      "golden:qwen3-vl-8b:corrupt-image",
+      "golden:qwen3-vl-8b:image24",
+      "golden:qwen3-vl-8b:text-smoke",
+      "golden:qwen3.5-9b:corrupt-image",
+      "golden:qwen3.5-9b:image24",
+      "golden:qwen3.5-9b:text-smoke",
+      "heterogeneous:qwen3-vl-8b:identity",
+      "heterogeneous:qwen3-vl-8b:permutation-0",
+      "heterogeneous:qwen3-vl-8b:permutation-1",
+      "heterogeneous:qwen3.5-9b:identity",
+      "heterogeneous:qwen3.5-9b:permutation-0",
+      "heterogeneous:qwen3.5-9b:permutation-1",
+      "media:qwen3-vl-8b:apng-animated-rejected",
+      "media:qwen3-vl-8b:apng-malformed-control-length",
+      "media:qwen3-vl-8b:apng-malformed-zero-frames",
+      "media:qwen3-vl-8b:gif-codec-rejected",
+      "media:qwen3-vl-8b:jpeg-cmyk-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-declared-png-mismatch",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-1-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-2-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-3-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-4-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-5-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-6-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-7-ignored",
+      "media:qwen3-vl-8b:jpeg-exif-orientation-8-ignored",
+      "media:qwen3-vl-8b:jpeg-luma-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-malformed-baseline-precision",
+      "media:qwen3-vl-8b:jpeg-malformed-excluded-component-sampling",
+      "media:qwen3-vl-8b:jpeg-malformed-zero-components",
+      "media:qwen3-vl-8b:jpeg-missing-terminal-eoi",
+      "media:qwen3-vl-8b:jpeg-oversized-header",
+      "media:qwen3-vl-8b:jpeg-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:jpeg-rgb-off-grid-resize",
+      "media:qwen3-vl-8b:jpeg-truncated",
+      "media:qwen3-vl-8b:jpeg-ycck-adobe-transform-2",
+      "media:qwen3-vl-8b:png-16bit-rejected",
+      "media:qwen3-vl-8b:png-la-rejected-by-v1-envelope",
+      "media:qwen3-vl-8b:png-luma-off-grid-resize",
+      "media:qwen3-vl-8b:png-luma-trns-ignored",
+      "media:qwen3-vl-8b:png-malformed-crc-before-excluded-la",
+      "media:qwen3-vl-8b:png-malformed-method-before-excluded-la",
+      "media:qwen3-vl-8b:png-malformed-reserved-color-type",
+      "media:qwen3-vl-8b:png-malformed-rgb-bit-depth",
+      "media:qwen3-vl-8b:png-oversized-header",
+      "media:qwen3-vl-8b:png-palette-rejected",
+      "media:qwen3-vl-8b:png-pixel-bomb-header",
+      "media:qwen3-vl-8b:png-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:png-rgb-trns-ignored",
+      "media:qwen3-vl-8b:png-rgba-white-composite",
+      "media:qwen3-vl-8b:png-truncated",
+      "media:qwen3-vl-8b:png-unusual-aspect-200",
+      "media:qwen3-vl-8b:png-valid-aspect-201-rejected",
+      "media:qwen3-vl-8b:webp-animated-rejected",
+      "media:qwen3-vl-8b:webp-chunk-outside-declared-riff",
+      "media:qwen3-vl-8b:webp-lossless-rgb-aligned-no-op",
+      "media:qwen3-vl-8b:webp-lossless-rgb-off-grid-resize",
+      "media:qwen3-vl-8b:webp-lossless-rgba-white-composite",
+      "media:qwen3-vl-8b:webp-lossy-aligned-no-op",
+      "media:qwen3-vl-8b:webp-lossy-off-grid-resize",
+      "media:qwen3-vl-8b:webp-lossy-rgba-white-composite",
+      "media:qwen3-vl-8b:webp-malformed-extended-length",
+      "media:qwen3-vl-8b:webp-malformed-lossless-version",
+      "media:qwen3-vl-8b:webp-malformed-reserved-animation-flags",
+      "media:qwen3-vl-8b:webp-oversized-header",
+      "media:qwen3-vl-8b:webp-truncated",
+      "media:qwen3.5-9b:apng-animated-rejected",
+      "media:qwen3.5-9b:apng-malformed-control-length",
+      "media:qwen3.5-9b:apng-malformed-zero-frames",
+      "media:qwen3.5-9b:gif-codec-rejected",
+      "media:qwen3.5-9b:jpeg-cmyk-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-declared-png-mismatch",
+      "media:qwen3.5-9b:jpeg-exif-orientation-1-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-2-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-3-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-4-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-5-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-6-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-7-ignored",
+      "media:qwen3.5-9b:jpeg-exif-orientation-8-ignored",
+      "media:qwen3.5-9b:jpeg-luma-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-malformed-baseline-precision",
+      "media:qwen3.5-9b:jpeg-malformed-excluded-component-sampling",
+      "media:qwen3.5-9b:jpeg-malformed-zero-components",
+      "media:qwen3.5-9b:jpeg-missing-terminal-eoi",
+      "media:qwen3.5-9b:jpeg-oversized-header",
+      "media:qwen3.5-9b:jpeg-rgb-aligned-no-op",
+      "media:qwen3.5-9b:jpeg-rgb-off-grid-resize",
+      "media:qwen3.5-9b:jpeg-truncated",
+      "media:qwen3.5-9b:jpeg-ycck-adobe-transform-2",
+      "media:qwen3.5-9b:png-16bit-rejected",
+      "media:qwen3.5-9b:png-la-rejected-by-v1-envelope",
+      "media:qwen3.5-9b:png-luma-off-grid-resize",
+      "media:qwen3.5-9b:png-luma-trns-ignored",
+      "media:qwen3.5-9b:png-malformed-crc-before-excluded-la",
+      "media:qwen3.5-9b:png-malformed-method-before-excluded-la",
+      "media:qwen3.5-9b:png-malformed-reserved-color-type",
+      "media:qwen3.5-9b:png-malformed-rgb-bit-depth",
+      "media:qwen3.5-9b:png-oversized-header",
+      "media:qwen3.5-9b:png-palette-rejected",
+      "media:qwen3.5-9b:png-pixel-bomb-header",
+      "media:qwen3.5-9b:png-rgb-aligned-no-op",
+      "media:qwen3.5-9b:png-rgb-trns-ignored",
+      "media:qwen3.5-9b:png-rgba-white-composite",
+      "media:qwen3.5-9b:png-truncated",
+      "media:qwen3.5-9b:png-unusual-aspect-200",
+      "media:qwen3.5-9b:png-valid-aspect-201-rejected",
+      "media:qwen3.5-9b:webp-animated-rejected",
+      "media:qwen3.5-9b:webp-chunk-outside-declared-riff",
+      "media:qwen3.5-9b:webp-lossless-rgb-aligned-no-op",
+      "media:qwen3.5-9b:webp-lossless-rgb-off-grid-resize",
+      "media:qwen3.5-9b:webp-lossless-rgba-white-composite",
+      "media:qwen3.5-9b:webp-lossy-aligned-no-op",
+      "media:qwen3.5-9b:webp-lossy-off-grid-resize",
+      "media:qwen3.5-9b:webp-lossy-rgba-white-composite",
+      "media:qwen3.5-9b:webp-malformed-extended-length",
+      "media:qwen3.5-9b:webp-malformed-lossless-version",
+      "media:qwen3.5-9b:webp-malformed-reserved-animation-flags",
+      "media:qwen3.5-9b:webp-oversized-header",
+      "media:qwen3.5-9b:webp-truncated",
+      "phase-b:qwen3-vl-8b:interleaved-codecs",
+      "phase-b:qwen3-vl-8b:one-jpeg",
+      "phase-b:qwen3-vl-8b:one-raw-rgb",
+      "phase-b:qwen3-vl-8b:repeat-index-order",
+      "phase-b:qwen3-vl-8b:text-only",
+      "phase-b:qwen3.5-9b:interleaved-codecs",
+      "phase-b:qwen3.5-9b:one-jpeg",
+      "phase-b:qwen3.5-9b:one-raw-rgb",
+      "phase-b:qwen3.5-9b:repeat-index-order",
+      "phase-b:qwen3.5-9b:text-only",
+      "raw-layout:qwen3-vl-8b:channel-sliced-invalid",
+      "raw-layout:qwen3-vl-8b:contiguous-hwc",
+      "raw-layout:qwen3-vl-8b:negative-row-stride",
+      "raw-layout:qwen3-vl-8b:row-padded-hwc",
+      "raw-layout:qwen3.5-9b:channel-sliced-invalid",
+      "raw-layout:qwen3.5-9b:contiguous-hwc",
+      "raw-layout:qwen3.5-9b:negative-row-stride",
+      "raw-layout:qwen3.5-9b:row-padded-hwc",
+      "resource:qwen3-vl-8b:content_items:at",
+      "resource:qwen3-vl-8b:content_items:one-above",
+      "resource:qwen3-vl-8b:content_items:one-below",
+      "resource:qwen3-vl-8b:decoded_pixels:at",
+      "resource:qwen3-vl-8b:decoded_pixels:one-above",
+      "resource:qwen3-vl-8b:decoded_pixels:one-below",
+      "resource:qwen3-vl-8b:edge_length:at",
+      "resource:qwen3-vl-8b:edge_length:one-above",
+      "resource:qwen3-vl-8b:edge_length:one-below",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:at",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:one-above",
+      "resource:qwen3-vl-8b:encoded_bytes_batch:one-below",
+      "resource:qwen3-vl-8b:encoded_bytes_item:at",
+      "resource:qwen3-vl-8b:encoded_bytes_item:one-above",
+      "resource:qwen3-vl-8b:encoded_bytes_item:one-below",
+      "resource:qwen3-vl-8b:media_occurrences_batch:at",
+      "resource:qwen3-vl-8b:media_occurrences_batch:one-above",
+      "resource:qwen3-vl-8b:media_occurrences_batch:one-below",
+      "resource:qwen3-vl-8b:media_occurrences_request:at",
+      "resource:qwen3-vl-8b:media_occurrences_request:one-above",
+      "resource:qwen3-vl-8b:media_occurrences_request:one-below",
+      "resource:qwen3-vl-8b:messages:at",
+      "resource:qwen3-vl-8b:messages:one-above",
+      "resource:qwen3-vl-8b:messages:one-below",
+      "resource:qwen3-vl-8b:output_bytes:at",
+      "resource:qwen3-vl-8b:output_bytes:one-above",
+      "resource:qwen3-vl-8b:output_bytes:one-below",
+      "resource:qwen3-vl-8b:prepared_pixels:at",
+      "resource:qwen3-vl-8b:prepared_pixels:one-above",
+      "resource:qwen3-vl-8b:prepared_pixels:one-below",
+      "resource:qwen3-vl-8b:requests:at",
+      "resource:qwen3-vl-8b:requests:one-above",
+      "resource:qwen3-vl-8b:requests:one-below",
+      "resource:qwen3-vl-8b:text_bytes:at",
+      "resource:qwen3-vl-8b:text_bytes:one-above",
+      "resource:qwen3-vl-8b:text_bytes:one-below",
+      "resource:qwen3-vl-8b:tokens_batch:at",
+      "resource:qwen3-vl-8b:tokens_batch:one-above",
+      "resource:qwen3-vl-8b:tokens_batch:one-below",
+      "resource:qwen3-vl-8b:tokens_request:at",
+      "resource:qwen3-vl-8b:tokens_request:one-above",
+      "resource:qwen3-vl-8b:tokens_request:one-below",
+      "resource:qwen3.5-9b:content_items:at",
+      "resource:qwen3.5-9b:content_items:one-above",
+      "resource:qwen3.5-9b:content_items:one-below",
+      "resource:qwen3.5-9b:decoded_pixels:at",
+      "resource:qwen3.5-9b:decoded_pixels:one-above",
+      "resource:qwen3.5-9b:decoded_pixels:one-below",
+      "resource:qwen3.5-9b:edge_length:at",
+      "resource:qwen3.5-9b:edge_length:one-above",
+      "resource:qwen3.5-9b:edge_length:one-below",
+      "resource:qwen3.5-9b:encoded_bytes_batch:at",
+      "resource:qwen3.5-9b:encoded_bytes_batch:one-above",
+      "resource:qwen3.5-9b:encoded_bytes_batch:one-below",
+      "resource:qwen3.5-9b:encoded_bytes_item:at",
+      "resource:qwen3.5-9b:encoded_bytes_item:one-above",
+      "resource:qwen3.5-9b:encoded_bytes_item:one-below",
+      "resource:qwen3.5-9b:media_occurrences_batch:at",
+      "resource:qwen3.5-9b:media_occurrences_batch:one-above",
+      "resource:qwen3.5-9b:media_occurrences_batch:one-below",
+      "resource:qwen3.5-9b:media_occurrences_request:at",
+      "resource:qwen3.5-9b:media_occurrences_request:one-above",
+      "resource:qwen3.5-9b:media_occurrences_request:one-below",
+      "resource:qwen3.5-9b:messages:at",
+      "resource:qwen3.5-9b:messages:one-above",
+      "resource:qwen3.5-9b:messages:one-below",
+      "resource:qwen3.5-9b:output_bytes:at",
+      "resource:qwen3.5-9b:output_bytes:one-above",
+      "resource:qwen3.5-9b:output_bytes:one-below",
+      "resource:qwen3.5-9b:prepared_pixels:at",
+      "resource:qwen3.5-9b:prepared_pixels:one-above",
+      "resource:qwen3.5-9b:prepared_pixels:one-below",
+      "resource:qwen3.5-9b:requests:at",
+      "resource:qwen3.5-9b:requests:one-above",
+      "resource:qwen3.5-9b:requests:one-below",
+      "resource:qwen3.5-9b:text_bytes:at",
+      "resource:qwen3.5-9b:text_bytes:one-above",
+      "resource:qwen3.5-9b:text_bytes:one-below",
+      "resource:qwen3.5-9b:tokens_batch:at",
+      "resource:qwen3.5-9b:tokens_batch:one-above",
+      "resource:qwen3.5-9b:tokens_batch:one-below",
+      "resource:qwen3.5-9b:tokens_request:at",
+      "resource:qwen3.5-9b:tokens_request:one-above",
+      "resource:qwen3.5-9b:tokens_request:one-below",
+      "schema-error:qwen3-vl-8b:invalid-role",
+      "schema-error:qwen3-vl-8b:message-missing-role",
+      "schema-error:qwen3-vl-8b:message-unknown-key",
+      "schema-error:qwen3-vl-8b:messages-not-list",
+      "schema-error:qwen3-vl-8b:missing-image-reference",
+      "schema-error:qwen3-vl-8b:mixed-valid-invalid-batch",
+      "schema-error:qwen3-vl-8b:out-of-range-image-reference",
+      "schema-error:qwen3-vl-8b:request-missing-messages",
+      "schema-error:qwen3-vl-8b:request-unknown-key",
+      "schema-error:qwen3-vl-8b:wrong-content-type",
+      "schema-error:qwen3.5-9b:invalid-role",
+      "schema-error:qwen3.5-9b:message-missing-role",
+      "schema-error:qwen3.5-9b:message-unknown-key",
+      "schema-error:qwen3.5-9b:messages-not-list",
+      "schema-error:qwen3.5-9b:missing-image-reference",
+      "schema-error:qwen3.5-9b:mixed-valid-invalid-batch",
+      "schema-error:qwen3.5-9b:out-of-range-image-reference",
+      "schema-error:qwen3.5-9b:request-missing-messages",
+      "schema-error:qwen3.5-9b:request-unknown-key",
+      "schema-error:qwen3.5-9b:wrong-content-type"
+    ],
+    "kind": "text_image",
+    "profiles": [
+      "qwen3-vl-8b",
+      "qwen3.5-9b"
+    ],
+    "skipped_case_ids": []
+  },
+  "source_fingerprint": "5fcc18554382cc284cef5981664d650d86b2d0f0323b5f1117b00799020bc84b",
+  "status": "pass"
+}

@@ -1,0 +1,13 @@
+commit 34ae4b0df63bebd0a1ffe0039fdd44b4563debec
+Author:     D3 Copy Conformance <d3-copy-conformance@example.invalid>
+AuthorDate: Mon Aug 3 12:47:27 2026 -0400
+Commit:     D3 Copy Conformance <d3-copy-conformance@example.invalid>
+CommitDate: Mon Aug 3 12:47:36 2026 -0400
+
+    perf(d3-copy-only): conformance candidate
+
+ crates/qwen-mm-core/src/media.rs     |  44 +++++
+ crates/qwen-mm-core/src/patchify.rs  |  33 +++-
+ crates/qwen-mm-core/src/processor.rs |  86 +++++++-
+ crates/qwen-mm-core/src/resize.rs    | 374 ++++++++++++++++++++++++-----------
+ 4 files changed, 419 insertions(+), 118 deletions(-)

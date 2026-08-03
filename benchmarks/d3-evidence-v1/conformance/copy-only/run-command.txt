@@ -1,0 +1,16 @@
+Repository clone: /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo
+Base commit: f92a3ab8860445af1f6abeb31f996024aef1b64f
+Candidate commit: 34ae4b0df63bebd0a1ffe0039fdd44b4563debec
+Patch: /private/tmp/qwen-mm-d3-676e/benchmarks/d3-evidence-v1/copy-only.patch
+Patch SHA-256: fac134ba9b52a2d8a33fff29b97e1a8ad5b7431c4dcc9cf8d520de9b79d0b124
+Asset link: reference/.cache/huggingface -> /Users/jim/code/qwen-mm/reference/.cache/huggingface
+
+UV_CACHE_DIR=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/cache/uv \
+UV_PROJECT_ENVIRONMENT=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/cache/venv \
+CARGO_TARGET_DIR=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/cache/cargo-target \
+TMPDIR=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp \
+PHASE_C_ASSETS_ROOT=reference/.cache/huggingface \
+PHASE_C_REPORT_OUTPUT=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/report.json \
+PHASE_C_SUMMARY_OUTPUT=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/summary.md \
+PHASE_C_ARTIFACT_OUTPUT=/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/artifacts \
+make phase-c-conformance

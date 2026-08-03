@@ -2656,12 +2656,12 @@ mod tests {
         let report = observed.report;
         assert_eq!(report.calls.native_batch_calls, 1);
         assert_eq!(report.calls.native_visual_calls, 3);
-        assert_eq!(report.allocations.copy_count, 6);
+        assert_eq!(report.allocations.copy_count, 2);
         assert_eq!(
             report.allocations.copied_bytes,
-            u64::try_from((raw.len() * 2 + 64 * 64 * 3) * 2).expect("copy bytes")
+            u64::try_from(raw.len() * 2).expect("copy bytes")
         );
-        assert_eq!(report.copies.len(), 6);
+        assert_eq!(report.copies.len(), 2);
         assert_eq!(
             report.copies.iter().map(|copy| copy.bytes).sum::<u64>(),
             report.allocations.copied_bytes
@@ -2672,7 +2672,7 @@ mod tests {
                 .iter()
                 .filter(|copy| copy.name == "resize.packed_source")
                 .count(),
-            3
+            0
         );
         assert_eq!(
             report
@@ -2680,15 +2680,25 @@ mod tests {
                 .iter()
                 .filter(|copy| copy.name == "resize.noop.source_copy")
                 .count(),
-            3
+            2
         );
+        assert!(
+            report
+                .buffers
+                .iter()
+                .all(|buffer| buffer.name != "resize.packed_source")
+        );
+        assert!(report.copies.iter().all(|copy| {
+            copy.name != "resize.packed_source"
+                && (copy.scope.media_index != Some(2) || copy.name != "resize.noop.source_copy")
+        }));
         assert_eq!(
             report
                 .copies
                 .iter()
                 .map(|copy| copy.scope.media_index)
                 .collect::<Vec<_>>(),
-            vec![Some(0), Some(0), Some(1), Some(1), Some(2), Some(2)]
+            vec![Some(0), Some(1)]
         );
         assert_eq!(report.allocations.transient_live_bytes, 0);
         assert!(report.allocations.peak_transient_live_bytes > 0);
@@ -2730,6 +2740,70 @@ mod tests {
                 (Some(1), Some(0), Some(0), Some(2), Some(0)),
             ]
         );
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    fn packed_and_padded_rgb_are_bit_exact_end_to_end_for_both_profiles() {
+        const HEIGHT: usize = 65;
+        const WIDTH: usize = 95;
+        const ROW_BYTES: usize = WIDTH * 3;
+        const PADDED_STRIDE: usize = ROW_BYTES + 7;
+        let packed = (0_u8..=u8::MAX)
+            .cycle()
+            .take(HEIGHT * ROW_BYTES)
+            .collect::<Vec<_>>();
+        let mut padded = vec![0xa5_u8; HEIGHT * PADDED_STRIDE];
+        for row in 0..HEIGHT {
+            padded[row * PADDED_STRIDE..row * PADDED_STRIDE + ROW_BYTES]
+                .copy_from_slice(&packed[row * ROW_BYTES..(row + 1) * ROW_BYTES]);
+        }
+        let items = [ContentItem::Image(ImageRef::default())];
+        let messages = [message(Role::User, MessageContent::Items(&items))];
+
+        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+            let processor = processor(alias, ResourceLimits::default());
+            let packed_images = [ImageInput::Rgb8(Rgb8 {
+                data: &packed,
+                height: HEIGHT,
+                width: WIDTH,
+                row_stride: ROW_BYTES,
+            })];
+            let packed_requests = [Request {
+                messages: &messages,
+                images: &packed_images,
+                videos: &[],
+                options: RequestOptions::default(),
+            }];
+            let packed_output = processor
+                .prepare_batch(&packed_requests)
+                .expect("packed batch");
+
+            let padded_images = [ImageInput::Rgb8(Rgb8 {
+                data: &padded,
+                height: HEIGHT,
+                width: WIDTH,
+                row_stride: PADDED_STRIDE,
+            })];
+            let padded_requests = [Request {
+                messages: &messages,
+                images: &padded_images,
+                videos: &[],
+                options: RequestOptions::default(),
+            }];
+            let padded_output = processor
+                .prepare_batch(&padded_requests)
+                .expect("padded batch");
+
+            assert_eq!(packed_output, padded_output, "profile={alias:?}");
+            let pixels = padded_output
+                .batch
+                .arrays()
+                .pixel_values
+                .as_ref()
+                .expect("pixels");
+            assert_eq!(pixels.byte_strides().expect("strides"), [6_144, 4]);
+        }
     }
 
     #[test]

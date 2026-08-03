@@ -1,0 +1,61 @@
+PHASE_C_ASSETS_ROOT="/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/reference/.cache/huggingface" ./scripts/test-phase-c-conformance.sh
+Using CPython 3.11.15
+Creating virtual environment at: /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/cache/venv
+WARN Retry attempt #0. Sleeping 1.453606574s before the next attempt
+WARN Retry attempt #0. Sleeping 1.880483301s before the next attempt
+WARN Retry attempt #0. Sleeping 1.507920417s before the next attempt
+   Building qwen-mm @ file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo
+WARN Retry attempt #0. Sleeping 1.533726377s before the next attempt
+WARN Retry attempt #0. Sleeping 1.137692136s before the next attempt
+WARN Retry attempt #0. Sleeping 1.919353449s before the next attempt
+WARN Retry attempt #0. Sleeping 1.812052824s before the next attempt
+WARN Retry attempt #0. Sleeping 1.779291297s before the next attempt
+WARN Retry attempt #0. Sleeping 1.735984037s before the next attempt
+WARN Retry attempt #0. Sleeping 1.238163091s before the next attempt
+WARN Retry attempt #0. Sleeping 1.720301942s before the next attempt
+WARN Retry attempt #0. Sleeping 1.459453551s before the next attempt
+WARN Retry attempt #0. Sleeping 1.286130307s before the next attempt
+WARN Retry attempt #0. Sleeping 1.022235964s before the next attempt
+WARN Retry attempt #0. Sleeping 1.988668833s before the next attempt
+WARN Retry attempt #1. Sleeping 3.199567024s before the next attempt
+WARN Retry attempt #1. Sleeping 3.916992231s before the next attempt
+WARN Retry attempt #1. Sleeping 3.502601257s before the next attempt
+WARN Retry attempt #1. Sleeping 3.484070552s before the next attempt
+WARN Retry attempt #1. Sleeping 2.442923064s before the next attempt
+WARN Retry attempt #1. Sleeping 1.620320137s before the next attempt
+WARN Retry attempt #1. Sleeping 2.184059684s before the next attempt
+WARN Retry attempt #1. Sleeping 3.312979834s before the next attempt
+WARN Retry attempt #1. Sleeping 1.089802644s before the next attempt
+WARN Retry attempt #1. Sleeping 2.91034643s before the next attempt
+WARN Retry attempt #1. Sleeping 1.640648784s before the next attempt
+WARN Retry attempt #1. Sleeping 2.863175578s before the next attempt
+WARN Retry attempt #1. Sleeping 3.070737755s before the next attempt
+WARN Retry attempt #1. Sleeping 2.42675104s before the next attempt
+WARN Retry attempt #1. Sleeping 1.890935988s before the next attempt
+WARN Retry attempt #2. Sleeping 3.779422075s before the next attempt
+WARN Retry attempt #2. Sleeping 2.431356193s before the next attempt
+WARN Retry attempt #2. Sleeping 6.126343579s before the next attempt
+WARN Retry attempt #2. Sleeping 5.69236979s before the next attempt
+WARN Retry attempt #2. Sleeping 3.010553115s before the next attempt
+WARN Retry attempt #2. Sleeping 4.373910692s before the next attempt
+WARN Retry attempt #2. Sleeping 4.396547025s before the next attempt
+WARN Retry attempt #2. Sleeping 1.310554609s before the next attempt
+WARN Retry attempt #2. Sleeping 7.104471052s before the next attempt
+WARN Retry attempt #2. Sleeping 4.963004459s before the next attempt
+WARN Retry attempt #2. Sleeping 6.691048664s before the next attempt
+WARN Retry attempt #2. Sleeping 7.86125846s before the next attempt
+WARN Retry attempt #2. Sleeping 3.675284545s before the next attempt
+WARN Retry attempt #2. Sleeping 7.003245862s before the next attempt
+WARN Retry attempt #2. Sleeping 2.366324898s before the next attempt
+  × Failed to download `nodeenv==1.10.0`
+  ├─▶ Request failed after 3 retries in 5.5s
+  ├─▶ Failed to fetch:
+  │   `https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl`
+  ├─▶ error sending request for url
+  │   (https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl)
+  ├─▶ client error (Connect)
+  ├─▶ dns error
+  ╰─▶ failed to lookup address information: nodename nor servname provided, or
+      not known
+
+hint: `nodeenv` (v1.10.0) was included because `qwen-mm:dev` (v0.1.0) depends on `pre-commit` (v4.6.1) which depends on `nodeenv`make: *** [phase-c-conformance] Error 1

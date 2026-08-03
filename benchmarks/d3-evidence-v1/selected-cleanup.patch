@@ -1,0 +1,58 @@
+diff --git a/crates/qwen-mm-core/src/patchify.rs b/crates/qwen-mm-core/src/patchify.rs
+index aa69bf0..54005bc 100644
+--- a/crates/qwen-mm-core/src/patchify.rs
++++ b/crates/qwen-mm-core/src/patchify.rs
+@@ -333,18 +333,6 @@ pub(crate) fn execute_image_patchify_plan_into(
+     }
+ }
+ 
+-fn normalization_lookup(visual: &VisualProfile) -> [[f32; 256]; 3] {
+-    let (means, stds) = fused_normalization_constants(visual);
+-    let mut normalized = [[0.0_f32; 256]; 3];
+-    for channel in 0..3 {
+-        for value in 0_u8..=u8::MAX {
+-            normalized[channel][usize::from(value)] =
+-                (f32::from(value) - means[channel]) / stds[channel];
+-        }
+-    }
+-    normalized
+-}
+-
+ #[allow(clippy::cast_possible_truncation)]
+ fn fused_normalization_constants(visual: &VisualProfile) -> ([f32; 3], [f32; 3]) {
+     // This intentionally mirrors the pinned Torch backend: construct f32
+@@ -479,7 +467,7 @@ fn overflow(message: impl Into<String>) -> QwenError {
+ 
+ #[cfg(test)]
+ mod tests {
+-    use super::{normalization_lookup, patchify_image_rgb8, plan_image_patchify};
++    use super::{patchify_image_rgb8, plan_image_patchify};
+     use crate::{
+         error::ErrorCategory,
+         geometry::{ImageGeometryPlan, plan_image_geometry},
+@@ -566,25 +554,6 @@ mod tests {
+         );
+     }
+ 
+-    #[test]
+-    fn bounded_normalization_lookup_is_bit_exact_for_both_profiles_and_all_u8_values() {
+-        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+-            let visual = visual(alias);
+-            let lookup = normalization_lookup(&visual);
+-            for (channel, channel_values) in lookup.iter().enumerate() {
+-                for value in 0_u8..=u8::MAX {
+-                    let expected =
+-                        normalized(value, visual.image_mean[channel], visual.image_std[channel]);
+-                    assert_eq!(
+-                        channel_values[usize::from(value)].to_bits(),
+-                        expected.to_bits(),
+-                        "profile={alias:?}, channel={channel}, value={value}"
+-                    );
+-                }
+-            }
+-        }
+-    }
+-
+     #[test]
+     fn asymmetric_data_asserts_merged_patch_rows_and_inner_flattening_independently() {
+         let visual = visual(ProfileAlias::Qwen3Vl8b);

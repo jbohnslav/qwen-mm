@@ -1,0 +1,53 @@
+Using CPython 3.11.15
+Creating virtual environment at: .venv
+WARN Retry attempt #0. Sleeping 1.339583193s before the next attempt
+WARN Retry attempt #0. Sleeping 1.164546351s before the next attempt
+WARN Retry attempt #0. Sleeping 1.217879693s before the next attempt
+WARN Retry attempt #0. Sleeping 1.015749877s before the next attempt
+WARN Retry attempt #0. Sleeping 1.158070912s before the next attempt
+WARN Retry attempt #0. Sleeping 1.250882508s before the next attempt
+WARN Retry attempt #0. Sleeping 1.932668594s before the next attempt
+WARN Retry attempt #0. Sleeping 1.38194932s before the next attempt
+WARN Retry attempt #0. Sleeping 1.63390471s before the next attempt
+WARN Retry attempt #0. Sleeping 1.869140174s before the next attempt
+WARN Retry attempt #0. Sleeping 1.126665454s before the next attempt
+WARN Retry attempt #0. Sleeping 1.49108615s before the next attempt
+WARN Retry attempt #0. Sleeping 1.835036455s before the next attempt
+   Building qwen-mm @ file:///private/tmp/qwen-mm-d3-no-lut.fGk40p/repo
+WARN Retry attempt #0. Sleeping 1.564428896s before the next attempt
+WARN Retry attempt #0. Sleeping 1.783883751s before the next attempt
+WARN Retry attempt #1. Sleeping 1.972754288s before the next attempt
+WARN Retry attempt #1. Sleeping 3.401323984s before the next attempt
+WARN Retry attempt #1. Sleeping 2.250341141s before the next attempt
+WARN Retry attempt #1. Sleeping 2.909042335s before the next attempt
+WARN Retry attempt #1. Sleeping 3.81608603s before the next attempt
+WARN Retry attempt #1. Sleeping 1.821932176s before the next attempt
+WARN Retry attempt #1. Sleeping 1.000697149s before the next attempt
+WARN Retry attempt #1. Sleeping 1.65816606s before the next attempt
+WARN Retry attempt #1. Sleeping 1.058459239s before the next attempt
+WARN Retry attempt #1. Sleeping 2.214255491s before the next attempt
+WARN Retry attempt #1. Sleeping 3.303777725s before the next attempt
+WARN Retry attempt #1. Sleeping 3.255035253s before the next attempt
+WARN Retry attempt #1. Sleeping 2.801392334s before the next attempt
+WARN Retry attempt #1. Sleeping 1.529979579s before the next attempt
+WARN Retry attempt #1. Sleeping 1.568744562s before the next attempt
+WARN Retry attempt #2. Sleeping 7.365809996s before the next attempt
+WARN Retry attempt #2. Sleeping 1.220730237s before the next attempt
+WARN Retry attempt #2. Sleeping 4.860417131s before the next attempt
+WARN Retry attempt #2. Sleeping 3.163837291s before the next attempt
+WARN Retry attempt #2. Sleeping 7.320143256s before the next attempt
+WARN Retry attempt #2. Sleeping 6.576618491s before the next attempt
+WARN Retry attempt #2. Sleeping 3.900939019s before the next attempt
+WARN Retry attempt #2. Sleeping 3.628515264s before the next attempt
+  × Failed to download `nodeenv==1.10.0`
+  ├─▶ Request failed after 3 retries in 3.8s
+  ├─▶ Failed to fetch:
+  │   `https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl`
+  ├─▶ error sending request for url
+  │   (https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl)
+  ├─▶ client error (Connect)
+  ├─▶ dns error
+  ╰─▶ failed to lookup address information: nodename nor servname provided, or
+      not known
+
+hint: `nodeenv` (v1.10.0) was included because `qwen-mm:dev` (v0.1.0) depends on `pre-commit` (v4.6.1) which depends on `nodeenv`

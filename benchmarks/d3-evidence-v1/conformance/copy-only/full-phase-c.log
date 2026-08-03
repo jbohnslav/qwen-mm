@@ -1,0 +1,180 @@
+PHASE_C_ASSETS_ROOT="/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/reference/.cache/huggingface" ./scripts/test-phase-c-conformance.sh
+   Building qwen-mm @ file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo
+Downloading numpy (5.2MiB)
+Downloading py-spy (3.5MiB)
+Downloading maturin (18.8MiB)
+Downloading ruff (10.1MiB)
+Downloading virtualenv (5.2MiB)
+ Downloaded py-spy
+ Downloaded numpy
+ Downloaded virtualenv
+ Downloaded ruff
+ Downloaded maturin
+      Built qwen-mm @ file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo
+Installed 15 packages in 13ms
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/jim/.local/share/uv/python/cpython-3.11-macos-aarch64-none/bin/python3.11
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling libc v0.2.189
+   Compiling autocfg v1.5.1
+   Compiling cfg-if v1.0.4
+   Compiling target-lexicon v0.13.5
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.229
+   Compiling crossbeam-utils v0.8.22
+   Compiling getrandom v0.3.4
+   Compiling ident_case v1.0.1
+   Compiling zerocopy v0.8.55
+   Compiling serde v1.0.229
+   Compiling crossbeam-epoch v0.9.20
+   Compiling memchr v2.8.3
+   Compiling fnv v1.0.7
+   Compiling strsim v0.11.1
+   Compiling num-traits v0.2.19
+   Compiling generic-array v0.14.7
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling crossbeam-deque v0.8.7
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling cc v1.4.0
+   Compiling pyo3-build-config v0.29.0
+   Compiling typenum v1.20.1
+   Compiling rayon-core v1.13.0
+   Compiling pkg-config v0.3.33
+   Compiling crc32fast v1.5.0
+   Compiling rustversion v1.0.23
+   Compiling simd-adler32 v0.3.10
+   Compiling once_cell v1.21.4
+   Compiling pyo3-ffi v0.29.0
+   Compiling onig_sys v69.9.3
+   Compiling bitflags v2.13.1
+   Compiling thiserror v2.0.19
+   Compiling either v1.17.0
+   Compiling adler2 v2.0.1
+   Compiling zmij v1.0.23
+   Compiling miniz_oxide v0.8.9
+   Compiling pyo3 v0.29.0
+   Compiling rand_core v0.9.5
+   Compiling aho-corasick v1.1.4
+   Compiling matrixmultiply v0.3.11
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.19
+   Compiling ahash v0.8.12
+   Compiling itoa v1.0.18
+   Compiling heck v0.5.0
+   Compiling esaxx-rs v0.1.10
+   Compiling paste v1.0.15
+   Compiling serde_json v1.0.151
+   Compiling minimal-lexical v0.2.1
+   Compiling regex-syntax v0.8.11
+   Compiling darling_core v0.20.11
+   Compiling nom v7.1.3
+   Compiling pyo3-macros-backend v0.29.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling regex-automata v0.4.16
+   Compiling monostate-impl v0.1.18
+   Compiling castaway v0.2.4
+   Compiling flate2 v1.1.9
+   Compiling rayon v1.12.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling itertools v0.14.0
+   Compiling fdeflate v0.3.7
+   Compiling darling_macro v0.20.11
+   Compiling unicode-segmentation v1.13.3
+   Compiling darling v0.20.11
+   Compiling macro_rules_attribute-proc_macro v0.2.3
+   Compiling quick-error v2.0.1
+   Compiling base64 v0.13.1
+   Compiling pxfm v0.1.30
+   Compiling derive_builder_core v0.20.2
+   Compiling ryu v1.0.23
+   Compiling byteorder-lite v0.1.0
+   Compiling smallvec v1.15.2
+   Compiling rawpointer v0.2.1
+   Compiling static_assertions v1.1.0
+   Compiling pastey v0.2.3
+   Compiling unicode-normalization-alignments v0.1.12
+   Compiling image-webp v0.2.4
+   Compiling compact_str v0.9.1
+   Compiling macro_rules_attribute v0.2.3
+   Compiling onig v6.5.3
+   Compiling regex v1.13.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling spm_precompiled v0.1.4
+   Compiling derive_builder v0.20.2
+   Compiling dary_heap v0.3.9
+   Compiling rayon-cond v0.4.0
+   Compiling png v0.18.1
+   Compiling digest v0.10.7
+   Compiling monostate v0.1.18
+   Compiling rand v0.9.5
+   Compiling pyo3-macros v0.29.0
+   Compiling numpy v0.29.0
+   Compiling num-complex v0.4.6
+   Compiling num-integer v0.1.46
+   Compiling cpufeatures v0.2.17
+   Compiling log v0.4.33
+   Compiling unicode_categories v0.1.1
+   Compiling bytemuck v1.25.2
+   Compiling sha2 v0.10.9
+   Compiling ndarray v0.17.2
+   Compiling libjpeg-turbo-rs v0.8.0
+   Compiling rustc-hash v2.1.3
+   Compiling tokenizers v0.22.2
+   Compiling moxcms v0.8.1
+   Compiling image v0.25.10
+   Compiling qwen-mm-core v0.1.0 (/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/crates/qwen-mm-core)
+warning: function `normalization_lookup` is never used
+   --> crates/qwen-mm-core/src/patchify.rs:336:4
+    |
+336 | fn normalization_lookup(visual: &VisualProfile) -> [[f32; 256]; 3] {
+    |    ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `qwen-mm-core` (lib) generated 1 warning
+   Compiling qwen-mm-python v0.1.0 (/private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/crates/qwen-mm-python)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.90s
+📦 Built wheel for abi3 Python ≥ 3.11 to /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp/qwen-mm-phase-c.J1ELAS/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl
+Using CPython 3.11.15 interpreter at: /Users/jim/.local/share/uv/python/cpython-3.11-macos-aarch64-none/bin/python3.11
+Creating virtual environment at: /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp/qwen-mm-phase-c.J1ELAS/candidate
+Activate with: source /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp/qwen-mm-phase-c.J1ELAS/candidate/bin/activate
+Using Python 3.11.15 environment at: /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp/qwen-mm-phase-c.J1ELAS/candidate
+Resolved 2 packages in 96ms
+Prepared 1 package in 27ms
+Installed 2 packages in 8ms
+ + numpy==2.4.6
+ + qwen-mm==0.1.0 (from file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/tmp/qwen-mm-phase-c.J1ELAS/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl)
+   Building qwen-mm-reference @ file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/reference
+Downloading torchvision (1.8MiB)
+Downloading networkx (2.0MiB)
+Downloading pygments (1.2MiB)
+Downloading tokenizers (2.8MiB)
+Downloading sympy (6.0MiB)
+Downloading torch (106.0MiB)
+Downloading transformers (11.1MiB)
+Downloading pillow (4.6MiB)
+Downloading hf-xet (3.7MiB)
+Downloading av (17.3MiB)
+      Built qwen-mm-reference @ file:///private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/repo/reference
+ Downloaded pygments
+ Downloaded torchvision
+ Downloaded networkx
+ Downloaded tokenizers
+ Downloaded hf-xet
+ Downloaded pillow
+ Downloaded sympy
+ Downloaded transformers
+ Downloaded av
+ Downloaded torch
+Installed 44 packages in 159ms
+{"cases": 290, "status": "pass"}
+valid Phase C report: /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/report.json

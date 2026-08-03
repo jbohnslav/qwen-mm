@@ -1,0 +1,12 @@
+dc6d1d80a4f395e604f9ba956d813468487dd065c07fe7572405f2b9d0c111e4  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/report.json
+83b227056b6b6edcb436345db4c5e77e09d100bac84c107dcde1ec106e74b951  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/summary.md
+096f9dce3eeb455e4a7d4c4435b4520b36678f66de637277cd8c74442ec34d86  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/full-phase-c.log
+b165586dac223b76135966ac6bd61fdf2034718b4a60cb6f68fed45e6b07430d  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/full-phase-c-initial-sandbox-failure.log
+ccbed5993ff9284a926982adf6ebfc07a29adc3fb658c5c9bd393b23d0d0c0f3  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/post-validation.log
+334c64118980ae75f114da5acc61b647e2fa4165eaf291b891b15758382ef3a4  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/artifacts.sha256
+deca9e8f4bea1bf5de1ddfc4422a6f0b4fc4712bba74a3f350533681ccc01dd4  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/assets-before.sha256
+deca9e8f4bea1bf5de1ddfc4422a6f0b4fc4712bba74a3f350533681ccc01dd4  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/assets-after.sha256
+fac134ba9b52a2d8a33fff29b97e1a8ad5b7431c4dcc9cf8d520de9b79d0b124  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/candidate.patch
+dd8f4dda577c7907b3e97120decf73cb354a3ea13a62e307d51413883f95d127  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/run-command.txt
+b4586d15fd543a76a0d154d512ac75e319176ce10207de5ccc468665c24d97fb  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/candidate-commit.txt
+f5486cbd0347132b830ff07a0d389374148e4fd77ff3bbc250e6c13aa02c868d  /private/tmp/qwen-mm-d3-copy-only-conformance.owRVUz/evidence/verification.md

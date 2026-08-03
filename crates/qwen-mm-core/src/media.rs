@@ -245,55 +245,72 @@ fn execute_image_plan_internal(
             let resize_span = recorder
                 .as_deref_mut()
                 .map(|recorder| recorder.begin("native.media.resize", scope, decoded.len() as u64));
-            let resized = if let Some(recorder) = recorder.as_deref_mut() {
-                resize_image_rgb8_observed(
-                    &decoded,
-                    header.height,
-                    header.width,
-                    decoded_stride,
-                    &geometry,
-                    recorder,
-                    scope,
-                )
+            let rgb = if header.height == geometry.height && header.width == geometry.width {
+                // The decoder already returned exact packed RGB ownership.
+                // Preserve that allocation as prepared RGB instead of copying
+                // it through the borrowed public resize surface.
+                if let Some(recorder) = recorder.as_deref_mut() {
+                    if let Some(span) = resize_span {
+                        recorder.finish_success(
+                            span,
+                            decoded.len() as u64,
+                            &[geometry.height, geometry.width, RGB_CHANNELS],
+                        );
+                    }
+                    recorder.rename_live_transient("decoded_rgb", "prepared_rgb", scope);
+                }
+                decoded
             } else {
-                resize_image_rgb8(
-                    &decoded,
-                    header.height,
-                    header.width,
-                    decoded_stride,
-                    &geometry,
-                )
-            };
-            let rgb = match resized {
-                Ok(rgb) => {
-                    if let Some(recorder) = recorder.as_deref_mut() {
-                        if let Some(span) = resize_span {
-                            recorder.finish_success(
-                                span,
-                                rgb.len() as u64,
-                                &[geometry.height, geometry.width, RGB_CHANNELS],
+                let resized = if let Some(recorder) = recorder.as_deref_mut() {
+                    resize_image_rgb8_observed(
+                        &decoded,
+                        header.height,
+                        header.width,
+                        decoded_stride,
+                        &geometry,
+                        recorder,
+                        scope,
+                    )
+                } else {
+                    resize_image_rgb8(
+                        &decoded,
+                        header.height,
+                        header.width,
+                        decoded_stride,
+                        &geometry,
+                    )
+                };
+                match resized {
+                    Ok(rgb) => {
+                        if let Some(recorder) = recorder.as_deref_mut() {
+                            if let Some(span) = resize_span {
+                                recorder.finish_success(
+                                    span,
+                                    rgb.len() as u64,
+                                    &[geometry.height, geometry.width, RGB_CHANNELS],
+                                );
+                            }
+                            recorder.release_transient(
+                                "decoded_rgb",
+                                scope,
+                                vector_capacity_bytes(&decoded),
                             );
                         }
-                        recorder.release_transient(
-                            "decoded_rgb",
-                            scope,
-                            vector_capacity_bytes(&decoded),
-                        );
+                        rgb
                     }
-                    rgb
-                }
-                Err(error) => {
-                    if let Some(recorder) = recorder.as_deref_mut() {
-                        if let Some(span) = resize_span {
-                            recorder.finish_error(span, &error);
+                    Err(error) => {
+                        if let Some(recorder) = recorder.as_deref_mut() {
+                            if let Some(span) = resize_span {
+                                recorder.finish_error(span, &error);
+                            }
+                            recorder.release_transient(
+                                "decoded_rgb",
+                                scope,
+                                vector_capacity_bytes(&decoded),
+                            );
                         }
-                        recorder.release_transient(
-                            "decoded_rgb",
-                            scope,
-                            vector_capacity_bytes(&decoded),
-                        );
+                        return Err(error);
                     }
-                    return Err(error);
                 }
             };
             if u64::try_from(rgb.len()).map_err(|_| overflow("prepared RGB length"))?
@@ -1240,6 +1257,50 @@ mod tests {
             .expect("valid raw view");
             assert_eq!(result.rgb, packed);
         }
+    }
+
+    #[test]
+    fn observed_encoded_no_op_reuses_decoded_ownership_without_a_copy() {
+        const EDGE: u32 = 64;
+        let rgb = (0_u8..=u8::MAX)
+            .cycle()
+            .take(EDGE as usize * EDGE as usize * 3)
+            .collect::<Vec<_>>();
+        let mut encoded = Vec::new();
+        PngEncoder::new(&mut encoded)
+            .write_image(&rgb, EDGE, EDGE, ExtendedColorType::Rgb8)
+            .expect("encode PNG");
+        let plan = plan_image_rgb8(
+            ImageInput::Encoded {
+                data: &encoded,
+                format: ImageFormat::Png,
+            },
+            &visual(),
+            ImageOptions::default(),
+            ResourceLimits::default(),
+        )
+        .expect("encoded plan");
+        let scope = ObservationScope::media_at(0, 0, 0, 0, 0);
+        let mut recorder = ObservationRecorder::new(16);
+        let prepared = execute_image_plan_observed(plan, &mut recorder, scope)
+            .expect("observed encoded no-op");
+        assert_eq!(prepared.rgb, rgb);
+
+        let report = recorder.report();
+        assert_eq!(report.allocations.allocation_count, 1);
+        assert_eq!(report.allocations.copy_count, 0);
+        assert_eq!(report.allocations.copied_bytes, 0);
+        assert!(report.copies.is_empty());
+        assert_eq!(report.buffers.len(), 1);
+        assert_eq!(report.buffers[0].name, "prepared_rgb");
+        assert_eq!(report.buffers[0].scope, scope);
+        assert!(report.buffers[0].released_at_ns.is_none());
+        assert!(
+            report
+                .buffers
+                .iter()
+                .all(|buffer| buffer.name != "resize.noop.source_copy")
+        );
     }
 
     fn png_header(width: u32, height: u32, bit_depth: u8, color_type: u8) -> Vec<u8> {

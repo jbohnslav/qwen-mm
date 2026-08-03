@@ -1,0 +1,4 @@
+# Authenticated experiment patches are retained byte-for-byte; their hashes
+# bind the measured source variants, including original whitespace.
+benchmarks/d3-evidence-v1/*.patch -whitespace
+benchmarks/d3-evidence-v1/**/*.patch -whitespace
