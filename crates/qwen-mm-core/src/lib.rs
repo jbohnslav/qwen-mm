@@ -50,9 +50,10 @@ pub use output::{
 pub use patchify::{ImagePatchifyPlan, PreparedImage, patchify_image_rgb8, plan_image_patchify};
 pub use processor::{
     ArrayCapacity, BatchCapacities, BatchDestinations, BatchImageLayout, BatchOutputRange,
-    BatchPlan, BatchRequestLayout, PreparedBatchView, PreparedImageBatch, PreparedImageRequest,
-    PreparedImageTrace, ProcessedBatchImageOccurrence, ProcessedImageOccurrence,
-    QwenImageProcessor, TracedPreparedImage,
+    BatchPlan, BatchRequestLayout, DEFAULT_PROCESSOR_THREAD_BUDGET, MAX_PROCESSOR_THREAD_BUDGET,
+    PreparedBatchView, PreparedImageBatch, PreparedImageRequest, PreparedImageTrace,
+    ProcessedBatchImageOccurrence, ProcessedImageOccurrence, ProcessorConfig, QwenImageProcessor,
+    TracedPreparedImage,
 };
 pub use profile::{
     ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,

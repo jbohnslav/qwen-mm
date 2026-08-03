@@ -1,0 +1,458 @@
+{
+  "schema_id": "qwen-mm-d2-scaling-diagnostic-v1",
+  "created_at": "2026-08-03T15:34:04Z",
+  "status": "diagnostic_only",
+  "release_certification": false,
+  "source": {
+    "base_revision": "f92a3ab8860445af1f6abeb31f996024aef1b64f",
+    "implementation_diff_sha256": "3aece7208a5d3931dee3b9d7506a4ba33c6afa00b9396ef795a638f1b71dc21f",
+    "implementation_diff_scope": "git diff --binary -- Cargo.toml Cargo.lock crates/qwen-mm-core/Cargo.toml crates/qwen-mm-core/src crates/qwen-mm-python/Cargo.toml crates/qwen-mm-python/src crates/qwen-mm-python/python | shasum -a 256",
+    "wheel": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "wheel_bytes": 2460367,
+    "wheel_sha256": "2b082d49222b2eaecf2d28437a9b76002fdb4a1e98edde9243e9d6ea2ff8f243"
+  },
+  "host": {
+    "model": "Mac mini",
+    "chip": "Apple M4",
+    "cores": 10,
+    "performance_cores": 4,
+    "efficiency_cores": 6,
+    "memory_bytes": 25769803776,
+    "architecture": "arm64",
+    "os": "macOS 26.5.2 (25F84)",
+    "kernel": "Darwin 25.5.0",
+    "python": "3.11.15"
+  },
+  "protocol": {
+    "workload": "benchmarks/workloads-v2.json",
+    "profile": "qwen3-vl-8b",
+    "case": "image24",
+    "build": "release",
+    "fresh_process_per_budget": true,
+    "sequential_budget_order": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "warmups": 2,
+    "minimum_samples_per_budget": 8,
+    "minimum_seconds": 1.0,
+    "adapter": "qwen_mm.benchmark:create_adapter",
+    "oracle_adapter": "qwen_mm.benchmark:create_adapter",
+    "thread_environment_values_by_budget": [
+      {
+        "thread_budget": 1,
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "RAYON_NUM_THREADS": "1",
+        "torch": {}
+      },
+      {
+        "thread_budget": 2,
+        "OMP_NUM_THREADS": "2",
+        "MKL_NUM_THREADS": "2",
+        "OPENBLAS_NUM_THREADS": "2",
+        "VECLIB_MAXIMUM_THREADS": "2",
+        "NUMEXPR_NUM_THREADS": "2",
+        "RAYON_NUM_THREADS": "2",
+        "torch": {}
+      },
+      {
+        "thread_budget": 3,
+        "OMP_NUM_THREADS": "3",
+        "MKL_NUM_THREADS": "3",
+        "OPENBLAS_NUM_THREADS": "3",
+        "VECLIB_MAXIMUM_THREADS": "3",
+        "NUMEXPR_NUM_THREADS": "3",
+        "RAYON_NUM_THREADS": "3",
+        "torch": {}
+      },
+      {
+        "thread_budget": 4,
+        "OMP_NUM_THREADS": "4",
+        "MKL_NUM_THREADS": "4",
+        "OPENBLAS_NUM_THREADS": "4",
+        "VECLIB_MAXIMUM_THREADS": "4",
+        "NUMEXPR_NUM_THREADS": "4",
+        "RAYON_NUM_THREADS": "4",
+        "torch": {}
+      }
+    ],
+    "worker_thread_environment": "benchmark_protocol.configure_threads exported OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS, VECLIB_MAXIMUM_THREADS, NUMEXPR_NUM_THREADS, and RAYON_NUM_THREADS equal to each t1-t4 budget; the qwen-mm candidate did not initialize the global Rayon pool, Torch was not configured/imported, and this native image/tokenizer path invokes no BLAS or NumExpr kernels",
+    "host_budget_interpretation": "the exported dormant nested-runtime settings are disclosed rather than counted as active workers; measured median process CPU stayed within each processor budget (100.0%, 193.4%, 282.4%, 367.3% for t1-t4). Production hosts must still apply the documented one-total-budget controls when other code actually invokes those runtimes",
+    "worker_command_template": "env PYTHONPATH=/tmp/qwen-mm-d2-final-site:/tmp/qwen-mm-d2-6841/reference/src QWEN_MM_ASSETS_ROOT=/tmp/qwen-mm-d2-6841/reference/.cache/huggingface /Users/jim/code/qwen-mm/.venv/bin/python -m qwen_mm_reference.benchmark_v2 _worker --config /tmp/qwen-mm-d2-config-t{thread}.json --workload /tmp/qwen-mm-d2-6841/benchmarks/workloads-v2.json --case image24 --output /tmp/qwen-mm-d2-final-result-t{thread}.json",
+    "memory_scope": "peak_rss_bytes is native-inclusive whole-process high-water RSS and includes two candidate adapters, pre/post verification outputs, baseline copies, and the 452984832-byte retained pixel_values result; it measures the bounded same-command native-plus-Python scaling envelope but cannot isolate native transient allocations; transient_live_bytes is the unobserved adapter Python tracemalloc fallback and explicitly excludes Rust-native buffers"
+  },
+  "output_signature": {
+    "input_ids": {
+      "dtype": "int64",
+      "shape": [
+        1,
+        18493
+      ],
+      "strides": [
+        147944,
+        8
+      ],
+      "nbytes": 147944,
+      "sha256": "d931e9233adc05161d6a5513234359a4c8f225d73c483e5473c680dbdfda7d8f"
+    },
+    "attention_mask": {
+      "dtype": "int64",
+      "shape": [
+        1,
+        18493
+      ],
+      "strides": [
+        147944,
+        8
+      ],
+      "nbytes": 147944,
+      "sha256": "88e6c74ca3fbd41c7457251a184439ade3f7d76ca2a452a67551567b5cb0a045"
+    },
+    "mm_token_type_ids": {
+      "dtype": "int64",
+      "shape": [
+        1,
+        18493
+      ],
+      "strides": [
+        147944,
+        8
+      ],
+      "nbytes": 147944,
+      "sha256": "723895ba3755d910d0dbd210894466cfaae436a16a13ecca52500263fc3663bc"
+    },
+    "pixel_values": {
+      "dtype": "float32",
+      "shape": [
+        73728,
+        1536
+      ],
+      "strides": [
+        6144,
+        4
+      ],
+      "nbytes": 452984832,
+      "sha256": "45fa4c11aae23e8166bb35ae8a798ad221aea05bab1177317b3e3ecab819be8a"
+    },
+    "image_grid_thw": {
+      "dtype": "int64",
+      "shape": [
+        24,
+        3
+      ],
+      "strides": [
+        24,
+        8
+      ],
+      "nbytes": 576,
+      "sha256": "df3ae4ae29033a4cc3ee829fddf97992e5134c2b75e4592bf1c50661b55ed869"
+    }
+  },
+  "metadata_signature": {
+    "scope": "PreparedBatch.metadata for qwen3-vl-8b/image24, including the complete sidecar and per-image occurrence/layout metadata",
+    "canonicalization": "json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()",
+    "thread_budgets_compared": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "metadata_bytes": 272244,
+    "metadata_sha256": "7746837ce611b56a00af29d32818515b0456ba9707cba41b705184effab1109b",
+    "sidecar_bytes": 2310,
+    "sidecar_sha256": "e99b46fd1cc5eb02a1fc1202762dd5a2456a7a4f3de8bd15c5a6bff31cdef530"
+  },
+  "runs": [
+    {
+      "thread_budget": 1,
+      "process_id": 87407,
+      "wall_ms": [
+        361.744667,
+        476.819541,
+        354.343,
+        355.226833,
+        358.129333,
+        355.144917,
+        352.318333,
+        358.544584
+      ],
+      "cpu_ms": [
+        361.761,
+        400.75,
+        354.363,
+        355.238,
+        358.145,
+        355.148,
+        352.179,
+        358.558
+      ],
+      "core_utilization": [
+        1.0000451506310666,
+        0.840464715769692,
+        1.0000564424865173,
+        1.0000314362513263,
+        1.0000437467656413,
+        1.0000086809633264,
+        0.9996045252632368,
+        1.000037417940749
+      ],
+      "peak_rss_bytes": [
+        4445044736,
+        4899766272,
+        4900028416,
+        4900028416,
+        4900044800,
+        4900044800,
+        4900044800,
+        4900044800
+      ],
+      "transient_live_bytes": [
+        429254,
+        429323,
+        428782,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254
+      ],
+      "summary": {
+        "sample_count": 8,
+        "wall_p50_ms": 356.678083,
+        "wall_p90_ms": 396.2671292,
+        "wall_min_ms": 352.318333,
+        "wall_max_ms": 476.819541,
+        "cpu_p50_ms": 356.6915,
+        "throughput_p50_per_s": 2.803648577420441,
+        "core_utilization_p50": 1.0000344270960375,
+        "peak_rss_bytes": 4900044800,
+        "speedup_vs_t1": 1
+      }
+    },
+    {
+      "thread_budget": 2,
+      "process_id": 87414,
+      "wall_ms": [
+        185.725458,
+        205.245292,
+        187.026959,
+        189.099042,
+        188.413125,
+        190.021667,
+        185.913458,
+        186.791584
+      ],
+      "cpu_ms": [
+        361.235,
+        382.462,
+        361.238,
+        365.013,
+        365.83,
+        367.354,
+        359.723,
+        361.949
+      ],
+      "core_utilization": [
+        1.944994530582878,
+        1.8634386020411127,
+        1.9314755580236964,
+        1.9302741893319586,
+        1.9416375584238093,
+        1.9332216467714705,
+        1.9348948907184547,
+        1.9377157805996228
+      ],
+      "peak_rss_bytes": [
+        4446470144,
+        4901208064,
+        4901470208,
+        4901486592,
+        4901519360,
+        4901535744,
+        4901535744,
+        4901535744
+      ],
+      "transient_live_bytes": [
+        429254,
+        429382,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254
+      ],
+      "summary": {
+        "sample_count": 8,
+        "wall_p50_ms": 187.720042,
+        "wall_p90_ms": 194.5887545,
+        "wall_min_ms": 185.725458,
+        "wall_max_ms": 205.245292,
+        "cpu_p50_ms": 363.481,
+        "throughput_p50_per_s": 5.327081697541917,
+        "core_utilization_p50": 1.9340582687449626,
+        "peak_rss_bytes": 4901535744,
+        "speedup_vs_t1": 1.900053287863637
+      }
+    },
+    {
+      "thread_budget": 3,
+      "process_id": 87426,
+      "wall_ms": [
+        130.6685,
+        150.406291,
+        131.636334,
+        131.512834,
+        130.894875,
+        131.215792,
+        131.181791,
+        130.326875
+      ],
+      "cpu_ms": [
+        369.997,
+        395.333,
+        371.532,
+        372.549,
+        369.768,
+        367.217,
+        368.69,
+        369.544
+      ],
+      "core_utilization": [
+        2.831569965217325,
+        2.6284339396415275,
+        2.822412237642534,
+        2.832795771095618,
+        2.8249234356960113,
+        2.798573208322364,
+        2.8105272628881854,
+        2.8355164658095267
+      ],
+      "peak_rss_bytes": [
+        4454678528,
+        4909400064,
+        4909662208,
+        4909678592,
+        4909678592,
+        4909678592,
+        4909694976,
+        4909694976
+      ],
+      "transient_live_bytes": [
+        429254,
+        429382,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254
+      ],
+      "summary": {
+        "sample_count": 8,
+        "wall_p50_ms": 131.1987915,
+        "wall_p90_ms": 137.2673211,
+        "wall_min_ms": 130.326875,
+        "wall_max_ms": 150.406291,
+        "cpu_p50_ms": 369.8825,
+        "throughput_p50_per_s": 7.6220214269275495,
+        "core_utilization_p50": 2.823667836669273,
+        "peak_rss_bytes": 4909694976,
+        "speedup_vs_t1": 2.718607991141443
+      }
+    },
+    {
+      "thread_budget": 4,
+      "process_id": 87398,
+      "wall_ms": [
+        102.4485,
+        118.866709,
+        102.558625,
+        102.450667,
+        102.244167,
+        102.317208,
+        102.401625,
+        104.161583,
+        102.44025,
+        102.598083
+      ],
+      "cpu_ms": [
+        375.824,
+        397.792,
+        376.634,
+        377.36,
+        376.293,
+        376.055,
+        377.098,
+        378.25,
+        375.349,
+        376.889
+      ],
+      "core_utilization": [
+        3.668418766502194,
+        3.3465383482603186,
+        3.6723776279176907,
+        3.683333755162375,
+        3.6803370895476117,
+        3.675383714536073,
+        3.6825392175173004,
+        3.631377222828881,
+        3.6640773524078667,
+        3.6734507018030738
+      ],
+      "peak_rss_bytes": [
+        4460969984,
+        4915691520,
+        4915953664,
+        4915953664,
+        4915953664,
+        4915953664,
+        4915953664,
+        4915953664,
+        4915970048,
+        4915986432
+      ],
+      "transient_live_bytes": [
+        429254,
+        429382,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254,
+        429254
+      ],
+      "summary": {
+        "sample_count": 10,
+        "wall_p50_ms": 102.44958349999999,
+        "wall_p90_ms": 105.63209559999999,
+        "wall_min_ms": 102.244167,
+        "wall_max_ms": 118.866709,
+        "cpu_p50_ms": 376.7615,
+        "throughput_p50_per_s": 9.7608986375235,
+        "core_utilization_p50": 3.6729141648603822,
+        "peak_rss_bytes": 4915986432,
+        "speedup_vs_t1": 3.4814986143891944
+      }
+    }
+  ],
+  "conformance": {
+    "pre_measurement": "pass",
+    "all_measured_iterations_stable": true,
+    "post_measurement": "pass",
+    "all_budget_output_signatures_exact": true,
+    "benchmark_output_signature_scope": "the frozen paired benchmark adapter intentionally returns only the five official arrays; dtype, shape, strides, bytes, and SHA-256 are signed above",
+    "all_budget_metadata_signatures_exact": true,
+    "all_budget_sidecar_signatures_exact": true,
+    "metadata_sidecar_exactness": "the same final release wheel separately canonicalized and signed image24 metadata/sidecar at t1-t4; both-profile mixed/ragged/repeated core equality and installed-binding metadata equality also passed",
+    "float_atol": 0.007844
+  }
+}

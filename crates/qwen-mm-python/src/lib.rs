@@ -11,13 +11,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use pyo3::prelude::*;
 use qwen_mm_core::{
-    ObservationRecorder, ObservationScope, ProfileRegistry, QwenImageProcessor, ResourceLimits,
+    ObservationRecorder, ObservationScope, ProcessorConfig, ProfileRegistry, QwenImageProcessor,
+    ResourceLimits,
 };
 
 use crate::{
     errors::{add_exceptions, memory_error, to_python_error},
     input::{
         OwnedRequest, drop_owned_media, parse_limits, parse_requests, parse_requests_observed,
+        parse_thread_budget,
     },
     output::{
         NativeBatch, PyPreparedBatch, RunError, native_batch_bytes, observation_report_dict,
@@ -71,21 +73,29 @@ struct PyProcessor {
 impl PyProcessor {
     /// Loads one hash-pinned profile from a local snapshot directory.
     #[new]
-    #[pyo3(signature = (profile, assets_directory, *, limits=None))]
+    #[pyo3(signature = (profile, assets_directory, *, limits=None, thread_budget=None))]
     fn new(
         py: Python<'_>,
         profile: &str,
         assets_directory: PathBuf,
         limits: Option<&Bound<'_, PyAny>>,
+        thread_budget: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
         let limits = parse_limits(limits).map_err(|error| to_python_error(py, &error))?;
+        let thread_budget =
+            parse_thread_budget(thread_budget).map_err(|error| to_python_error(py, &error))?;
         let registry = ProfileRegistry::bundled().map_err(|error| to_python_error(py, &error))?;
         let profile = registry
             .resolve(profile)
             .map_err(|error| to_python_error(py, &error))?;
         let supports_thinking = profile.supports_thinking();
-        let processor = QwenImageProcessor::from_local_assets(profile, assets_directory, limits)
-            .map_err(|error| to_python_error(py, &error))?;
+        let processor = QwenImageProcessor::from_local_assets_with_config(
+            profile,
+            assets_directory,
+            limits,
+            ProcessorConfig::with_thread_budget(thread_budget),
+        )
+        .map_err(|error| to_python_error(py, &error))?;
         Ok(Self {
             inner: Arc::new(processor),
             limits,
@@ -218,6 +228,12 @@ impl PyProcessor {
     #[getter]
     fn profile_fingerprint(&self) -> &str {
         &self.inner.profile().fingerprint
+    }
+
+    /// Exact total native-worker budget owned by this processor.
+    #[getter]
+    fn thread_budget(&self) -> usize {
+        self.inner.thread_budget()
     }
 }
 

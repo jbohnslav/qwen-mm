@@ -16,7 +16,11 @@ The public API is deliberately small:
 ```python
 from qwen_mm import Processor
 
-processor = Processor("qwen3-vl-8b", "/path/to/pinned/snapshot")
+processor = Processor(
+    "qwen3-vl-8b",
+    "/path/to/pinned/snapshot",
+    thread_budget=4,
+)
 prepared = processor.prepare_batch(
     [
         {
@@ -47,6 +51,12 @@ into NumPy without copying, so they remain valid after the request, its media,
 and the processor are dropped. Adapter metadata is intentionally separate from
 `.arrays`; iteration over `.arrays` yields only the official conditional
 processor keys.
+
+Each processor owns a private bounded worker pool. `thread_budget` is the
+immutable qwen-mm native-worker budget, accepts 1 through 256, and defaults to
+the exact serial path. See
+[`docs/deterministic-bounded-parallelism.md`](../../docs/deterministic-bounded-parallelism.md)
+for ordering, error-precedence, observed-call, and nested-runtime controls.
 
 Run the installed-wheel image1/image24, ownership, GIL-release, and failure
 suite (requires both pinned snapshots under `reference/.cache`) with:

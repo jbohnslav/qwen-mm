@@ -118,6 +118,7 @@ class NativeBenchmarkAdapter:
         self._processor = Processor(
             context.profile_alias,
             _asset_directory(context.profile_alias),
+            thread_budget=context.thread_budget,
         )
         self._observed = observed
         self._event_capacity = event_capacity

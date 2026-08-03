@@ -31,9 +31,19 @@ OFFICIAL_TEXT_KEYS = ["input_ids", "attention_mask", "mm_token_type_ids"]
 OFFICIAL_IMAGE_KEYS = [*OFFICIAL_TEXT_KEYS, "pixel_values", "image_grid_thw"]
 
 
-def _processor(profile: str, *, limits: dict[str, int] | None = None) -> qwen_mm.Processor:
+def _processor(
+    profile: str,
+    *,
+    limits: dict[str, int] | None = None,
+    thread_budget: int = 1,
+) -> qwen_mm.Processor:
     relative, _ = PROFILE_CASES[profile]
-    return qwen_mm.Processor(profile, ASSETS_ROOT / relative, limits=limits)
+    return qwen_mm.Processor(
+        profile,
+        ASSETS_ROOT / relative,
+        limits=limits,
+        thread_budget=thread_budget,
+    )
 
 
 def _request(images: list[Any], *, generation: bool = True) -> list[dict[str, Any]]:
@@ -70,6 +80,52 @@ def _assert_arrays(output: qwen_mm.PreparedBatch, token_columns: int, image_coun
     assert len(output.metadata["images"]) == image_count
     assert len(output.metadata["sidecar"]["images"]) == image_count
     assert [item["grid_row"] for item in output.metadata["images"]] == list(range(image_count))
+
+
+def test_explicit_thread_budget_is_bounded_and_read_only() -> None:
+    processor = _processor("qwen3-vl-8b", thread_budget=4)
+    assert processor.thread_budget == 4
+    try:
+        processor.thread_budget = 2
+    except AttributeError:
+        pass
+    else:
+        raise AssertionError("frozen processor budget must be read-only")
+
+    for invalid in (True, -1):
+        try:
+            qwen_mm.Processor("qwen3-vl-8b", ".", thread_budget=invalid)
+        except qwen_mm.InvalidRequestError as error:
+            assert error.category == "invalid_request"
+            assert error.context["field"] == "thread_budget"
+        else:
+            raise AssertionError(f"thread_budget={invalid!r} must be rejected")
+
+    for invalid in (0, 257):
+        try:
+            qwen_mm.Processor("qwen3-vl-8b", ".", thread_budget=invalid)
+        except qwen_mm.InvalidRequestError as error:
+            assert error.category == "invalid_request"
+            assert error.context["thread_budget"] == invalid
+            assert error.context["maximum"] == 256
+        else:
+            raise AssertionError(f"thread_budget={invalid} must be rejected")
+
+
+def test_python_thread_sweep_is_array_and_metadata_exact() -> None:
+    images = [np.full((64, 64, 3), index * 17, dtype=np.uint8) for index in range(4)]
+    requests = _request(images, generation=False)
+    serial = _processor("qwen3-vl-8b", thread_budget=1).prepare_batch(requests)
+    for thread_budget in range(1, 5):
+        processor = _processor("qwen3-vl-8b", thread_budget=thread_budget)
+        candidate = processor.prepare_batch(requests)
+        assert candidate.official_keys() == serial.official_keys()
+        assert candidate.metadata == serial.metadata
+        for name in serial.arrays:
+            np.testing.assert_array_equal(candidate.arrays[name], serial.arrays[name])
+            assert candidate.arrays[name].dtype == serial.arrays[name].dtype
+            assert candidate.arrays[name].shape == serial.arrays[name].shape
+            assert candidate.arrays[name].strides == serial.arrays[name].strides
 
 
 def test_one_image_and_conditional_outputs() -> None:
@@ -584,6 +640,8 @@ def test_typed_failures_have_no_partial_outputs() -> None:
 def main() -> None:
     if not all((ASSETS_ROOT / relative).is_dir() for relative, _ in PROFILE_CASES.values()):
         raise SystemExit(f"hash-pinned snapshots are missing below {ASSETS_ROOT}")
+    test_explicit_thread_budget_is_bounded_and_read_only()
+    test_python_thread_sweep_is_array_and_metadata_exact()
     test_one_image_and_conditional_outputs()
     test_24_independent_request_order()
     test_observed_batch_matches_unobserved_and_reconciles_counters()

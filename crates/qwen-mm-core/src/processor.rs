@@ -2,6 +2,16 @@
 
 use std::{mem, path::Path};
 
+#[cfg(test)]
+use std::cell::Cell;
+
+#[cfg(test)]
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+
+use rayon::{ThreadPool, ThreadPoolBuilder, prelude::*};
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -346,10 +356,104 @@ pub struct PreparedImageBatch {
     pub images: Vec<ProcessedBatchImageOccurrence>,
 }
 
+/// Default processor-wide worker budget.
+///
+/// The compatibility default is deliberately serial. Production callers and
+/// benchmark harnesses opt into a larger total budget explicitly.
+pub const DEFAULT_PROCESSOR_THREAD_BUDGET: usize = 1;
+
+/// Largest accepted processor-wide worker budget.
+///
+/// Keeping this finite prevents accidental thread explosions from malformed
+/// host configuration while still covering large CPU-only hosts.
+pub const MAX_PROCESSOR_THREAD_BUDGET: usize = 256;
+
+/// Construction-time scheduling configuration for one processor instance.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProcessorConfig {
+    /// Total number of qwen-mm native workers owned by this processor.
+    pub thread_budget: usize,
+}
+
+impl Default for ProcessorConfig {
+    fn default() -> Self {
+        Self {
+            thread_budget: DEFAULT_PROCESSOR_THREAD_BUDGET,
+        }
+    }
+}
+
+impl ProcessorConfig {
+    /// Creates an explicit worker-budget configuration.
+    #[must_use]
+    pub const fn with_thread_budget(thread_budget: usize) -> Self {
+        Self { thread_budget }
+    }
+}
+
 /// Profile-bound native Rust processor for one text/image request.
 pub struct QwenImageProcessor {
     text: TextProcessor,
     limits: ResourceLimits,
+    pool: ThreadPool,
+    thread_budget: usize,
+    #[cfg(test)]
+    active_operations: AtomicUsize,
+    #[cfg(test)]
+    peak_active_operations: AtomicUsize,
+    #[cfg(test)]
+    worker_starts: Arc<AtomicUsize>,
+    #[cfg(test)]
+    worker_exits: Arc<AtomicUsize>,
+}
+
+#[cfg(test)]
+struct ActiveOperationGuard<'a> {
+    processor: &'a QwenImageProcessor,
+    counted_worker: bool,
+}
+
+#[cfg(test)]
+thread_local! {
+    static ACTIVE_PROCESSOR_OPERATION_DEPTH: Cell<usize> = const { Cell::new(0) };
+}
+
+#[cfg(test)]
+impl<'a> ActiveOperationGuard<'a> {
+    fn enter(processor: &'a QwenImageProcessor) -> Self {
+        debug_assert!(processor.pool.current_thread_index().is_some());
+        let counted_worker = ACTIVE_PROCESSOR_OPERATION_DEPTH.with(|depth| {
+            let current = depth.get();
+            depth.set(current + 1);
+            current == 0
+        });
+        if counted_worker {
+            let active = processor.active_operations.fetch_add(1, Ordering::SeqCst) + 1;
+            processor
+                .peak_active_operations
+                .fetch_max(active, Ordering::SeqCst);
+        }
+        Self {
+            processor,
+            counted_worker,
+        }
+    }
+}
+
+#[cfg(test)]
+impl Drop for ActiveOperationGuard<'_> {
+    fn drop(&mut self) {
+        ACTIVE_PROCESSOR_OPERATION_DEPTH.with(|depth| {
+            let current = depth.get();
+            debug_assert!(current > 0);
+            depth.set(current - 1);
+        });
+        if self.counted_worker {
+            self.processor
+                .active_operations
+                .fetch_sub(1, Ordering::SeqCst);
+        }
+    }
 }
 
 impl QwenImageProcessor {
@@ -366,9 +470,84 @@ impl QwenImageProcessor {
         assets_directory: impl AsRef<Path>,
         limits: ResourceLimits,
     ) -> Result<Self> {
-        Ok(Self {
-            text: TextProcessor::from_local_assets(profile, assets_directory)?,
+        Self::from_local_assets_with_config(
+            profile,
+            assets_directory,
             limits,
+            ProcessorConfig::default(),
+        )
+    }
+
+    /// Loads one processor with an explicitly bounded, processor-owned pool.
+    ///
+    /// The pool is private to this instance and never consults or initializes
+    /// Rayon's process-global pool. A budget of one preserves the exact serial
+    /// execution path. Budgets above [`MAX_PROCESSOR_THREAD_BUDGET`] are
+    /// rejected instead of silently clamped.
+    ///
+    /// # Errors
+    ///
+    /// Returns `invalid_request` for a zero or over-limit budget,
+    /// `profile_mismatch` for changed local assets, or `internal_invariant` if
+    /// the operating system cannot construct the requested bounded pool.
+    pub fn from_local_assets_with_config(
+        profile: &Profile,
+        assets_directory: impl AsRef<Path>,
+        limits: ResourceLimits,
+        config: ProcessorConfig,
+    ) -> Result<Self> {
+        if !(1..=MAX_PROCESSOR_THREAD_BUDGET).contains(&config.thread_budget) {
+            return Err(QwenError::new(
+                ErrorCategory::InvalidRequest,
+                "processor thread budget is outside the supported finite range",
+            )
+            .with_context("thread_budget", config.thread_budget)
+            .with_context("minimum", 1_usize)
+            .with_context("maximum", MAX_PROCESSOR_THREAD_BUDGET));
+        }
+        let text = TextProcessor::from_local_assets(profile, assets_directory)?;
+        #[cfg(test)]
+        let worker_starts = Arc::new(AtomicUsize::new(0));
+        #[cfg(test)]
+        let worker_exits = Arc::new(AtomicUsize::new(0));
+        let pool_builder = ThreadPoolBuilder::new()
+            .num_threads(config.thread_budget)
+            .thread_name(|index| format!("qwen-mm-worker-{index}"));
+        #[cfg(test)]
+        let pool_builder = pool_builder
+            .start_handler({
+                let worker_starts = Arc::clone(&worker_starts);
+                move |_| {
+                    worker_starts.fetch_add(1, Ordering::SeqCst);
+                }
+            })
+            .exit_handler({
+                let worker_exits = Arc::clone(&worker_exits);
+                move |_| {
+                    worker_exits.fetch_add(1, Ordering::SeqCst);
+                }
+            });
+        let pool = pool_builder.build().map_err(|error| {
+            QwenError::new(
+                ErrorCategory::InternalInvariant,
+                "unable to construct processor-owned worker pool",
+            )
+            .with_context("thread_budget", config.thread_budget)
+            .with_context("detail", error.to_string())
+        })?;
+        Ok(Self {
+            text,
+            limits,
+            pool,
+            thread_budget: config.thread_budget,
+            #[cfg(test)]
+            active_operations: AtomicUsize::new(0),
+            #[cfg(test)]
+            peak_active_operations: AtomicUsize::new(0),
+            #[cfg(test)]
+            worker_starts,
+            #[cfg(test)]
+            worker_exits,
         })
     }
 
@@ -376,6 +555,20 @@ impl QwenImageProcessor {
     #[must_use]
     pub const fn profile(&self) -> &Profile {
         self.text.profile()
+    }
+
+    /// Returns this processor's exact total native worker budget.
+    #[must_use]
+    pub const fn thread_budget(&self) -> usize {
+        self.thread_budget
+    }
+
+    fn run_in_pool<R: Send>(&self, operation: impl FnOnce() -> R + Send) -> R {
+        self.pool.install(move || {
+            #[cfg(test)]
+            let _active = ActiveOperationGuard::enter(self);
+            operation()
+        })
     }
 
     /// Runs the complete serial text and still-image path for one request.
@@ -390,8 +583,10 @@ impl QwenImageProcessor {
     /// profile, option, resource, decode, then geometry/stage order. Raw-frame
     /// and encoded video remain outside the Phase B processor.
     pub fn prepare(&self, request: Request<'_>) -> Result<PreparedImageRequest> {
-        self.prepare_internal(request, false)
-            .map(|(output, _)| output)
+        self.run_in_pool(move || {
+            self.prepare_internal(request, false)
+                .map(|(output, _)| output)
+        })
     }
 
     /// Runs the same serial operation while retaining each prepared RGB stage
@@ -403,10 +598,12 @@ impl QwenImageProcessor {
     ///
     /// Returns the same stable errors and precedence as [`Self::prepare`].
     pub fn prepare_with_media_trace(&self, request: Request<'_>) -> Result<PreparedImageTrace> {
-        let (output, prepared_images) = self.prepare_internal(request, true)?;
-        Ok(PreparedImageTrace {
-            output,
-            prepared_images,
+        self.run_in_pool(move || {
+            let (output, prepared_images) = self.prepare_internal(request, true)?;
+            Ok(PreparedImageTrace {
+                output,
+                prepared_images,
+            })
         })
     }
 
@@ -421,9 +618,8 @@ impl QwenImageProcessor {
     ///
     /// Returns the first stable compatibility-v1 failure in whole-batch stage
     /// order. Aggregate resource/capacity failures precede full media decode.
-    #[allow(clippy::too_many_lines)]
     pub fn plan_batch(&self, requests: &[Request<'_>]) -> Result<BatchPlan> {
-        self.plan_batch_internal(requests, None)
+        self.run_in_pool(|| self.plan_batch_internal(requests, None))
     }
 
     /// Observed counterpart to [`Self::plan_batch`]. Instrumentation is
@@ -437,19 +633,21 @@ impl QwenImageProcessor {
         requests: &[Request<'_>],
         recorder: &mut ObservationRecorder,
     ) -> Result<BatchPlan> {
-        let span = recorder.begin("native.batch.plan", ObservationScope::default(), 0);
-        let result = self.plan_batch_internal(requests, Some(recorder));
-        match &result {
-            Ok(plan) => recorder.finish_success(
-                span,
-                total_capacity_bytes(&plan.capacities),
-                &[requests.len() as u64, plan.images.len() as u64],
-            ),
-            Err(error) => {
-                recorder.finish_error(span, error);
+        self.run_in_pool(move || {
+            let span = recorder.begin("native.batch.plan", ObservationScope::default(), 0);
+            let result = self.plan_batch_internal(requests, Some(recorder));
+            match &result {
+                Ok(plan) => recorder.finish_success(
+                    span,
+                    total_capacity_bytes(&plan.capacities),
+                    &[requests.len() as u64, plan.images.len() as u64],
+                ),
+                Err(error) => {
+                    recorder.finish_error(span, error);
+                }
             }
-        }
-        result
+            result
+        })
     }
 
     #[allow(clippy::too_many_lines)]
@@ -686,26 +884,45 @@ impl QwenImageProcessor {
             return Err(error);
         }
         if !media_errors.is_empty() {
-            for (occurrence, _, _, _) in &pending_images {
-                let scope =
-                    media_observation_scope(occurrence.location, occurrence.occurrence_index);
-                let result = if let Some(recorder) = recorder.as_deref_mut() {
-                    execute_image_plan_observed(occurrence.plan.clone(), recorder, scope)
-                } else {
-                    execute_image_plan(occurrence.plan.clone())
-                };
-                match result {
-                    Ok(prepared) => {
-                        if let Some(recorder) = recorder.as_deref_mut() {
-                            recorder.release_transient(
-                                "prepared_rgb",
-                                scope,
-                                u8_vector_capacity_bytes(&prepared.rgb),
-                            );
-                        }
-                        drop(prepared);
+            if recorder.is_none() && self.thread_budget > 1 {
+                let decode_results = self.pool.install(|| {
+                    pending_images
+                        .par_iter()
+                        .map(|(occurrence, _, _, _)| {
+                            (
+                                occurrence.occurrence_index,
+                                execute_image_plan(occurrence.plan.clone()).map(drop),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                });
+                for (occurrence_index, result) in decode_results {
+                    if let Err(error) = result {
+                        media_errors.push((occurrence_index, error));
                     }
-                    Err(error) => media_errors.push((occurrence.occurrence_index, error)),
+                }
+            } else {
+                for (occurrence, _, _, _) in &pending_images {
+                    let scope =
+                        media_observation_scope(occurrence.location, occurrence.occurrence_index);
+                    let result = if let Some(recorder) = recorder.as_deref_mut() {
+                        execute_image_plan_observed(occurrence.plan.clone(), recorder, scope)
+                    } else {
+                        execute_image_plan(occurrence.plan.clone())
+                    };
+                    match result {
+                        Ok(prepared) => {
+                            if let Some(recorder) = recorder.as_deref_mut() {
+                                recorder.release_transient(
+                                    "prepared_rgb",
+                                    scope,
+                                    u8_vector_capacity_bytes(&prepared.rgb),
+                                );
+                            }
+                            drop(prepared);
+                        }
+                        Err(error) => media_errors.push((occurrence.occurrence_index, error)),
+                    }
                 }
             }
             return Err(select_preferred_error(media_errors));
@@ -795,27 +1012,57 @@ impl QwenImageProcessor {
             video_grid_thw: None,
         };
 
-        let mut images = Vec::with_capacity(pending_images.len());
-        let mut decode_errors = Vec::new();
-        for (occurrence, patch_plan, input, options) in pending_images {
-            let scope = media_observation_scope(occurrence.location, occurrence.occurrence_index);
-            let result = if let Some(recorder) = recorder.as_deref_mut() {
-                execute_image_plan_observed(occurrence.plan, recorder, scope)
-            } else {
-                execute_image_plan(occurrence.plan)
-            };
-            match result {
-                Ok(prepared_rgb) => {
-                    let cache_key = image_cache_key(self.profile(), input, options);
-                    images.push(BatchPlannedImageOccurrence {
-                        occurrence_index: occurrence.occurrence_index,
-                        location: occurrence.location,
-                        prepared_rgb,
-                        patch_plan,
-                        cache_key,
+        let pending_image_count = pending_images.len();
+        let executed_images = if recorder.is_none() && self.thread_budget > 1 {
+            self.pool.install(|| {
+                pending_images
+                    .into_par_iter()
+                    .map(|(occurrence, patch_plan, input, options)| {
+                        let result = execute_image_plan(occurrence.plan).map(|prepared_rgb| {
+                            let cache_key = image_cache_key(self.profile(), input, options);
+                            BatchPlannedImageOccurrence {
+                                occurrence_index: occurrence.occurrence_index,
+                                location: occurrence.location,
+                                prepared_rgb,
+                                patch_plan,
+                                cache_key,
+                            }
+                        });
+                        (occurrence.occurrence_index, result)
+                    })
+                    .collect::<Vec<_>>()
+            })
+        } else {
+            pending_images
+                .into_iter()
+                .map(|(occurrence, patch_plan, input, options)| {
+                    let scope =
+                        media_observation_scope(occurrence.location, occurrence.occurrence_index);
+                    let result = if let Some(recorder) = recorder.as_deref_mut() {
+                        execute_image_plan_observed(occurrence.plan, recorder, scope)
+                    } else {
+                        execute_image_plan(occurrence.plan)
+                    }
+                    .map(|prepared_rgb| {
+                        let cache_key = image_cache_key(self.profile(), input, options);
+                        BatchPlannedImageOccurrence {
+                            occurrence_index: occurrence.occurrence_index,
+                            location: occurrence.location,
+                            prepared_rgb,
+                            patch_plan,
+                            cache_key,
+                        }
                     });
-                }
-                Err(error) => decode_errors.push((occurrence.occurrence_index, error)),
+                    (occurrence.occurrence_index, result)
+                })
+                .collect::<Vec<_>>()
+        };
+        let mut images = Vec::with_capacity(pending_image_count);
+        let mut decode_errors = Vec::new();
+        for (occurrence_index, result) in executed_images {
+            match result {
+                Ok(image) => images.push(image),
+                Err(error) => decode_errors.push((occurrence_index, error)),
             }
         }
         if !decode_errors.is_empty() {
@@ -909,13 +1156,12 @@ impl QwenImageProcessor {
     ///
     /// Only if a private, previously validated plan invariant is corrupted;
     /// safe callers cannot construct or mutate such a plan.
-    #[allow(clippy::too_many_lines)]
     pub fn execute_plan_into<'plan, 'destination>(
         &self,
         plan: &'plan BatchPlan,
         destinations: BatchDestinations<'destination>,
     ) -> Result<PreparedBatchView<'plan, 'destination>> {
-        self.execute_plan_into_internal(plan, destinations, None)
+        self.run_in_pool(move || self.execute_plan_into_internal(plan, destinations, None))
     }
 
     /// Observed counterpart to [`Self::execute_plan_into`].
@@ -929,30 +1175,32 @@ impl QwenImageProcessor {
         destinations: BatchDestinations<'destination>,
         recorder: &mut ObservationRecorder,
     ) -> Result<PreparedBatchView<'plan, 'destination>> {
-        let span = recorder.begin(
-            "native.destination.execute",
-            ObservationScope::default(),
-            total_capacity_bytes(&plan.capacities),
-        );
-        let result = self.execute_plan_into_internal(plan, destinations, Some(recorder));
-        match &result {
-            Ok(_) => recorder.finish_success(
-                span,
+        self.run_in_pool(move || {
+            let span = recorder.begin(
+                "native.destination.execute",
+                ObservationScope::default(),
                 total_capacity_bytes(&plan.capacities),
-                &[plan.text.rows() as u64, plan.text.columns() as u64],
-            ),
-            Err(error) => {
-                recorder.finish_error(span, error);
+            );
+            let result = self.execute_plan_into_internal(plan, destinations, Some(recorder));
+            match &result {
+                Ok(_) => recorder.finish_success(
+                    span,
+                    total_capacity_bytes(&plan.capacities),
+                    &[plan.text.rows() as u64, plan.text.columns() as u64],
+                ),
+                Err(error) => {
+                    recorder.finish_error(span, error);
+                }
             }
-        }
-        result
+            result
+        })
     }
 
     fn execute_plan_into_internal<'plan, 'destination>(
         &self,
         plan: &'plan BatchPlan,
         destinations: BatchDestinations<'destination>,
-        mut recorder: Option<&mut ObservationRecorder>,
+        recorder: Option<&mut ObservationRecorder>,
     ) -> Result<PreparedBatchView<'plan, 'destination>> {
         validate_plan_identity(self, plan)?;
         validate_destinations(&plan.capacities, &destinations)?;
@@ -971,40 +1219,7 @@ impl QwenImageProcessor {
         if let (Some(pixels), Some(grids)) =
             (pixel_values.as_deref_mut(), image_grid_thw.as_deref_mut())
         {
-            let patch_width = usize::try_from(self.profile().visual.patch_width)
-                .expect("validated patch width must fit usize");
-            for (image, layout) in plan.images.iter().zip(&plan.image_layouts) {
-                let scope = media_observation_scope(image.location, image.occurrence_index);
-                let span = recorder.as_deref_mut().map(|recorder| {
-                    recorder.begin(
-                        "native.media.normalize_patchify_layout",
-                        scope,
-                        image.prepared_rgb.rgb.len() as u64,
-                    )
-                });
-                let pixel_start = layout.pixel_rows.start * patch_width;
-                let pixel_end = layout.pixel_rows.end * patch_width;
-                let grid_start = layout.grid_row * 3;
-                execute_image_patchify_plan_into(
-                    image.patch_plan,
-                    &self.profile().visual,
-                    &image.prepared_rgb.rgb,
-                    &mut pixels[pixel_start..pixel_end],
-                    &mut grids[grid_start..grid_start + 3],
-                );
-                if let Some(recorder) = recorder.as_deref_mut()
-                    && let Some(span) = span
-                {
-                    recorder.finish_success(
-                        span,
-                        image.patch_plan.materialized_bytes(),
-                        &[
-                            image.patch_plan.geometry().patch_rows,
-                            self.profile().visual.patch_width,
-                        ],
-                    );
-                }
-            }
+            self.write_planned_images(plan, pixels, grids, recorder);
         }
 
         let text_elements = plan.capacities.input_ids.elements;
@@ -1052,6 +1267,64 @@ impl QwenImageProcessor {
         })
     }
 
+    fn write_planned_images(
+        &self,
+        plan: &BatchPlan,
+        pixels: &mut [f32],
+        grids: &mut [i64],
+        mut recorder: Option<&mut ObservationRecorder>,
+    ) {
+        let patch_width = usize::try_from(self.profile().visual.patch_width)
+            .expect("validated patch width must fit usize");
+        if recorder.is_none() && self.thread_budget > 1 && plan.images.len() > 1 {
+            self.pool.install(|| {
+                execute_patchify_images_parallel(
+                    &plan.images,
+                    &plan.image_layouts,
+                    &self.profile().visual,
+                    pixels,
+                    0,
+                    grids,
+                    0,
+                    patch_width,
+                );
+            });
+            return;
+        }
+        for (image, layout) in plan.images.iter().zip(&plan.image_layouts) {
+            let scope = media_observation_scope(image.location, image.occurrence_index);
+            let span = recorder.as_deref_mut().map(|recorder| {
+                recorder.begin(
+                    "native.media.normalize_patchify_layout",
+                    scope,
+                    image.prepared_rgb.rgb.len() as u64,
+                )
+            });
+            let pixel_start = layout.pixel_rows.start * patch_width;
+            let pixel_end = layout.pixel_rows.end * patch_width;
+            let grid_start = layout.grid_row * 3;
+            execute_image_patchify_plan_into(
+                image.patch_plan,
+                &self.profile().visual,
+                &image.prepared_rgb.rgb,
+                &mut pixels[pixel_start..pixel_end],
+                &mut grids[grid_start..grid_start + 3],
+            );
+            if let Some(recorder) = recorder.as_deref_mut()
+                && let Some(span) = span
+            {
+                recorder.finish_success(
+                    span,
+                    image.patch_plan.materialized_bytes(),
+                    &[
+                        image.patch_plan.geometry().patch_rows,
+                        self.profile().visual.patch_width,
+                    ],
+                );
+            }
+        }
+    }
+
     /// Allocates exact official arrays and executes the same two-phase plan.
     ///
     /// # Errors
@@ -1059,7 +1332,7 @@ impl QwenImageProcessor {
     /// Returns exactly the planning/execution failures documented by
     /// [`Self::plan_batch`] and [`Self::execute_plan_into`].
     pub fn prepare_batch(&self, requests: &[Request<'_>]) -> Result<PreparedImageBatch> {
-        self.prepare_batch_internal(requests, None, None)
+        self.run_in_pool(|| self.prepare_batch_internal(requests, None, None))
     }
 
     /// Allocates and executes one batch with the default bounded observation
@@ -1076,26 +1349,28 @@ impl QwenImageProcessor {
         requests: &[Request<'_>],
         event_capacity: usize,
     ) -> Observed<PreparedImageBatch> {
-        let mut recorder = ObservationRecorder::new(event_capacity);
-        recorder.calls_mut().native_batch_calls = 1;
-        let span = recorder.begin("native.batch.prepare", ObservationScope::default(), 0);
-        let result = self.prepare_batch_with_observer(requests, &mut recorder);
-        match &result {
-            Ok(output) => recorder.finish_success(
-                span,
-                prepared_batch_output_bytes(output),
-                &[requests.len() as u64, output.images.len() as u64],
-            ),
-            Err(error) => {
-                recorder.discard_retained_outputs();
-                recorder.release_all_transients();
-                recorder.finish_error(span, error);
+        self.run_in_pool(|| {
+            let mut recorder = ObservationRecorder::new(event_capacity);
+            recorder.calls_mut().native_batch_calls = 1;
+            let span = recorder.begin("native.batch.prepare", ObservationScope::default(), 0);
+            let result = self.prepare_batch_with_observer(requests, &mut recorder);
+            match &result {
+                Ok(output) => recorder.finish_success(
+                    span,
+                    prepared_batch_output_bytes(output),
+                    &[requests.len() as u64, output.images.len() as u64],
+                ),
+                Err(error) => {
+                    recorder.discard_retained_outputs();
+                    recorder.release_all_transients();
+                    recorder.finish_error(span, error);
+                }
             }
-        }
-        Observed {
-            result,
-            report: recorder.report(),
-        }
+            Observed {
+                result,
+                report: recorder.report(),
+            }
+        })
     }
 
     /// Populates a caller-owned recorder. This is the low-level surface used
@@ -1109,7 +1384,7 @@ impl QwenImageProcessor {
         requests: &[Request<'_>],
         recorder: &mut ObservationRecorder,
     ) -> Result<PreparedImageBatch> {
-        self.prepare_batch_internal(requests, Some(recorder), None)
+        self.run_in_pool(move || self.prepare_batch_internal(requests, Some(recorder), None))
     }
 
     #[cfg(test)]
@@ -1595,6 +1870,72 @@ impl QwenImageProcessor {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn execute_patchify_images_parallel(
+    images: &[BatchPlannedImageOccurrence],
+    layouts: &[BatchImageLayout],
+    visual: &crate::profile::VisualProfile,
+    pixels: &mut [f32],
+    pixel_row_base: usize,
+    grids: &mut [i64],
+    grid_row_base: usize,
+    patch_width: usize,
+) {
+    debug_assert_eq!(images.len(), layouts.len());
+    if images.len() <= 1 {
+        for (image, layout) in images.iter().zip(layouts) {
+            let pixel_start = (layout.pixel_rows.start - pixel_row_base) * patch_width;
+            let pixel_end = (layout.pixel_rows.end - pixel_row_base) * patch_width;
+            let grid_start = (layout.grid_row - grid_row_base) * 3;
+            execute_image_patchify_plan_into(
+                image.patch_plan,
+                visual,
+                &image.prepared_rgb.rgb,
+                &mut pixels[pixel_start..pixel_end],
+                &mut grids[grid_start..grid_start + 3],
+            );
+        }
+        return;
+    }
+
+    let midpoint = images.len() / 2;
+    let right_pixel_base = layouts[midpoint].pixel_rows.start;
+    let right_grid_base = layouts[midpoint].grid_row;
+    let pixel_split = (right_pixel_base - pixel_row_base) * patch_width;
+    let grid_split = (right_grid_base - grid_row_base) * 3;
+    let (left_images, right_images) = images.split_at(midpoint);
+    let (left_layouts, right_layouts) = layouts.split_at(midpoint);
+    let (left_pixels, right_pixels) = pixels.split_at_mut(pixel_split);
+    let (left_grids, right_grids) = grids.split_at_mut(grid_split);
+
+    rayon::join(
+        || {
+            execute_patchify_images_parallel(
+                left_images,
+                left_layouts,
+                visual,
+                left_pixels,
+                pixel_row_base,
+                left_grids,
+                grid_row_base,
+                patch_width,
+            );
+        },
+        || {
+            execute_patchify_images_parallel(
+                right_images,
+                right_layouts,
+                visual,
+                right_pixels,
+                right_pixel_base,
+                right_grids,
+                right_grid_base,
+                patch_width,
+            );
+        },
+    );
+}
+
 fn validate_plan_identity(processor: &QwenImageProcessor, plan: &BatchPlan) -> Result<()> {
     let registry = ProfileRegistry::bundled()?;
     if plan.contract_id != registry.contract_id()
@@ -2025,16 +2366,21 @@ fn allocation(
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::{
+        path::{Path, PathBuf},
+        sync::{Arc, Barrier, atomic::Ordering},
+        time::Duration,
+    };
 
     use image::{
         ExtendedColorType, ImageEncoder,
         codecs::{png::PngEncoder, webp::WebPEncoder},
     };
+    use rayon::{ThreadPoolBuilder, prelude::*};
 
     use super::{
-        BatchDestinations, BatchPlan, QwenImageProcessor, hex_digest, image_cache_key,
-        prepared_batch_output_bytes,
+        BatchDestinations, BatchPlan, MAX_PROCESSOR_THREAD_BUDGET, ProcessorConfig,
+        QwenImageProcessor, hex_digest, image_cache_key, prepared_batch_output_bytes,
     };
     use crate::{
         BufferClass, ContentItem, CoordinateRange, ErrorCategory, ImageFormat, ImageInput,
@@ -2056,9 +2402,22 @@ mod tests {
     }
 
     fn processor(alias: ProfileAlias, limits: ResourceLimits) -> QwenImageProcessor {
+        processor_with_threads(alias, limits, 1)
+    }
+
+    fn processor_with_threads(
+        alias: ProfileAlias,
+        limits: ResourceLimits,
+        thread_budget: usize,
+    ) -> QwenImageProcessor {
         let registry = ProfileRegistry::bundled().expect("profiles");
-        QwenImageProcessor::from_local_assets(registry.get(alias), asset_directory(alias), limits)
-            .expect("pinned local assets")
+        QwenImageProcessor::from_local_assets_with_config(
+            registry.get(alias),
+            asset_directory(alias),
+            limits,
+            ProcessorConfig::with_thread_budget(thread_budget),
+        )
+        .expect("pinned local assets")
     }
 
     fn assert_failed_envelope_containment(report: &ObservationReport, envelope_name: &str) {
@@ -4093,5 +4452,352 @@ mod tests {
                 .category(),
             ErrorCategory::ResourceLimit
         );
+    }
+
+    #[test]
+    fn processor_thread_budget_rejects_zero_and_over_limit_without_clamping() {
+        let registry = ProfileRegistry::bundled().expect("profiles");
+        for invalid in [0, MAX_PROCESSOR_THREAD_BUDGET + 1] {
+            let error = QwenImageProcessor::from_local_assets_with_config(
+                registry.get(ProfileAlias::Qwen3Vl8b),
+                ".",
+                ResourceLimits::default(),
+                ProcessorConfig::with_thread_budget(invalid),
+            )
+            .err()
+            .expect("invalid budget must be rejected before asset loading");
+            assert_eq!(error.category(), ErrorCategory::InvalidRequest);
+            assert_eq!(
+                error.context()["thread_budget"].to_string(),
+                invalid.to_string()
+            );
+            assert_eq!(
+                error.context()["maximum"].to_string(),
+                MAX_PROCESSOR_THREAD_BUDGET.to_string()
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    fn explicit_owned_pool_ignores_rayon_global_budget() {
+        // Run this test with RAYON_NUM_THREADS set to a value other than two.
+        // The explicitly built pool must still own exactly two workers.
+        let processor =
+            processor_with_threads(ProfileAlias::Qwen3Vl8b, ResourceLimits::default(), 2);
+        assert_eq!(processor.thread_budget(), 2);
+        assert_eq!(processor.pool.current_num_threads(), 2);
+        let mut workers = processor.pool.broadcast(|_| {
+            (
+                rayon::current_num_threads(),
+                rayon::current_thread_index().expect("inside owned pool"),
+                std::thread::current()
+                    .name()
+                    .expect("named owned worker")
+                    .to_owned(),
+            )
+        });
+        workers.sort_by_key(|worker| worker.1);
+        assert_eq!(workers.len(), 2);
+        assert_eq!(
+            workers,
+            [
+                (2, 0, "qwen-mm-worker-0".to_owned()),
+                (2, 1, "qwen-mm-worker-1".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    #[allow(clippy::too_many_lines)]
+    fn shared_processor_caps_all_calls_migrates_foreign_rayon_and_releases_workers() {
+        let raw = vec![71_u8; 112 * 112 * 3];
+        let images = [ImageInput::Rgb8(Rgb8 {
+            data: &raw,
+            height: 112,
+            width: 112,
+            row_stride: 112 * 3,
+        })];
+        let image_items = (0..16)
+            .map(|_| {
+                ContentItem::Image(ImageRef {
+                    input_index: 0,
+                    options: ImageOptions {
+                        resized_height: Some(112),
+                        resized_width: Some(112),
+                        ..ImageOptions::default()
+                    },
+                })
+            })
+            .collect::<Vec<_>>();
+        let image_messages = [message(
+            Role::User,
+            MessageContent::Items(image_items.as_slice()),
+        )];
+        let requests = [Request {
+            messages: &image_messages,
+            images: &images,
+            videos: &[],
+            options: RequestOptions::default(),
+        }];
+
+        for thread_budget in 1..=2 {
+            let processor = Arc::new(processor_with_threads(
+                ProfileAlias::Qwen3Vl8b,
+                ResourceLimits::default(),
+                thread_budget,
+            ));
+            processor.pool.broadcast(|_| {});
+            let worker_starts = Arc::clone(&processor.worker_starts);
+            let worker_exits = Arc::clone(&processor.worker_exits);
+            assert_eq!(worker_starts.load(Ordering::SeqCst), thread_budget);
+
+            let baseline = Arc::new(processor.prepare_batch(&requests).expect("baseline"));
+            processor.peak_active_operations.store(0, Ordering::SeqCst);
+            let callers = 8;
+            let barrier = Arc::new(Barrier::new(callers));
+            std::thread::scope(|scope| {
+                for caller in 0..callers {
+                    let processor = Arc::clone(&processor);
+                    let baseline = Arc::clone(&baseline);
+                    let barrier = Arc::clone(&barrier);
+                    let requests = &requests;
+                    scope.spawn(move || {
+                        barrier.wait();
+                        if caller % 2 == 0 {
+                            let output = processor
+                                .prepare_batch(requests)
+                                .expect("shared unobserved call");
+                            assert_eq!(output, *baseline);
+                        } else {
+                            let observed =
+                                processor.prepare_batch_observed_with_capacity(requests, 512);
+                            assert_eq!(observed.result.expect("shared observed call"), *baseline);
+                            assert_eq!(observed.report.outcome, StageOutcome::Success);
+                        }
+                    });
+                }
+            });
+            assert_eq!(processor.active_operations.load(Ordering::SeqCst), 0);
+            let shared_peak = processor.peak_active_operations.load(Ordering::SeqCst);
+            assert!((1..=thread_budget).contains(&shared_peak));
+            assert_eq!(
+                processor
+                    .prepare_batch(&requests)
+                    .expect("reuse after shared calls"),
+                *baseline
+            );
+
+            if thread_budget == 2 {
+                processor.peak_active_operations.store(0, Ordering::SeqCst);
+                let foreign = ThreadPoolBuilder::new()
+                    .num_threads(8)
+                    .thread_name(|index| format!("foreign-rayon-{index}"))
+                    .build()
+                    .expect("foreign Rayon pool");
+                foreign.install(|| {
+                    (0..8_usize).into_par_iter().for_each(|caller| {
+                        if caller % 2 == 0 {
+                            let output = processor
+                                .prepare_batch(&requests)
+                                .expect("foreign unobserved call");
+                            assert_eq!(output, *baseline);
+                        } else {
+                            let observed =
+                                processor.prepare_batch_observed_with_capacity(&requests, 512);
+                            assert_eq!(observed.result.expect("foreign observed call"), *baseline);
+                        }
+                    });
+                });
+                assert_eq!(processor.active_operations.load(Ordering::SeqCst), 0);
+                let foreign_peak = processor.peak_active_operations.load(Ordering::SeqCst);
+                assert!((1..=thread_budget).contains(&foreign_peak));
+            }
+
+            drop(baseline);
+            drop(processor);
+            for _ in 0..100 {
+                if worker_exits.load(Ordering::SeqCst) == thread_budget {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            assert_eq!(worker_exits.load(Ordering::SeqCst), thread_budget);
+        }
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    #[allow(clippy::too_many_lines)]
+    fn thread_sweep_is_exact_under_ragged_mixed_repeated_stress_and_pool_reuse() {
+        let png = encode_rgb(ImageFormat::Png, 17);
+        let webp = encode_rgb(ImageFormat::WebP, 29);
+        let jpeg = include_bytes!("../../../fixtures/baseline/image24/image-00.jpg");
+        let raw = vec![43_u8; 64 * 80 * 3];
+        let images = [
+            ImageInput::Encoded {
+                data: &png,
+                format: ImageFormat::Png,
+            },
+            ImageInput::Encoded {
+                data: &webp,
+                format: ImageFormat::WebP,
+            },
+            ImageInput::Rgb8(Rgb8 {
+                data: &raw,
+                height: 64,
+                width: 80,
+                row_stride: 80 * 3,
+            }),
+            ImageInput::Encoded {
+                data: jpeg,
+                format: ImageFormat::Jpeg,
+            },
+        ];
+        let items = [
+            ContentItem::Image(ImageRef {
+                input_index: 1,
+                options: ImageOptions {
+                    resized_height: Some(64),
+                    resized_width: Some(96),
+                    ..ImageOptions::default()
+                },
+            }),
+            ContentItem::Text(" then "),
+            ContentItem::Image(ImageRef {
+                input_index: 2,
+                options: ImageOptions {
+                    resized_height: Some(96),
+                    resized_width: Some(64),
+                    ..ImageOptions::default()
+                },
+            }),
+            ContentItem::Image(ImageRef {
+                input_index: 3,
+                ..ImageRef::default()
+            }),
+            ContentItem::Image(ImageRef {
+                input_index: 1,
+                ..ImageRef::default()
+            }),
+            ContentItem::Image(ImageRef::default()),
+        ];
+        let image_messages = [message(Role::User, MessageContent::Items(&items))];
+        let text_messages = [message(Role::User, MessageContent::Text("text-only row"))];
+        let requests = [
+            Request {
+                messages: &image_messages,
+                images: &images,
+                videos: &[],
+                options: RequestOptions::default(),
+            },
+            Request {
+                messages: &text_messages,
+                images: &[],
+                videos: &[],
+                options: RequestOptions::default(),
+            },
+        ];
+
+        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+            let serial = processor_with_threads(alias, ResourceLimits::default(), 1)
+                .prepare_batch(&requests)
+                .expect("serial baseline");
+            std::thread::scope(|scope| {
+                for thread_budget in 1..=4 {
+                    let requests = &requests;
+                    let serial = &serial;
+                    scope.spawn(move || {
+                        let processor =
+                            processor_with_threads(alias, ResourceLimits::default(), thread_budget);
+                        assert_eq!(processor.thread_budget(), thread_budget);
+                        for _ in 0..6 {
+                            let candidate =
+                                processor.prepare_batch(requests).expect("stress candidate");
+                            assert_eq!(&candidate, serial);
+                        }
+                    });
+                }
+            });
+
+            let observed_processor = processor_with_threads(alias, ResourceLimits::default(), 4);
+            let observed = observed_processor.prepare_batch_observed_with_capacity(&requests, 512);
+            assert_eq!(observed.result.as_ref().expect("observed output"), &serial);
+            assert_eq!(observed.report.outcome, StageOutcome::Success);
+            assert_eq!(observed.report.dropped_events, 0);
+            assert_eq!(
+                observed
+                    .report
+                    .spans
+                    .iter()
+                    .map(|span| span.sequence)
+                    .collect::<Vec<_>>(),
+                (0..observed.report.spans.len() as u64).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    fn concurrent_media_errors_keep_serial_precedence_for_every_thread_count() {
+        let corrupt_first = png_header(64, 64);
+        let corrupt_second = png_header(96, 64);
+        let short_raw = vec![0_u8; 7];
+        let images = [
+            ImageInput::Rgb8(Rgb8 {
+                data: &short_raw,
+                height: 64,
+                width: 64,
+                row_stride: 64 * 3,
+            }),
+            ImageInput::Encoded {
+                data: &corrupt_first,
+                format: ImageFormat::Png,
+            },
+            ImageInput::Encoded {
+                data: &corrupt_second,
+                format: ImageFormat::Png,
+            },
+        ];
+        let items = [
+            ContentItem::Image(ImageRef::default()),
+            ContentItem::Image(ImageRef {
+                input_index: 1,
+                ..ImageRef::default()
+            }),
+            ContentItem::Image(ImageRef {
+                input_index: 2,
+                ..ImageRef::default()
+            }),
+        ];
+        let messages = [message(Role::User, MessageContent::Items(&items))];
+        let requests = [Request {
+            messages: &messages,
+            images: &images,
+            videos: &[],
+            options: RequestOptions::default(),
+        }];
+        let serial_error =
+            processor_with_threads(ProfileAlias::Qwen3Vl8b, ResourceLimits::default(), 1)
+                .plan_batch(&requests)
+                .expect_err("serial failure");
+        assert_eq!(serial_error.category(), ErrorCategory::MediaDecode);
+
+        for thread_budget in 1..=4 {
+            let processor = processor_with_threads(
+                ProfileAlias::Qwen3Vl8b,
+                ResourceLimits::default(),
+                thread_budget,
+            );
+            for _ in 0..32 {
+                assert_eq!(
+                    processor
+                        .plan_batch(&requests)
+                        .expect_err("parallel failure"),
+                    serial_error
+                );
+            }
+        }
     }
 }

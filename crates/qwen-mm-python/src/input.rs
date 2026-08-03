@@ -7,9 +7,9 @@ use pyo3::{
     types::{PyAny, PyBool, PyDict, PyList, PyString},
 };
 use qwen_mm_core::{
-    BufferClass, ErrorCategory, ExcludedOptions, ImageFormat, ImageOptions, LimitOverrides,
-    ObservationRecorder, ObservationScope, QwenError, RequestOptions, ResourceLimits, Role,
-    checked_add, checked_mul,
+    BufferClass, DEFAULT_PROCESSOR_THREAD_BUDGET, ErrorCategory, ExcludedOptions, ImageFormat,
+    ImageOptions, LimitOverrides, ObservationRecorder, ObservationScope, QwenError, RequestOptions,
+    ResourceLimits, Role, checked_add, checked_mul,
 };
 
 use crate::errors::{input_allocation_error, invalid_request, py_detail, type_name};
@@ -1377,6 +1377,12 @@ pub(crate) fn parse_limits(limits: Option<&Bound<'_, PyAny>>) -> BindingResult<R
             "materialized_output_bytes_per_batch",
             "limits",
         )?,
+    })
+}
+
+pub(crate) fn parse_thread_budget(value: Option<&Bound<'_, PyAny>>) -> BindingResult<usize> {
+    value.map_or(Ok(DEFAULT_PROCESSOR_THREAD_BUDGET), |value| {
+        extract_usize(value, "thread_budget")
     })
 }
 
