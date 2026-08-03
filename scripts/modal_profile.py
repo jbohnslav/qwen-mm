@@ -31,6 +31,7 @@ MODAL_MEMORY_MIB = 32_768
 RUST_VERSION = "1.97.1"
 UV_VERSION = "0.11.29"
 PYPI_INDEX = "https://pypi.org/simple"
+COMMAND_OUTPUT_TAIL_CHARS = 4_000
 
 app = modal.App("qwen-mm-d1-native-profile")
 
@@ -118,9 +119,10 @@ def _run_logged(command: list[str], *, log_path: Path, environment: dict[str, st
     log_path.write_text(rendered, encoding="utf-8")
     if result.returncode != 0:
         print(rendered, file=sys.stderr, flush=True)
+        output_tail = result.stdout[-COMMAND_OUTPUT_TAIL_CHARS:]
         raise RuntimeError(
             f"command failed with exit code {result.returncode}; see {log_path}: "
-            f"{shlex.join(command)}"
+            f"{shlex.join(command)}\ncommand output tail:\n{output_tail}"
         )
 
 

@@ -1,0 +1,15 @@
+Analysis of sampling python3.11 (pid 31415) every 1 milliseconds
+Process:         python3.11 [31415]
+Code Type:       ARM64
+Platform:        macOS
+
+Call graph:
+    100 Thread_1   DispatchQueue_1: com.apple.main-thread  (serial)
+      100 _PyEval_EvalFrameDefault  (in libpython3.11.dylib) + 180376  [0x105445874]
+      + 100 _RNvMsa_Csc8F1c33rCRZ_14qwen_mm_nativeNtB5_11PyProcessor26___pymethod_prepare_batch__  (in _native.abi3.so) + 588  [0x10bcb8cb4]  lib.rs:70
+      + ! 100 _RNvNtCsc8F1c33rCRZ_14qwen_mm_native6output18run_batch_internal  (in _native.abi3.so) + 272  [0x10bca6730]
+      + ! : | 60 _RNvMs2_NtCslYd21UUycFy_12qwen_mm_core9processorNtB5_18QwenImageProcessor17execute_plan_into  (in _native.abi3.so) + 172,460,...  [0x10bce5880,0x10bce58a0,...]  processor.rs:123
+      + ! : | 40 _RNvNtCslYd21UUycFy_12qwen_mm_core6resize10resize_rgb  (in _native.abi3.so) + 88  [0x10bd000d0]  resize.rs:45
+
+Total number in stack (recursive counted multiple, when >=5):
+

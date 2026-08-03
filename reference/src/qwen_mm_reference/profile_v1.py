@@ -540,6 +540,42 @@ def _parse_py_spy_summary(output: str) -> tuple[int, int]:
     return samples, errors
 
 
+_DEMANGLED_CORE_FRAME = re.compile(r"(?<![A-Za-z0-9_])qwen_mm_core::")
+_DEMANGLED_BINDING_FRAME = re.compile(r"(?<![A-Za-z0-9_])(?:qwen_mm_python|qwen_mm_native)::")
+_RUST_V0_CORE_CRATE = re.compile(r"C(?:s[0-9A-Za-z]*_)?12qwen_mm_core")
+_RUST_V0_BINDING_CRATE = re.compile(r"C(?:s[0-9A-Za-z]*_)?14qwen_mm_native")
+
+
+def _is_qwen_core_frame(frame: str) -> bool:
+    """Recognize both demangled and Rust-v0 qwen-mm core symbols."""
+
+    return _DEMANGLED_CORE_FRAME.search(frame) is not None or (
+        frame.startswith("_R") and _RUST_V0_CORE_CRATE.search(frame) is not None
+    )
+
+
+def _is_qwen_binding_frame(frame: str) -> bool:
+    """Recognize the package name and the cdylib crate name used by real builds."""
+
+    return _DEMANGLED_BINDING_FRAME.search(frame) is not None or (
+        frame.startswith("_R") and _RUST_V0_BINDING_CRATE.search(frame) is not None
+    )
+
+
+def _is_qwen_native_frame(frame: str) -> bool:
+    return _is_qwen_core_frame(frame) or _is_qwen_binding_frame(frame)
+
+
+def _is_symbolized_qwen_native_frame(frame: str) -> bool:
+    lowered = frame.lower()
+    return (
+        _is_qwen_native_frame(frame)
+        and ("::" in frame or frame.startswith("_R"))
+        and "unknown" not in lowered
+        and "+0x" not in lowered
+    )
+
+
 def _parse_macos_sample(raw: str) -> tuple[str, int, int]:
     """Reduce the indented macOS `sample` call graph to canonical collapsed stacks."""
 
@@ -551,14 +587,19 @@ def _parse_macos_sample(raw: str) -> tuple[str, int, int]:
     stack: list[int] = []
     for line in call_graph.splitlines():
         match = re.match(
-            r"^(?P<prefix>\s*(?:[+!]\s*)*)(?P<count>\d+)\s+(?P<frame>.+?)\s*$",
+            r"^(?P<prefix>[\s+!:|]*)(?P<count>\d+)\s+(?P<frame>.+?)\s*$",
             line,
         )
         if match is None:
             continue
         indent = len(match.group("prefix"))
         count = int(match.group("count"))
-        frame = re.sub(r"\s+\[[^]]+\]\s*$", "", match.group("frame"))
+        frame = match.group("frame")
+        # Debug-enabled Rust builds append a source location after the sampled
+        # address. Remove it first so the address and instruction offset below
+        # can be canonicalized instead of fragmenting one function by ASLR.
+        frame = re.sub(r"\s+\S+\.rs:\d+(?::\d+)?\s*$", "", frame)
+        frame = re.sub(r"\s+\[[^]]+\]\s*$", "", frame)
         frame = re.sub(
             r"\s+\+\s+(?:0x[0-9a-fA-F]+|\d+(?:,\d+)*(?:,\.\.\.)?)\s*$",
             "",
@@ -613,7 +654,7 @@ def _stack_rankings(collapsed: str) -> dict[str, Any]:
         if not frames:
             raise ProfileArtifactError("sampled stack contains no frames")
         sample_count += count
-        if any("qwen_mm_core::" in frame or "qwen_mm_python::" in frame for frame in frames):
+        if any(_is_qwen_native_frame(frame) for frame in frames):
             native_sample_count += count
         for frame in set(frames):
             inclusive[frame] += count
@@ -993,12 +1034,15 @@ def capture_sampled_profile(
         )
     if architecture == "x86_64" and "qwen_mm_profile_iteration" not in collapsed:
         raise ProfileArtifactError("sampled stacks omit the whole-operation Python boundary marker")
-    native_markers = ("qwen_mm_core::", "qwen_mm_python::")
-    if not any(marker in collapsed for marker in native_markers):
+    collapsed_frames = [
+        frame for line in collapsed.splitlines() for frame in line.rsplit(" ", 1)[0].split(";")
+    ]
+    if not any(_is_qwen_native_frame(frame) for frame in collapsed_frames):
         raise ProfileArtifactError("sampled stacks contain no qwen-mm native frames")
     if architecture == "arm64" and (
         not any(marker in collapsed for marker in ("PyEval", "eval_frame"))
-        or not all(marker in collapsed for marker in native_markers)
+        or not any(_is_qwen_core_frame(frame) for frame in collapsed_frames)
+        or not any(_is_qwen_binding_frame(frame) for frame in collapsed_frames)
     ):
         raise ProfileArtifactError("macOS samples omit CPython/binding/core boundary evidence")
     if result["before_signature"] != result["after_signature"]:
@@ -1501,6 +1545,9 @@ def validate_sampled_profile(
         )
     if collapsed != expected_collapsed:
         raise ProfileArtifactError("collapsed profile is not the canonical reduction of raw stacks")
+    collapsed_frames = [
+        frame for line in collapsed.splitlines() for frame in line.rsplit(" ", 1)[0].split(";")
+    ]
     expected_samples = (
         expected_sampler["duration_seconds"] * 1000 // expected_sampler["interval_ms"]
         if architecture == "arm64"
@@ -1516,27 +1563,16 @@ def validate_sampled_profile(
         raise ProfileArtifactError("sampled stacks omit the whole Python boundary marker")
     if architecture == "arm64" and (
         not any(marker in collapsed for marker in ("PyEval", "eval_frame"))
-        or "qwen_mm_core::" not in collapsed
-        or "qwen_mm_python::" not in collapsed
+        or not any(_is_qwen_core_frame(frame) for frame in collapsed_frames)
+        or not any(_is_qwen_binding_frame(frame) for frame in collapsed_frames)
     ):
         raise ProfileArtifactError(
             "macOS samples omit CPython/binding/core whole-boundary evidence"
         )
-    if not any(marker in collapsed for marker in ("qwen_mm_core::", "qwen_mm_python::")):
+    if not any(_is_qwen_native_frame(frame) for frame in collapsed_frames):
         raise ProfileArtifactError("sampled stacks omit native qwen-mm frames")
-    native_frames = {
-        frame
-        for line in collapsed.splitlines()
-        for frame in line.rsplit(" ", 1)[0].split(";")
-        if any(marker in frame for marker in ("qwen_mm_core::", "qwen_mm_python::"))
-    }
-    symbolized = [
-        frame
-        for frame in native_frames
-        if ("::" in frame or "prepare_batch" in frame)
-        and "unknown" not in frame.lower()
-        and "+0x" not in frame.lower()
-    ]
+    native_frames = {frame for frame in collapsed_frames if _is_qwen_native_frame(frame)}
+    symbolized = [frame for frame in native_frames if _is_symbolized_qwen_native_frame(frame)]
     if not symbolized:
         raise ProfileArtifactError("native sampled frames are unsymbolized offsets/unknowns only")
     rankings = _stack_rankings(collapsed)

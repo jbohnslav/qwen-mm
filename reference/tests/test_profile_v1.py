@@ -23,6 +23,9 @@ from qwen_mm_reference.profile_v1 import (
     SAMPLER_PROTOCOLS,
     ProfileArtifactError,
     _artifact_identity,
+    _is_qwen_binding_frame,
+    _is_qwen_core_frame,
+    _is_qwen_native_frame,
     _parse_collapsed,
     _parse_macos_sample,
     _parse_py_spy_summary,
@@ -364,6 +367,49 @@ class ObservationValidationTests(unittest.TestCase):
 
 
 class SampleValidationTests(unittest.TestCase):
+    def test_native_frame_classifiers_accept_exact_demangled_and_rust_v0_crates(self) -> None:
+        core_frames = (
+            "qwen_mm_core::processor::execute_plan_into",
+            "<qwen_mm_core::Processor as core::fmt::Debug>::fmt",
+            "_RNvMs2_NtCslYd21UUycFy_12qwen_mm_core9processorNtB5_18QwenImageProcessor",
+            "_RINvXNtNtCslYd21UUycFy_12qwen_mm_core5value3ser9Serialize",
+            "_RNvCs_12qwen_mm_core3foo",
+            "_RNvC12qwen_mm_core9processor",
+        )
+        binding_frames = (
+            "qwen_mm_python::binding::prepare_batch",
+            "qwen_mm_native::output::run_batch_internal",
+            "_RNvMsa_Csc8F1c33rCRZ_14qwen_mm_nativeNtB5_11PyProcessor",
+            "_RINvXNtCsc8F1c33rCRZ_14qwen_mm_native6output18run_batch_internal",
+            "_RNvCs_14qwen_mm_native3foo",
+            "_RNvC14qwen_mm_native6output",
+        )
+        for frame in core_frames:
+            with self.subTest(frame=frame):
+                self.assertTrue(_is_qwen_core_frame(frame))
+                self.assertTrue(_is_qwen_native_frame(frame))
+        for frame in binding_frames:
+            with self.subTest(frame=frame):
+                self.assertTrue(_is_qwen_binding_frame(frame))
+                self.assertTrue(_is_qwen_native_frame(frame))
+
+    def test_native_frame_classifiers_reject_lookalike_crates(self) -> None:
+        lookalikes = (
+            "not_qwen_mm_core::processor::execute",
+            "_qwen_mm_core::processor::execute",
+            "not_qwen_mm_python::binding::prepare_batch",
+            "_qwen_mm_native::output::run_batch_internal",
+            "_RNvC19foo_12qwen_mm_core9processor",
+            "_RNvC21foo_14qwen_mm_native6output",
+            "prefixCslYd21UUycFy_12qwen_mm_core9processor",
+            "prefixCsc8F1c33rCRZ_14qwen_mm_native6output",
+        )
+        for frame in lookalikes:
+            with self.subTest(frame=frame):
+                self.assertFalse(_is_qwen_core_frame(frame))
+                self.assertFalse(_is_qwen_binding_frame(frame))
+                self.assertFalse(_is_qwen_native_frame(frame))
+
     def test_py_spy_child_timeout_kills_authenticated_worker(self) -> None:
         worker_command = ["python", "-m", "qwen_mm_reference.profile_v1", "_sample_worker"]
         cleanup_done = False
@@ -504,6 +550,29 @@ Total number in stack (recursive counted multiple, when >=5):
         self.assertIn("qwen_mm_core::resize::resize_rgb  (in _native.abi3.so) 326\n", collapsed)
         self.assertNotIn("+ 172,460", collapsed)
         self.assertNotIn("[0x", collapsed)
+
+    def test_real_rust_v0_sample_prefixes_and_source_locations_are_canonicalized(self) -> None:
+        fixture = Path(__file__).with_name("fixtures") / "macos-sample-rust-v0-callgraph.txt"
+        collapsed, count, unique = _parse_macos_sample(fixture.read_text(encoding="utf-8"))
+        self.assertEqual(count, 100)
+        self.assertEqual(unique, 2)
+        self.assertIn("qwen_mm_native", collapsed)
+        self.assertIn("qwen_mm_core", collapsed)
+        self.assertNotIn("[0x", collapsed)
+        self.assertNotIn("+ 172,460", collapsed)
+        self.assertNotIn(".rs:", collapsed)
+        rankings = _stack_rankings(collapsed)
+        self.assertEqual(rankings["native_sample_count"], 100)
+        self.assertEqual(rankings["native_sample_share"], 1.0)
+        frames = [
+            frame for line in collapsed.splitlines() for frame in line.rsplit(" ", 1)[0].split(";")
+        ]
+        fixture_core_frames = [frame for frame in frames if "qwen_mm_core" in frame]
+        fixture_binding_frames = [frame for frame in frames if "qwen_mm_native" in frame]
+        self.assertTrue(fixture_core_frames)
+        self.assertTrue(fixture_binding_frames)
+        self.assertTrue(all(map(_is_qwen_core_frame, fixture_core_frames)))
+        self.assertTrue(all(map(_is_qwen_binding_frame, fixture_binding_frames)))
 
     def test_raw_reduction_and_rankings_are_authenticated(self) -> None:
         raw = (

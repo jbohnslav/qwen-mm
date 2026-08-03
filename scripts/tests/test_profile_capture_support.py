@@ -66,6 +66,26 @@ def _provenance() -> dict[str, object]:
 
 
 class PathAndDirectoryIdentityTests(unittest.TestCase):
+    def test_local_runner_error_preserves_a_bounded_command_output_tail(self) -> None:
+        output = (
+            "prefix-that-must-be-truncated\n"
+            + "x" * (local_runner.COMMAND_OUTPUT_TAIL_CHARS + 100)
+            + "\nProfileArtifactError: sampled stacks contain no native frames\n"
+        )
+        completed = subprocess.CompletedProcess(["profile"], 2, stdout=output)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(local_runner.subprocess, "run", return_value=completed),
+        ):
+            log_path = Path(directory) / "profile.log"
+            with self.assertRaises(RuntimeError) as raised:
+                local_runner._run_logged(["profile"], log_path=log_path, environment={})
+            message = str(raised.exception)
+            self.assertIn("ProfileArtifactError: sampled stacks contain no native frames", message)
+            self.assertNotIn("prefix-that-must-be-truncated", message)
+            self.assertIn("prefix-that-must-be-truncated", log_path.read_text(encoding="utf-8"))
+            self.assertLessEqual(len(message), local_runner.COMMAND_OUTPUT_TAIL_CHARS + 500)
+
     def test_local_runner_uses_clean_committed_identity_and_ignores_gitignored_noise(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
