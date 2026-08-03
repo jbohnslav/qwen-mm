@@ -22,7 +22,7 @@
       "python_isolated_mode": true
     },
     "runtime_identity": {
-      "native_artifact_sha256": "63807215102c36851945d813454135f378e4e46cf153e2dea124eacb00f49faa",
+      "native_artifact_sha256": "ec014480a15f51b6983a360cb21aa335c4935a2f0a8b73905fb8f584607cd607",
       "native_module": "qwen_mm._native",
       "package": "qwen_mm",
       "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
@@ -30,7 +30,7 @@
     },
     "wheel": {
       "bound_runtime_identity": {
-        "native_artifact_sha256": "63807215102c36851945d813454135f378e4e46cf153e2dea124eacb00f49faa",
+        "native_artifact_sha256": "ec014480a15f51b6983a360cb21aa335c4935a2f0a8b73905fb8f584607cd607",
         "native_module": "qwen_mm._native",
         "package": "qwen_mm",
         "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
@@ -38,7 +38,7 @@
       },
       "build_command": "maturin build --locked",
       "filename": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
-      "sha256": "adb73b56b2255c8612bbb5636346db4ef684131a40fdde1383f382c335484777",
+      "sha256": "191dbb6d17e0bed3a53ec702e96637a2ec66f0a78110e103b402ecaa3c44493c",
       "tag": "cp311-abi3-macosx_11_0_arm64"
     }
   },
@@ -58,7 +58,7 @@
     "prepared_lossy_absolute_byte_error_max": 1
   },
   "contract_id": "qwen-mm-compat-v1",
-  "created_at": "2026-08-02T15:56:45.605772+00:00",
+  "created_at": "2026-08-03T16:00:41.295063+00:00",
   "fixture_authentication": [
     {
       "candidate_executed": false,
@@ -208,19 +208,19 @@
   "inputs": [
     {
       "path": "Cargo.lock",
-      "sha256": "1ef7f1d81b7e6f140fc45868d10870e10ce2aa92c7fc58fd2f0ec7253d847ce2"
+      "sha256": "c4b88f8ad0b4f93a5952e76888eea07fd42ffcab52b25b09075cce8fa54b381d"
     },
     {
       "path": "Cargo.toml",
-      "sha256": "0b65b2c5bdce6f0b6e2b3606a2416d21a40d5387f345e353ffced390a8b4bdae"
+      "sha256": "5b9fec5edc841a1e010a09600e674305e5ff7c9c31d0b42a0bae169f29343273"
     },
     {
       "path": "Makefile",
-      "sha256": "10491fb3b07946b75683162f92f8372e1820740dfd62435154b2d361d39b0ca5"
+      "sha256": "9c29c2e904e33ca7553885da1cb47c76f757ff038c6e68c5b7f5b766281e33d5"
     },
     {
       "path": "crates/qwen-mm-core/Cargo.toml",
-      "sha256": "885efbefc009d645dae182a0d90bc272ef417ce246cb829c22afd3d86b832c25"
+      "sha256": "41fcca9729e7f20c75a41b94fd0ed788cd0fd666a45fcd6e187396af64dd9c96"
     },
     {
       "path": "crates/qwen-mm-core/src/error.rs",
@@ -232,7 +232,7 @@
     },
     {
       "path": "crates/qwen-mm-core/src/lib.rs",
-      "sha256": "5d339c6fd3fac99dd2ff02772ebe1cee66d46b354287ae403b16f4560f447144"
+      "sha256": "08e171cbc08d6604bdd7543ba928f22904efde9687de103580229df819aea1b9"
     },
     {
       "path": "crates/qwen-mm-core/src/limits.rs",
@@ -240,11 +240,15 @@
     },
     {
       "path": "crates/qwen-mm-core/src/media.rs",
-      "sha256": "d20a9cd33b365604854289d1992210db61fe0dd48492a4174087669ef3706fad"
+      "sha256": "74c27c7f4a73a7f669edb99d63c939893fff8490b73a5748c4a73de4e6b61b75"
     },
     {
       "path": "crates/qwen-mm-core/src/media_conformance_tests.rs",
       "sha256": "ce071cc949d811e34a00a0c14317cea65e9f46e6afb76841ee56fb74a62dbf90"
+    },
+    {
+      "path": "crates/qwen-mm-core/src/observability.rs",
+      "sha256": "8b13e78769646b82c8db4002a61eec91717f87397717170cba7228aaf69f898e"
     },
     {
       "path": "crates/qwen-mm-core/src/output.rs",
@@ -260,7 +264,7 @@
     },
     {
       "path": "crates/qwen-mm-core/src/processor.rs",
-      "sha256": "b13ac76f120c7055fdb46c2268fb3e8ffb1995dcca24310bd61617077d3b8a33"
+      "sha256": "81a0e111f1b46c3eecfb48904f06dee04530339493e2f80eed0df10d096ce3ce"
     },
     {
       "path": "crates/qwen-mm-core/src/profile.rs",
@@ -272,11 +276,11 @@
     },
     {
       "path": "crates/qwen-mm-core/src/resize.rs",
-      "sha256": "1f6ed5d430016a04ac2b593d1e60b0af295cdb759a92f37fec3d95be924c4f30"
+      "sha256": "bf9b4aa2fbb49059813fc8d5dcf24ae7c6a4438064a23413f4c69f4ebdc8fb32"
     },
     {
       "path": "crates/qwen-mm-core/src/text.rs",
-      "sha256": "620d87e71c9db82fad23e6c3637d3551ba7471afd02bb665c89a96b303175558"
+      "sha256": "7894e23baf3d406968565866820200602ed04655d6983e2f24e77fe87bb7a625"
     },
     {
       "path": "crates/qwen-mm-core/src/text_conformance_tests.rs",
@@ -291,20 +295,24 @@
       "sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16"
     },
     {
+      "path": "crates/qwen-mm-python/python/qwen_mm/benchmark.py",
+      "sha256": "333ad8b2fa5ded6a75e30a9f8890a1874ce467b2181beffd850c2244214b7b22"
+    },
+    {
       "path": "crates/qwen-mm-python/src/errors.rs",
       "sha256": "eb28207958a44b38783c48be9db00c5eb1daa277ca89f74a8a13a06f13380092"
     },
     {
       "path": "crates/qwen-mm-python/src/input.rs",
-      "sha256": "d6f970f9dc34d5e0882bdb007d084d931a60bc0e5e3e7c13b8c280f3f84153d6"
+      "sha256": "acc29e73cb910a38492d62b81c239bdad27668bfe233faed223ab3f29b759339"
     },
     {
       "path": "crates/qwen-mm-python/src/lib.rs",
-      "sha256": "181b8104f6351d602c27b7460811ac9cd5737bca7195fb034fba6e80b271e15d"
+      "sha256": "6548964bbe21763a1c321f5532268309e5312bcb062130bcf67bca9815b61bcb"
     },
     {
       "path": "crates/qwen-mm-python/src/output.rs",
-      "sha256": "fc147d345c00679d1cc9fb451a833d4cd7713ecaeec6f407f4fb66b355663f87"
+      "sha256": "5e0490282fc59d87234102255e850e7c614912a7971658eef7f6388d79f92e64"
     },
     {
       "path": "fixtures/baseline/image24/image-00.jpg",
@@ -408,7 +416,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "7edfaf04313afa21270dbcd44c4de5273537352e93c47d24efe829b470b92170"
+      "sha256": "e3022058e2f562c652ece2fa4d269509f437897fdeb99ff3e3adf77d3ade8be3"
     },
     {
       "path": "reference/cases/v1/assets/not-an-image.bin",
@@ -516,11 +524,11 @@
     },
     {
       "path": "reference/src/qwen_mm_reference/benchmark_protocol.py",
-      "sha256": "0f63b84577a4efd52392709796ac70e7ad45ed93aced34945f1e7d5d66bebd17"
+      "sha256": "781d052597713a65dac1821dcb3d4d920970301b0a2f054293a488ec835d381a"
     },
     {
       "path": "reference/src/qwen_mm_reference/benchmark_v2.py",
-      "sha256": "47ed518abad1b25b748a0d648db36f07fe38942e3898663ac73c46de0d6a3506"
+      "sha256": "5413daec0c240683f8dd269a3d742b850579182c5c87c5d4150b243a245261b7"
     },
     {
       "path": "reference/src/qwen_mm_reference/chat_conformance.py",
@@ -555,6 +563,10 @@
       "sha256": "104bcc2cddccfd7088fd06b97fc6f1975e9e0ee3625d67c7bee1d6687b12e994"
     },
     {
+      "path": "reference/src/qwen_mm_reference/profile_v1.py",
+      "sha256": "a5af353c7608c943d30d016115d7b4d57d8f7b92fe9f3a1b28cd099a989a31c2"
+    },
+    {
       "path": "reference/src/qwen_mm_reference/resize_conformance.py",
       "sha256": "deb9191b6f0465d268fc493ce0faaacb5f8dfbadea10e20e1b7418fc96bf03c9"
     },
@@ -576,7 +588,7 @@
     },
     {
       "path": "uv.lock",
-      "sha256": "0130884d33298c95b82f27f70bc7df15b6bc5642dcb940640d3105a8aa407f0d"
+      "sha256": "fa439b84c91f8112716cd7ec5837e1ed4f5f0d0fa17280977768d21bc1320a56"
     }
   ],
   "installed_boundary_rule_map": {
@@ -806,7 +818,7 @@
     "git": {
       "gate_input_status": [],
       "gate_inputs_clean": true,
-      "revision": "0364b5acc1f6f86b993432ca8cf6557bfe049463"
+      "revision": "204109bc062fcb5f61ac3b04f4f1cc45c85c506e"
     },
     "platform": {
       "byte_order": "little",
@@ -3733,6 +3745,6 @@
     ],
     "skipped_case_ids": []
   },
-  "source_fingerprint": "e8f5ee5489530b0744a93fbf5a16c3ec5c560e3d91f613216300d17a02881cbf",
+  "source_fingerprint": "2eff9e786a62fb1c85892ab86731e12a6d772996e0522bbad22b10bf3e8965ae",
   "status": "pass"
 }
