@@ -34,6 +34,8 @@ def _base_files() -> dict[str, bytes]:
         json.dumps(
             {
                 "architecture_family": "arm64",
+                "build_wheel_sha256": {label: "a" * 64 for label in support.BUILD_LABELS},
+                "build_native_sha256": {label: "b" * 64 for label in support.BUILD_LABELS},
                 "host": {
                     "affinity": {"masks": {f"t{budget}": None for budget in support.THREAD_BUDGETS}}
                 },
@@ -237,6 +239,62 @@ class D4CaptureSupportTests(unittest.TestCase):
         self.assertIn("--locked", shipping)
         self.assertNotIn("target-cpu=native", " ".join(shipping))
 
+    def test_build_artifact_authentication_accepts_byte_identical_outputs(self) -> None:
+        plan = d4_local.build_plan(Path("/capture"))
+        same = "a" * 64
+        support.assert_build_variant_artifacts(
+            plan,
+            native_hashes={"shipping": same, "native": same},
+            wheel_hashes={"shipping": same, "native": same},
+        )
+
+        broken = json.loads(json.dumps(plan))
+        broken["builds"]["native"]["build"] = [
+            item
+            for item in broken["builds"]["native"]["build"]
+            if item != "RUSTFLAGS=-C target-cpu=native"
+        ]
+        with self.assertRaisesRegex(support.D4CaptureError, "optimization override"):
+            support.assert_build_variant_artifacts(
+                broken,
+                native_hashes={"shipping": same, "native": same},
+                wheel_hashes={"shipping": same, "native": same},
+            )
+
+        shared = json.loads(json.dumps(plan))
+        shared["builds"]["native"]["venv"] = shared["builds"]["shipping"]["venv"]
+        shared["builds"]["native"]["create_venv"][-1] = shared["builds"]["shipping"]["venv"]
+        native_build = shared["builds"]["native"]["build"]
+        interpreter = native_build.index("--interpreter") + 1
+        native_build[interpreter] = str(Path(shared["builds"]["shipping"]["venv"]) / "bin/python")
+        with self.assertRaisesRegex(support.D4CaptureError, "distinct paths"):
+            support.assert_build_variant_artifacts(
+                shared,
+                native_hashes={"shipping": same, "native": same},
+                wheel_hashes={"shipping": same, "native": same},
+            )
+
+    def test_failed_local_workspace_is_retained_and_success_is_removed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            failure = Path(temporary) / "failed"
+            failure.mkdir()
+            with (
+                mock.patch.object(d4_local.tempfile, "mkdtemp", return_value=str(failure)),
+                self.assertRaisesRegex(RuntimeError, "boom"),
+                d4_local._capture_workspace(),
+            ):
+                raise RuntimeError("boom")
+            self.assertTrue(failure.is_dir())
+
+            success = Path(temporary) / "success"
+            success.mkdir()
+            with (
+                mock.patch.object(d4_local.tempfile, "mkdtemp", return_value=str(success)),
+                d4_local._capture_workspace(),
+            ):
+                (success / "evidence.txt").write_text("ok", encoding="utf-8")
+            self.assertFalse(success.exists())
+
     def test_physical_core_masks_are_nested_and_skip_smt_siblings(self) -> None:
         topology = """# CPU,Core,Socket,Online
 0,0,0,Y
@@ -438,6 +496,22 @@ class D4CaptureSupportTests(unittest.TestCase):
             )
 
     def test_capture_archive_round_trip_and_tamper_rejection(self) -> None:
+        build_plan = d4_local.build_plan(Path("/capture"))["builds"]
+
+        def archived_build(
+            _files: dict[str, bytes],
+            _provenance: dict[str, object],
+            build_label: str,
+        ) -> dict[str, object]:
+            lane = build_plan[build_label]
+            return {
+                "commands": {
+                    "create_venv": lane["create_venv"],
+                    "build_wheel": lane["build"],
+                },
+                "_retained_benchmark_artifact": {"sha256": "c" * 64},
+            }
+
         def phase_c_hashes(
             files: dict[str, bytes],
             _provenance: dict[str, object],
@@ -463,7 +537,7 @@ class D4CaptureSupportTests(unittest.TestCase):
             mock.patch.object(
                 support,
                 "validate_archived_build",
-                return_value={"_retained_benchmark_artifact": {"sha256": "c" * 64}},
+                side_effect=archived_build,
             ),
             mock.patch.object(support, "validate_archived_phase_c", side_effect=phase_c_hashes),
             mock.patch.object(support, "validate_d4_result_contract"),

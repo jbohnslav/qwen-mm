@@ -262,6 +262,92 @@ def assert_build_invariants(values: Mapping[str, Mapping[str, Any]]) -> None:
         )
 
 
+def assert_build_variant_artifacts(
+    plan: Mapping[str, Any],
+    *,
+    native_hashes: Mapping[str, str],
+    wheel_hashes: Mapping[str, str],
+) -> None:
+    """Authenticate both build lanes without requiring their bytes to differ.
+
+    ``target-cpu=native`` is a compiler input, not a promise that a particular
+    crate will contain target-specific instructions.  A scalar extension can
+    therefore compile byte-for-byte identically to the portable release on a
+    given architecture.  The separate target directories, retained wheels,
+    commands, and installed-runtime reconciliation are the evidence that both
+    lanes were actually built.
+    """
+
+    if set(native_hashes) != set(BUILD_LABELS) or set(wheel_hashes) != set(BUILD_LABELS):
+        raise D4CaptureError("build artifact identities must cover shipping and native")
+    try:
+        builds = plan["builds"]
+    except (KeyError, TypeError) as error:
+        raise D4CaptureError("build plan is missing shipping/native lanes") from error
+    if not isinstance(builds, Mapping) or set(builds) != set(BUILD_LABELS):
+        raise D4CaptureError("build plan must contain exactly shipping and native lanes")
+
+    venvs: set[Path] = set()
+    cargo_targets: set[Path] = set()
+    wheel_outputs: set[Path] = set()
+    for label in BUILD_LABELS:
+        try:
+            lane = builds[label]
+            venv = Path(lane["venv"])
+            create_venv = lane["create_venv"]
+            command = lane["build"]
+        except (KeyError, TypeError) as error:
+            raise D4CaptureError(f"{label} build lane is incomplete") from error
+        if (
+            not isinstance(create_venv, list)
+            or not all(isinstance(item, str) and item for item in create_venv)
+            or create_venv[-1] != str(venv)
+            or not isinstance(command, list)
+            or not all(isinstance(item, str) and item for item in command)
+        ):
+            raise D4CaptureError(f"{label} build lane has an invalid command")
+        cargo_assignments = [item for item in command if item.startswith("CARGO_TARGET_DIR=")]
+        rustflag_assignments = [
+            item for item in command if item.startswith(("RUSTFLAGS=", "CARGO_ENCODED_RUSTFLAGS="))
+        ]
+        if len(cargo_assignments) != 1:
+            raise D4CaptureError(f"{label} build must declare one Cargo target directory")
+        expected_rustflags = [] if label == "shipping" else [f"RUSTFLAGS={NATIVE_RUSTFLAGS}"]
+        if rustflag_assignments != expected_rustflags:
+            raise D4CaptureError(f"{label} build has the wrong native optimization override")
+        try:
+            output_indices = [index for index, item in enumerate(command) if item == "--out"]
+            if len(output_indices) != 1:
+                raise ValueError
+            output = Path(command[output_indices[0] + 1])
+        except (IndexError, ValueError) as error:
+            raise D4CaptureError(f"{label} build has an invalid wheel output") from error
+        cargo_target = Path(cargo_assignments[0].partition("=")[2])
+        expected = wheel_build_command(
+            python=venv / "bin/python",
+            output=output,
+            build_label=label,
+            cargo_target_dir=cargo_target,
+        )
+        if command != expected:
+            raise D4CaptureError(f"{label} build command differs from the canonical locked build")
+        venvs.add(venv)
+        cargo_targets.add(cargo_target)
+        wheel_outputs.add(output)
+    if any(len(values) != len(BUILD_LABELS) for values in (venvs, cargo_targets, wheel_outputs)):
+        raise D4CaptureError("shipping/native build lanes must use distinct paths")
+
+    for label in BUILD_LABELS:
+        for name, hashes in (("native", native_hashes), ("wheel", wheel_hashes)):
+            value = hashes[label]
+            if (
+                not isinstance(value, str)
+                or len(value) != 64
+                or any(character not in "0123456789abcdef" for character in value)
+            ):
+                raise D4CaptureError(f"{label} {name} artifact identity is not SHA-256")
+
+
 def normalize_build_artifact_paths(value: str, replacements: Mapping[Path, str]) -> str:
     """Normalize only declared variant paths, including macOS symlink resolution."""
 
@@ -1313,8 +1399,32 @@ def read_capture_archive(
     if index.get("architecture_family") != architecture or architecture not in {"arm64", "x86_64"}:
         raise D4CaptureError("raw capture architecture provenance is inconsistent")
     affinity_masks = _provenance_affinity_masks(provenance, architecture)
+    archived_builds = {
+        build_label: validate_archived_build(files, provenance, build_label)
+        for build_label in BUILD_LABELS
+    }
+    try:
+        archived_plan = {
+            "builds": {
+                build_label: {
+                    "venv": archived_builds[build_label]["commands"]["create_venv"][-1],
+                    "create_venv": archived_builds[build_label]["commands"]["create_venv"],
+                    "build": archived_builds[build_label]["commands"]["build_wheel"],
+                }
+                for build_label in BUILD_LABELS
+            }
+        }
+        archived_native_hashes = provenance["build_native_sha256"]
+        archived_wheel_hashes = provenance["build_wheel_sha256"]
+    except (IndexError, KeyError, TypeError) as error:
+        raise D4CaptureError("raw capture build-variant provenance is incomplete") from error
+    assert_build_variant_artifacts(
+        archived_plan,
+        native_hashes=archived_native_hashes,
+        wheel_hashes=archived_wheel_hashes,
+    )
     for build_label in BUILD_LABELS:
-        build = validate_archived_build(files, provenance, build_label)
+        build = archived_builds[build_label]
         phase_c_reports = validate_archived_phase_c(
             files,
             provenance,

@@ -7,10 +7,13 @@ import json
 import os
 import platform
 import shlex
+import shutil
 import socket
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +28,7 @@ from d4_capture_support import (  # noqa: E402
     THREAD_BUDGETS,
     D4CaptureError,
     assert_build_invariants,
+    assert_build_variant_artifacts,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -46,6 +50,23 @@ from profile_capture_support import install_wheel_command  # noqa: E402
 REPOSITORY_ROOT = SCRIPT_DIRECTORY.parent
 ASSETS_ROOT = REPOSITORY_ROOT / "reference/.cache/huggingface"
 BASE_PYTHON = REPOSITORY_ROOT / ".venv/bin/python"
+
+
+@contextmanager
+def _capture_workspace() -> Iterator[Path]:
+    """Retain exact partial evidence on failure, but remove successful scratch data."""
+
+    root = Path(tempfile.mkdtemp(prefix="qwen-mm-d4-local-"))
+    try:
+        yield root
+    except BaseException:
+        print(
+            f"D4 local ARM capture failed; retained diagnostic workspace: {root}",
+            file=sys.stderr,
+        )
+        raise
+    else:
+        shutil.rmtree(root)
 
 
 def _run_logged(command: list[str], *, log: Path, environment: dict[str, str]) -> str:
@@ -211,8 +232,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
         },
     }
     started = datetime.now(UTC)
-    with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-local-") as temporary:
-        temporary_root = Path(temporary)
+    with _capture_workspace() as temporary_root:
         working_root = temporary_root / "working"
         artifact_root = temporary_root / "artifact"
         plan = build_plan(working_root)
@@ -326,10 +346,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
                 "toolchain": {name: value["output"] for name, value in toolchain.items()},
             }
         assert_build_invariants(build_invariants)
-        if len(set(native_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same native binary")
-        if len(set(wheel_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same wheel archive")
+        assert_build_variant_artifacts(plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes)
 
         completed = datetime.now(UTC)
         provenance = {

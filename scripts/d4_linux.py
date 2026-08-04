@@ -31,6 +31,7 @@ from d4_capture_support import (  # noqa: E402
     THREAD_BUDGETS,
     D4CaptureError,
     assert_build_invariants,
+    assert_build_variant_artifacts,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -671,10 +672,7 @@ def execute_capture(
                 "toolchain": {name: value["output"] for name, value in toolchain.items()},
             }
         assert_build_invariants(build_invariants)
-        if len(set(native_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same native binary")
-        if len(set(wheel_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same wheel archive")
+        assert_build_variant_artifacts(plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes)
 
         postflight = _affinity_enforcement_phase(
             masks[1],

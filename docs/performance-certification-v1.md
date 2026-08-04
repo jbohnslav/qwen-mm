@@ -130,6 +130,9 @@ Every build/capture lane enforces the frozen controls below:
 - separate clean virtual environments and retained wheel files for portable
   `shipping` and `-C target-cpu=native` builds, with the installed native module
   reconciled to the actual archived wheel bytes;
+- the native override is authenticated as a build input; byte-identical native
+  and shipping outputs are valid when the compiler finds no target-specific
+  code-generation difference, and their equal hashes remain explicit evidence;
 - a complete fresh Phase C run before and after each build's timed matrix, with
   both pinned profiles, no failures or skips, and distinct pre/post reports;
 - the same input, messages, output keys/order, values, dtypes, profile, warm

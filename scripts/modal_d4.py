@@ -39,6 +39,7 @@ from d4_capture_support import (  # noqa: E402
     D4CaptureError,
     assert_assets_identity,
     assert_build_invariants,
+    assert_build_variant_artifacts,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -209,6 +210,7 @@ def run_d4(
         build_invariants: dict[str, dict[str, Any]] = {}
         native_hashes: dict[str, str] = {}
         wheel_hashes: dict[str, str] = {}
+        variant_plan: dict[str, Any] = {"builds": {}}
         for label in BUILD_LABELS:
             venv = working_root / "venvs" / label
             wheel_directory = working_root / "wheels" / label
@@ -229,6 +231,11 @@ def run_d4(
                 build_label=label,
                 cargo_target_dir=cargo_target,
             )
+            variant_plan["builds"][label] = {
+                "venv": str(venv),
+                "create_venv": create_venv,
+                "build": build_command,
+            }
             _run_logged(create_venv, log=build_log, environment=environment)
             _run_logged(
                 sync_command,
@@ -339,10 +346,9 @@ def run_d4(
                 "toolchain": {name: value["output"] for name, value in toolchain.items()},
             }
         assert_build_invariants(build_invariants)
-        if len(set(native_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same native binary")
-        if len(set(wheel_hashes.values())) != len(BUILD_LABELS):
-            raise D4CaptureError("shipping and native builds produced the same wheel archive")
+        assert_build_variant_artifacts(
+            variant_plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes
+        )
         assert_assets_identity(REMOTE_ASSETS_ROOT, expected_assets)
 
         modal_environment = {
