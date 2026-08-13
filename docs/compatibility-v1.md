@@ -1,5 +1,12 @@
 # ADR 0001: qwen-mm compatibility contract v1
 
+> Historical contract notice: this document's v1 semantics and authenticated
+> v1 evidence remain unchanged. For D3.5 and later implementations, only the
+> still-image resized-RGB8 and consequent still-image tensor comparison rules
+> are superseded by
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md). Every other
+> compatibility rule below remains in force.
+
 - Status: accepted for implementation
 - Date: 2026-07-31
 - Contract ID: `qwen-mm-compat-v1`

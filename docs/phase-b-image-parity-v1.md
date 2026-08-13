@@ -1,5 +1,11 @@
 # Phase B serial image-path conformance
 
+> Historical gate notice: this v1 corpus and its results retain their original
+> meaning. D3.5 and later runs apply
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md) only to
+> still-image resized RGB8 and consequent tensors; all structural and
+> downstream-from-candidate-RGB checks remain exact.
+
 Phase B composes the hash-validated chat renderer/tokenizer, bounded image
 decode and resize, RGB normalization/patchification, grids, prompt replacement
 ranges, and conditional official output keys into

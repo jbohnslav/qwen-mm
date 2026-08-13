@@ -1,5 +1,12 @@
 # Image performance certification v1
 
+> Historical protocol notice: v1 evidence retains the gates and meaning
+> recorded in this document. New D3.5/D4 captures use the still-image quality
+> and per-coordinate speed gates in
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md); all other
+> capture, provenance, resource, stability, memory, scaling, and miss-reporting
+> controls below remain in force.
+
 Phase D4 certifies the CPU preprocessing boundary from in-memory encoded media
 and structured messages through fully materialized NumPy arrays. It compares
 the official and candidate processors on native macOS ARM and native Linux x86

@@ -1,5 +1,12 @@
 # Encoded image and prepared-RGB parity v1 decision record
 
+> Historical decision notice: this v1 record and its authenticated evidence
+> remain unchanged. D3.5 supersedes only the still-image resize value
+> comparison and kernel selection with
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md). Decode, color,
+> geometry, limits, errors, no-op behavior, and all other rules below remain in
+> force.
+
 Status: accepted implementation evidence for B6 on 2026-08-01.
 
 ## Decision

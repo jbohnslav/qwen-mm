@@ -2,7 +2,7 @@
 
 Status: Proposed
 
-Last updated: 2026-07-31
+Last updated: 2026-08-13
 
 This roadmap turns the architecture in [DESIGN.md](DESIGN.md) and the first
 measurement in [BENCHMARK.md](BENCHMARK.md) into dependency-ordered work with
@@ -17,13 +17,13 @@ The project is complete when a clean checkout can:
    and caller-supplied video frames in one native batch operation, with one
    pinned encoded-video adapter layered outside the core.
 3. Produce the complete official processor output contract for the declared
-   input envelope, with exact metadata and numerically equivalent visual
-   tensors.
+   input envelope, with exact metadata and visual tensors that satisfy the
+   versioned numerical contract.
 4. Demonstrate parity against the pinned official composed path, not merely
    against an isolated resize or tokenizer implementation.
 5. Demonstrate a repeatable, statistically supported speedup on both ARM and
-   x86 CPU hosts while producing the same outputs and using the same thread
-   budget.
+   x86 CPU hosts while satisfying the versioned output contract and using the
+   same thread budget.
 6. Feed the prepared data into a pinned vLLM integration without falling back
    to Hugging Face or Qwen VL Utils, and improve an admission-bound direct
    `AsyncLLM` workload.
@@ -144,8 +144,10 @@ PyTorch or vLLM process.
 | IDs, masks, modality IDs, grids, offsets, placeholder counts, frame indices | Exact values and order |
 | Adapter-visible shapes, dtypes, and strides | Exact |
 | Caller-owned RGB and lossless prepared RGB | Exact bytes |
-| Normalize and patchify from identical RGB | `rtol=0`, `atol<=1e-6`, plus ULP report |
-| Encoded JPEG/WebP end-to-end pixels | Target exact prepared RGB; any codec-specific fallback is frozen before implementation and may not exceed one normalized 8-bit level (`2/255` plus `float32` epsilon) |
+| Official Pillow vs candidate still-image resized RGB8 | Per-occurrence, per-channel quality gates from [`qwen-mm-still-image-resize-v2`](docs/image-resize-contract-v2.md); exact no-op, constant, primary, and channel invariants |
+| Normalize and patchify from identical candidate RGB | `rtol=0`, `atol<=1e-6`, plus ULP report |
+| Encoded JPEG/WebP end-to-end still-image pixels | May differ only as implied by a passing v2 resized-RGB8 comparison; no additional downstream error |
+| Video resize and final video tensors | Unchanged v1 comparison rules |
 | Invalid input | Same valid/invalid outcome and stable typed error category |
 
 Pixel mismatch reports include maximum absolute and ULP error, RMSE,
@@ -200,7 +202,9 @@ remain separate.
   protocol; provider identity alone neither qualifies nor disqualifies a run.
 - On the current M4 baseline, the initial point targets are therefore below
   111.0 ms for Qwen3-VL and 111.6 ms for Qwen3.5 on `image24`.
-- `jpeg1_offgrid` and both text-only cases regress by no more than 5%.
+- For every applicable shipping image coordinate, the lower bound of the 95%
+  speedup confidence interval is strictly greater than `1.0`.
+- Both text-only cases regress by no more than 5%.
 - Parallel efficiency is at least 60% through eight physical cores on a
   many-image case.
 - Transient live bytes, excluding the retained final output, are at most 50% of
@@ -310,7 +314,8 @@ identical model inputs. The seam spike decides this early rather than at the end
 | D1 — Native observability and profile | A5, C3 | Add request/media stage spans, allocation and buffer-lifetime counters, Python-call counters, and whole-operation flamegraphs. Publish a ranked bottleneck list on ARM and x86. |
 | D2 — Deterministic bounded parallelism | D1 | Parallelize requests/visuals with an owned bounded pool. Outputs and errors are invariant at thread counts 1 through N; tokenizers/PyTorch/vLLM cannot oversubscribe it by default. |
 | D3 — Profile-driven fusion and arenas | C1, D1 | Land scratch reuse, fused normalize/layout writes, and caller-owned buffers only where profiles justify them. Each isolated change reruns full conformance and documents removed buffers/copies. |
-| D4 — Image performance certification | A5, C3, D2, D3 | Run the complete controlled-host protocol and meet every CPU speed, regression, scaling, and transient-memory gate. Publish raw JSON and a readable report beside correctness. |
+| D3.5 — Optimized still-image resizer | C3, D1 | Freeze the v2 neural-image quality envelope, measure maintained Rust-native resizers, and select one only if it passes exact structural/invariant checks and the fixed holdout/adversarial corpus. |
+| D4 — Image performance certification | A5, C3, D2, D3, D3.5 | Run the complete controlled-host protocol and meet every CPU speed, regression, scaling, and transient-memory gate. Every shipping image coordinate must be statistically faster than official while the `image24` and `ragged24` headline batch gates remain `2x`. Publish raw JSON and a readable report beside correctness. |
 
 ### Phase E: temporal and encoded-video support
 
@@ -341,7 +346,8 @@ flowchart LR
     C --> B
     B --> P["C3 image parity gate"]
     P --> O["D1-D3 profile + optimize"]
-    O --> S["D4 2x CPU gate"]
+    O --> RZ["D3.5 optimized image resizer"]
+    RZ --> S["D4 all-image speed + 2x batch gate"]
     C --> T["E1-E3 video parity"]
     B --> I["F1/F2 vLLM integration"]
     S --> X["F3 production canary"]
@@ -362,8 +368,9 @@ The project stops and resolves the issue at these gates:
 
 1. **A1:** no processing code before the oracle, supported envelope, dtypes,
    and tolerances are frozen.
-2. **B5:** no resizer dependency is accepted because it is fast; it first has
-   to pass the stage corpus.
+2. **B5/D3.5:** no resizer dependency is accepted because it is fast; it first
+   has to pass the versioned quality contract, exact invariants, and frozen
+   stage corpus.
 3. **C3:** no benchmark claim before complete image parity for both profiles.
 4. **D1:** no speculative fusion before a whole-operation allocation/profile
    census identifies the actual bottleneck.
@@ -378,7 +385,7 @@ The project stops and resolves the issue at these gates:
 | Risk | Mitigation in the roadmap |
 | --- | --- |
 | Oracle drift or accidental double resize | Immutable profiles and exact invocation manifests; `do_resize=False` is asserted. |
-| Pillow/TorchVision and Rust kernel disagreement | Stage goldens and B5 before dependency selection; tolerance cannot move afterward. |
+| Pillow/TorchVision and Rust kernel disagreement | Versioned stage goldens and B5/D3.5 before dependency selection; the frozen still-image v2 quality gates and unchanged video-v1 tolerance cannot move afterward. |
 | Python/Rust rounding differences | Exhaustive pure-rule fixtures, including half ties. |
 | Qwen3.5 template complexity | Separate explicit text profile and full declared message-option corpus. |
 | 432 MiB output multiplied by parallel scratch | Two-phase allocation, bounded pool, live-buffer counters, and transient-memory gate. |

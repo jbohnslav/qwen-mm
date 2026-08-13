@@ -1,5 +1,11 @@
 # Phase C installed-wheel text/image conformance v1
 
+> Historical gate notice: authenticated Phase C v1 reports preserve the exact
+> contract recorded here. D3.5 and later conformance runs apply
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md) only to the
+> still-image RGB8 values and their consequent final tensors; structure,
+> geometry, errors, and all other v1 checks remain exact.
+
 This gate certifies correctness of the production Python wheel for the frozen
 text/image scope and both pinned profiles. It is the dependency required before
 image measurement work can be considered for release.

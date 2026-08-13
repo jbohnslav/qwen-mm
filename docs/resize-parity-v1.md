@@ -1,5 +1,12 @@
 # Resize parity v1 decision record
 
+> Historical decision notice: this document and its authenticated v1 artifacts
+> retain their original meaning. D3.5 supersedes only the production
+> still-image kernel selection and Pillow RGB8 comparison rule with
+> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md). The v1 video
+> kernel, video tolerances, corpus results, and historical candidate results
+> remain unchanged.
+
 Status: accepted for B5 on 2026-08-01.
 
 ## Decision
