@@ -76,6 +76,16 @@ VM_EXPERIMENTAL_OPTIONS = {"vm_runtime": True}
 MODAL_PRICING_URL = "https://modal.com/pricing"
 SANDBOX_CPU_USD_PER_PHYSICAL_CORE_SECOND = 0.00003942
 SANDBOX_MEMORY_USD_PER_GIB_SECOND = 0.00000667
+D4_APT_PACKAGES = (
+    "build-essential",
+    "ca-certificates",
+    "curl",
+    "file",
+    "git",
+    "pkg-config",
+    "systemd",
+    "util-linux",
+)
 
 if modal is not None:
     app = modal.App(APP_NAME)
@@ -91,15 +101,7 @@ def _source_ignore(relative: Path) -> bool:
 if modal is not None:
     d4_image = (
         modal.Image.from_registry(BASE_IMAGE)
-        .apt_install(
-            "build-essential",
-            "ca-certificates",
-            "curl",
-            "file",
-            "git",
-            "pkg-config",
-            "util-linux",
-        )
+        .apt_install(*D4_APT_PACKAGES)
         .run_commands(
             "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs "
             f"| sh -s -- -y --profile minimal --default-toolchain {RUST_VERSION}",

@@ -102,6 +102,9 @@ class _Image:
 
 
 class ModalD4VmSandboxTests(unittest.TestCase):
+    def test_image_installs_vm_virtualization_detector(self) -> None:
+        self.assertIn("systemd", modal_d4.D4_APT_PACKAGES)
+
     def test_plan_fixes_request_limits_runtime_lifecycle_and_pricing(self) -> None:
         plan = modal_d4._sandbox_plan(source={}, assets={}, source_revision="a" * 40)
         self.assertEqual(plan["runner"], modal_d4.SANDBOX_RUNTIME)
