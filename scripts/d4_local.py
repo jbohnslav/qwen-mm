@@ -41,6 +41,7 @@ from d4_capture_support import (  # noqa: E402
     reference_sync_evidence,
     source_payload_identity,
     toolchain_pins,
+    verify_private_environment_integrity,
     wheel_build_command,
     write_capture_archive,
 )
@@ -347,6 +348,12 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             }
         assert_build_invariants(build_invariants)
         assert_build_variant_artifacts(plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes)
+        for label in BUILD_LABELS:
+            verify_private_environment_integrity(
+                working_root / "venvs" / label,
+                evidence_path=artifact_root / "builds" / label / "environment-integrity.json",
+                checkpoint="before-archive",
+            )
 
         completed = datetime.now(UTC)
         provenance = {

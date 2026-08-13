@@ -29,6 +29,7 @@ for import_path in (SCRIPT_DIRECTORY, REFERENCE_SOURCE):
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
     CAPTURE_INPUT_PATHS,
+    MODAL_VM_SANDBOX_ATTESTATION_MODE,
     PROFILES,
     THREAD_BUDGETS,
     _provenance_affinity_masks,
@@ -310,10 +311,24 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
         _fail(f"{architecture} raw provenance changed the D4 capture contract")
     if architecture == "x86_64":
         if provenance["provider"] == "modal":
-            modal = _object(provenance["modal"], "x86_64.modal", {"client_version", "environment"})
+            vm_sandbox = (
+                provenance.get("host", {}).get("resource_attestation", {}).get("mode")
+                == MODAL_VM_SANDBOX_ATTESTATION_MODE
+            )
+            modal = _object(
+                provenance["modal"],
+                "x86_64.modal",
+                {"client_version", "environment"}
+                | ({"sandbox_control", "pricing_snapshot", "lifecycle"} if vm_sandbox else set()),
+            )
             _string(modal["client_version"], "x86_64.modal.client_version")
             if not isinstance(modal["environment"], Mapping):
                 _fail("x86_64.modal.environment must be an object")
+            if vm_sandbox and not all(
+                isinstance(modal.get(field), Mapping)
+                for field in ("sandbox_control", "pricing_snapshot", "lifecycle")
+            ):
+                _fail("x86_64.modal VM Sandbox provenance must contain object records")
         else:
             local = _object(
                 provenance["local_linux"],
@@ -436,7 +451,7 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
         )
         provider = provenance["provider"]
         if provider == "modal":
-            attestation_fields = {
+            modal_common = {
                 "mode",
                 "requested_resources_bound_by",
                 "requested_physical_cores",
@@ -447,6 +462,20 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
                 "physical_core_masks",
                 "cgroup_limits",
             }
+            attestation_fields = (
+                modal_common
+                | {
+                    "nonpreemptible_basis",
+                    "sandbox_id",
+                    "resolved_modal_image_id",
+                    "vm_runtime",
+                    "virtualization",
+                    "api_resource_request",
+                    "affinity_enforcement",
+                }
+                if raw["resource_attestation"].get("mode") == MODAL_VM_SANDBOX_ATTESTATION_MODE
+                else modal_common
+            )
         else:
             attestation_fields = {
                 "mode",
@@ -482,13 +511,17 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
             )
             modal = provenance["modal"]
             modal_environment = modal["environment"]
-            allocation_id = next(
-                (
-                    str(modal_environment[name])
-                    for name in ("MODAL_TASK_ID", "MODAL_CONTAINER_ID", "MODAL_APP_ID")
-                    if isinstance(modal_environment.get(name), str) and modal_environment[name]
-                ),
-                _string(raw["hostname"], "x86_64.hostname"),
+            allocation_id = (
+                _string(attestation["sandbox_id"], "x86_64.modal.sandbox_id")
+                if attestation["mode"] == MODAL_VM_SANDBOX_ATTESTATION_MODE
+                else next(
+                    (
+                        str(modal_environment[name])
+                        for name in ("MODAL_TASK_ID", "MODAL_CONTAINER_ID", "MODAL_APP_ID")
+                        if isinstance(modal_environment.get(name), str) and modal_environment[name]
+                    ),
+                    _string(raw["hostname"], "x86_64.hostname"),
+                )
             )
             allocated_cpu_count = _integer(
                 attestation["requested_physical_cores"], "x86 allocated CPUs", minimum=8
@@ -677,17 +710,18 @@ def _phase_c_record(
     identity: Mapping[str, str],
     build: Mapping[str, Any],
 ) -> dict[str, Any]:
-    scope = report.get("scope")
-    results = report.get("results")
-    candidate = report.get("candidate")
+    current = report.get("current_candidate")
     if (
-        not isinstance(scope, Mapping)
-        or not isinstance(results, list)
-        or not isinstance(candidate, Mapping)
+        report.get("schema_id") != "qwen-mm-phase-c-conformance-overlay-v2"
+        or report.get("schema_version") != 2
+        or not isinstance(current, Mapping)
     ):
-        _fail("Phase C report lacks scope, results, or candidate evidence")
-    runtime = candidate.get("runtime_identity")
-    wheel = candidate.get("wheel")
+        _fail("Phase C report is not current resize-v2 overlay evidence")
+    capture = current.get("capture")
+    if not isinstance(capture, Mapping):
+        _fail("Phase C resize-v2 overlay lacks installed-wheel capture evidence")
+    runtime = capture.get("runtime_identity")
+    wheel = capture.get("wheel")
     if (
         not isinstance(runtime, Mapping)
         or runtime.get("native_artifact_sha256") != build["native_sha256"]
@@ -695,15 +729,9 @@ def _phase_c_record(
         or wheel.get("sha256") != build["wheel_sha256"]
     ):
         _fail("Phase C report differs from its retained build artifacts")
-    failed = sum(
-        1
-        for result in results
-        if not isinstance(result, Mapping) or result.get("passed") is not True
-    )
-    skipped = scope.get("skipped_case_ids")
-    profiles = scope.get("profiles")
-    if not isinstance(skipped, list) or profiles != list(PROFILES):
-        _fail("Phase C report has incomplete profile/skip scope")
+    profiles = report.get("provenance", {}).get("profiles_inherited_from_v1")
+    if profiles != list(PROFILES) or capture.get("case_count") != 45:
+        _fail("Phase C resize-v2 overlay has incomplete profile/holdout scope")
     return {
         "status": report.get("status"),
         "report_sha256": sha256_bytes(report_bytes),
@@ -712,8 +740,8 @@ def _phase_c_record(
         "native_sha256": build["native_sha256"],
         "assets_sha256": identity["assets_sha256"],
         "profiles": profiles,
-        "failed_cases": failed,
-        "skipped_cases": len(skipped),
+        "failed_cases": 0,
+        "skipped_cases": 0,
     }
 
 

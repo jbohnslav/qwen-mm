@@ -46,6 +46,7 @@ from d4_capture_support import (  # noqa: E402
     reference_sync_command,
     reference_sync_evidence,
     source_payload_identity,
+    verify_private_environment_integrity,
     wheel_build_command,
     write_capture_archive,
 )
@@ -705,6 +706,12 @@ def execute_capture(
             dedicated_capture=dedicated_capture,
             stable=stable,
         )
+        for label in BUILD_LABELS:
+            verify_private_environment_integrity(
+                working_root / "venvs" / label,
+                evidence_path=artifact_root / "builds" / label / "environment-integrity.json",
+                checkpoint="before-archive",
+            )
 
         completed = datetime.now(UTC)
         provenance = {

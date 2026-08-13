@@ -6,10 +6,12 @@ decisions.  The certification evaluator owns the release schema and gates.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import math
 import os
+import stat
 import statistics
 import tempfile
 import zipfile
@@ -82,6 +84,7 @@ LOCAL_LINUX_AFFINITY_PROBE_SECONDS = 1.0
 LOCAL_LINUX_CPU_WALL_RATIO_MAX = 1.25
 MODAL_NONPREEMPTIBLE = True
 MODAL_SINGLE_USE_CONTAINER = True
+MODAL_VM_SANDBOX_ATTESTATION_MODE = "modal-vm-sandbox-v1"
 PYPI_INDEX = "https://pypi.org/simple"
 PYPI_OVERRIDE_ENVIRONMENT_NAMES = (
     "PIP_EXTRA_INDEX_URL",
@@ -97,6 +100,7 @@ BUILD_ENVIRONMENT_CAPTURE_NAMES = (
     "LC_ALL",
     "PATH",
     "PYTHONHASHSEED",
+    "PYTHONDONTWRITEBYTECODE",
     "PYTHONNOUSERSITE",
     "RUSTUP_HOME",
     "SSL_CERT_FILE",
@@ -114,8 +118,18 @@ CAPTURE_INPUT_PATHS = (
     "benchmarks/result-schema-v3.json",
     "benchmarks/workload-schema-v2.json",
     "benchmarks/workloads-v2.json",
+    "docs/image-resize-contract-v2.md",
     "reference/models.json",
+    "reference/phase-c/v1/report.json",
     "reference/phase-c/v1/schema-v1.json",
+    "reference/phase-c/v2/production-resize-result.json",
+    "reference/phase-c/v2/production-resize.rgb8.bin",
+    "reference/phase-c/v2/schema-v2.json",
+    "reference/resize/v2/manifest.json",
+    "reference/resize/v2/pillow-image-rgb8.bin",
+    "reference/resize/v2/sources.rgb8.bin",
+    "reference/src/qwen_mm_reference/phase_c_overlay_v2.py",
+    "reference/src/qwen_mm_reference/resize_quality_v2.py",
     "rust-toolchain.toml",
     "uv.lock",
 )
@@ -139,6 +153,7 @@ REQUIRED_BASE_MEMBERS = frozenset(
 REQUIRED_BASE_MEMBERS = frozenset(
     set(REQUIRED_BASE_MEMBERS)
     | {f"builds/{build_label}/capture.json" for build_label in BUILD_LABELS}
+    | {f"builds/{build_label}/environment-integrity.json" for build_label in BUILD_LABELS}
     | {
         f"captures/{build_label}/t{budget}/{name}"
         for build_label in BUILD_LABELS
@@ -220,6 +235,7 @@ def normalized_capture_environment(base: Mapping[str, str]) -> dict[str, str]:
             "HF_HUB_OFFLINE": "1",
             "LC_ALL": "C",
             "PYTHONHASHSEED": "0",
+            "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONNOUSERSITE": "1",
             "TRANSFORMERS_OFFLINE": "1",
             "TZ": "UTC",
@@ -227,6 +243,272 @@ def normalized_capture_environment(base: Mapping[str, str]) -> dict[str, str]:
         }
     )
     return environment
+
+
+def _private_environment_snapshot(venv: Path) -> dict[str, Any]:
+    """Content-address every file in a private build environment.
+
+    Imports are run with ``PYTHONDONTWRITEBYTECODE=1``, so the complete venv is
+    immutable after wheel installation. Relative paths prevent host scratch
+    locations from entering the identity while file modes, symlink targets,
+    and regular-file contents all remain authenticated.
+    """
+
+    root = venv.resolve()
+    if not root.is_dir():
+        raise D4CaptureError(f"private build environment is missing: {venv}")
+    entries: dict[str, dict[str, Any]] = {}
+    logical_bytes = 0
+    for directory, directory_names, file_names in os.walk(root, followlinks=False):
+        directory_path = Path(directory)
+        names = sorted([*directory_names, *file_names])
+        for name in names:
+            path = directory_path / name
+            relative = path.relative_to(root).as_posix()
+            metadata = path.lstat()
+            mode = stat.S_IMODE(metadata.st_mode)
+            if stat.S_ISLNK(metadata.st_mode):
+                payload = os.readlink(path).encode("utf-8", errors="surrogateescape")
+                kind = "symlink"
+            elif stat.S_ISREG(metadata.st_mode):
+                digest = hashlib.sha256()
+                with path.open("rb") as handle:
+                    while chunk := handle.read(1024 * 1024):
+                        digest.update(chunk)
+                payload = b""
+                kind = "file"
+            elif stat.S_ISDIR(metadata.st_mode):
+                payload = b""
+                kind = "directory"
+            else:
+                raise D4CaptureError(
+                    f"private build environment contains unsupported entry: {relative}"
+                )
+            size = (
+                len(payload) if kind == "symlink" else (metadata.st_size if kind == "file" else 0)
+            )
+            logical_bytes += size
+            entries[relative] = {
+                "kind": kind,
+                "mode": mode,
+                "bytes": size,
+                "sha256": (
+                    hashlib.sha256(payload).hexdigest()
+                    if kind == "symlink"
+                    else digest.hexdigest()
+                    if kind == "file"
+                    else None
+                ),
+            }
+    canonical = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()
+    return {
+        "tree_sha256": hashlib.sha256(canonical).hexdigest(),
+        "entry_count": len(entries),
+        "logical_bytes": logical_bytes,
+        "entries": entries,
+    }
+
+
+def _write_integrity_evidence(path: Path, value: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
+
+def initialize_private_environment_integrity(
+    venv: Path, *, build_label: str, evidence_path: Path
+) -> None:
+    """Freeze the post-install venv identity before any conformance or timing."""
+
+    if build_label not in BUILD_LABELS:
+        raise D4CaptureError("private environment integrity has an invalid build label")
+    baseline = _private_environment_snapshot(venv)
+    _write_integrity_evidence(
+        evidence_path,
+        {
+            "schema_id": "qwen-mm-d4-private-environment-integrity-v1",
+            "schema_version": 1,
+            "build_label": build_label,
+            "policy": "complete-content-addressed-venv; bytecode writes disabled",
+            "baseline": baseline,
+            "checkpoints": [
+                {
+                    "name": "after-build-install",
+                    "tree_sha256": baseline["tree_sha256"],
+                    "entry_count": baseline["entry_count"],
+                    "logical_bytes": baseline["logical_bytes"],
+                    "matches_baseline": True,
+                    "differences": [],
+                }
+            ],
+        },
+    )
+
+
+def verify_private_environment_integrity(
+    venv: Path, *, evidence_path: Path, checkpoint: str
+) -> None:
+    """Re-hash a frozen venv, persist the checkpoint, and fail closed on drift."""
+
+    if not checkpoint:
+        raise D4CaptureError("private environment integrity checkpoint is empty")
+    try:
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        baseline = evidence["baseline"]
+        baseline_entries = baseline["entries"]
+        checkpoints = evidence["checkpoints"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise D4CaptureError("private environment integrity baseline is invalid") from error
+    if (
+        evidence.get("schema_id") != "qwen-mm-d4-private-environment-integrity-v1"
+        or evidence.get("schema_version") != 1
+        or not isinstance(baseline_entries, Mapping)
+        or not isinstance(checkpoints, list)
+        or checkpoint in {item.get("name") for item in checkpoints if isinstance(item, Mapping)}
+    ):
+        raise D4CaptureError("private environment integrity evidence is invalid or duplicated")
+    observed = _private_environment_snapshot(venv)
+    observed_entries = observed["entries"]
+    paths = sorted(set(baseline_entries) | set(observed_entries))
+    differences = [
+        {
+            "path": path,
+            "baseline": baseline_entries.get(path),
+            "observed": observed_entries.get(path),
+        }
+        for path in paths
+        if baseline_entries.get(path) != observed_entries.get(path)
+    ]
+    matches = not differences and observed["tree_sha256"] == baseline.get("tree_sha256")
+    checkpoints.append(
+        {
+            "name": checkpoint,
+            "tree_sha256": observed["tree_sha256"],
+            "entry_count": observed["entry_count"],
+            "logical_bytes": observed["logical_bytes"],
+            "matches_baseline": matches,
+            "differences": differences,
+        }
+    )
+    _write_integrity_evidence(evidence_path, evidence)
+    if not matches:
+        changed = ", ".join(item["path"] for item in differences[:8])
+        suffix = "" if len(differences) <= 8 else f" (+{len(differences) - 8} more)"
+        raise D4CaptureError(
+            f"private build environment mutated at {checkpoint}: {changed}{suffix}"
+        )
+
+
+def validate_private_environment_integrity(value: Mapping[str, Any], *, build_label: str) -> None:
+    """Validate archived checkpoint evidence without trusting omitted paths."""
+
+    expected_fields = {
+        "schema_id",
+        "schema_version",
+        "build_label",
+        "policy",
+        "baseline",
+        "checkpoints",
+    }
+    if (
+        set(value) != expected_fields
+        or value.get("schema_id") != "qwen-mm-d4-private-environment-integrity-v1"
+        or value.get("schema_version") != 1
+        or value.get("build_label") != build_label
+        or value.get("policy") != "complete-content-addressed-venv; bytecode writes disabled"
+    ):
+        raise D4CaptureError(f"{build_label}: private environment integrity evidence is invalid")
+    baseline = value.get("baseline")
+    checkpoints = value.get("checkpoints")
+    if not isinstance(baseline, Mapping) or set(baseline) != {
+        "tree_sha256",
+        "entry_count",
+        "logical_bytes",
+        "entries",
+    }:
+        raise D4CaptureError(f"{build_label}: private environment baseline is incomplete")
+    entries = baseline.get("entries")
+    if not isinstance(entries, Mapping):
+        raise D4CaptureError(f"{build_label}: private environment entries are invalid")
+    logical_bytes = 0
+    for path, entry in entries.items():
+        relative = PurePosixPath(path) if isinstance(path, str) else None
+        if (
+            relative is None
+            or not path
+            or relative.is_absolute()
+            or ".." in relative.parts
+            or relative.as_posix() != path
+            or not isinstance(entry, Mapping)
+            or set(entry) != {"kind", "mode", "bytes", "sha256"}
+            or entry.get("kind") not in {"directory", "file", "symlink"}
+            or isinstance(entry.get("mode"), bool)
+            or not isinstance(entry.get("mode"), int)
+            or not 0 <= entry["mode"] <= 0o7777
+            or isinstance(entry.get("bytes"), bool)
+            or not isinstance(entry.get("bytes"), int)
+            or entry["bytes"] < 0
+            or (
+                entry["kind"] == "directory"
+                and (entry["bytes"] != 0 or entry.get("sha256") is not None)
+            )
+            or (
+                entry["kind"] != "directory"
+                and (
+                    not isinstance(entry.get("sha256"), str)
+                    or len(entry["sha256"]) != 64
+                    or any(character not in "0123456789abcdef" for character in entry["sha256"])
+                )
+            )
+        ):
+            raise D4CaptureError(f"{build_label}: private environment entry is invalid: {path!r}")
+        logical_bytes += entry["bytes"]
+    canonical = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()
+    if (
+        baseline.get("tree_sha256") != hashlib.sha256(canonical).hexdigest()
+        or baseline.get("entry_count") != len(entries)
+        or baseline.get("logical_bytes") != logical_bytes
+        or not isinstance(checkpoints, list)
+        or not checkpoints
+    ):
+        raise D4CaptureError(f"{build_label}: private environment baseline is inconsistent")
+    names: list[str] = []
+    for item in checkpoints:
+        if (
+            not isinstance(item, Mapping)
+            or set(item)
+            != {
+                "name",
+                "tree_sha256",
+                "entry_count",
+                "logical_bytes",
+                "matches_baseline",
+                "differences",
+            }
+            or not isinstance(item.get("name"), str)
+            or not item["name"]
+            or item.get("tree_sha256") != baseline["tree_sha256"]
+            or item.get("entry_count") != baseline["entry_count"]
+            or item.get("logical_bytes") != baseline["logical_bytes"]
+            or item.get("matches_baseline") is not True
+            or item.get("differences") != []
+        ):
+            raise D4CaptureError(
+                f"{build_label}: private environment checkpoint did not match baseline"
+            )
+        names.append(item["name"])
+    required = {
+        "after-build-install",
+        "before-pre-phase-c-v2",
+        "after-pre-phase-c-v2",
+        "before-post-phase-c-v2",
+        "after-post-phase-c-v2",
+        "before-archive",
+        *(f"{position}-t{budget}" for position in ("before", "after") for budget in THREAD_BUDGETS),
+    }
+    if len(names) != len(set(names)) or set(names) != required:
+        raise D4CaptureError(f"{build_label}: private environment checkpoints are incomplete")
 
 
 def build_environment_evidence(environment: Mapping[str, str]) -> dict[str, Any]:
@@ -638,6 +920,84 @@ def modal_resource_attestation(
         "physical_core_masks": {f"t{budget}": list(masks[budget]) for budget in THREAD_BUDGETS},
         "cgroup_limits": dict(cgroup_limits),
     }
+
+
+def validate_modal_vm_sandbox_attestation(
+    *,
+    attestation: Mapping[str, Any],
+    lscpu_parse: str,
+    recomputed_masks: Mapping[int, Sequence[int]],
+) -> dict[str, Any]:
+    """Rebuild a VM-Sandbox attestation from its authenticated API and host facts."""
+
+    fields = {
+        "mode",
+        "requested_resources_bound_by",
+        "requested_physical_cores",
+        "requested_memory_mib",
+        "nonpreemptible",
+        "nonpreemptible_basis",
+        "single_use_container",
+        "sandbox_id",
+        "resolved_modal_image_id",
+        "vm_runtime",
+        "virtualization",
+        "visible_affinity",
+        "physical_core_masks",
+        "cgroup_limits",
+        "api_resource_request",
+        "affinity_enforcement",
+    }
+    if set(attestation) != fields:
+        raise D4CaptureError("Modal VM Sandbox attestation shape changed")
+    expected_visible = list(range(int(MODAL_CPU)))
+    expected_masks = {budget: tuple(range(budget)) for budget in THREAD_BUDGETS}
+    api_request = {
+        "cpu_request_and_hard_limit": [MODAL_CPU, MODAL_CPU],
+        "memory_request_and_hard_limit_mib": [MODAL_MEMORY_MIB, MODAL_MEMORY_MIB],
+        "vm_runtime": True,
+        "nonpreemptible": True,
+        "single_use": True,
+    }
+    cgroups = attestation.get("cgroup_limits")
+    if not isinstance(cgroups, Mapping):
+        raise D4CaptureError("Modal VM Sandbox cgroup evidence is missing")
+    cpuset = cgroups.get("/sys/fs/cgroup/cpuset.cpus.effective")
+    sandbox_id = attestation.get("sandbox_id")
+    image_id = attestation.get("resolved_modal_image_id")
+    visible = attestation.get("visible_affinity")
+    if (
+        attestation.get("mode") != MODAL_VM_SANDBOX_ATTESTATION_MODE
+        or attestation.get("requested_resources_bound_by")
+        != "Modal Sandbox.create request/limit tuples"
+        or attestation.get("requested_physical_cores") != MODAL_CPU
+        or attestation.get("requested_memory_mib") != MODAL_MEMORY_MIB
+        or attestation.get("nonpreemptible") is not True
+        or attestation.get("nonpreemptible_basis") != "Modal CPU-only Sandbox runtime semantics"
+        or attestation.get("single_use_container") is not True
+        or attestation.get("vm_runtime") is not True
+        or str(attestation.get("virtualization", "")).lower() != "kvm"
+        or not isinstance(sandbox_id, str)
+        or not sandbox_id.startswith("sb-")
+        or not isinstance(image_id, str)
+        or not image_id.startswith("im-")
+        or visible != expected_visible
+        or cpuset != "0-15"
+        or attestation.get("api_resource_request") != api_request
+        or {budget: tuple(mask) for budget, mask in recomputed_masks.items()} != expected_masks
+        or tuple(physical_core_representatives(lscpu_parse, allowed_cpus=expected_visible))
+        != tuple(expected_visible)
+    ):
+        raise D4CaptureError("Modal VM Sandbox resource/topology attestation is invalid")
+    expected_physical_masks = {
+        f"t{budget}": list(expected_masks[budget]) for budget in THREAD_BUDGETS
+    }
+    if attestation.get("physical_core_masks") != expected_physical_masks:
+        raise D4CaptureError("Modal VM Sandbox physical-core masks are invalid")
+    validate_local_linux_affinity_enforcement(
+        attestation.get("affinity_enforcement", {}), expected_affinity=[0]
+    )
+    return dict(attestation)
 
 
 def validate_local_linux_affinity_enforcement(
@@ -1119,13 +1479,20 @@ def _provenance_affinity_masks(
             )
             provider = provenance["provider"]
             if provider == "modal":
-                rebuilt_attestation = modal_resource_attestation(
-                    cgroup_limits=attestation["cgroup_limits"],
-                    platform_text=host["platform"],
-                    uname=host["uname"],
-                    visible_affinity=visible,
-                    masks=recomputed,
-                )
+                if attestation.get("mode") == MODAL_VM_SANDBOX_ATTESTATION_MODE:
+                    rebuilt_attestation = validate_modal_vm_sandbox_attestation(
+                        attestation=attestation,
+                        lscpu_parse=host["lscpu_parse"],
+                        recomputed_masks=recomputed,
+                    )
+                else:
+                    rebuilt_attestation = modal_resource_attestation(
+                        cgroup_limits=attestation["cgroup_limits"],
+                        platform_text=host["platform"],
+                        uname=host["uname"],
+                        visible_affinity=visible,
+                        masks=recomputed,
+                    )
             elif provider == "local_linux":
                 physical_count = len(
                     physical_core_representatives(host["lscpu_parse"], allowed_cpus=visible)
@@ -1170,8 +1537,14 @@ def validate_archived_build(
         raise D4CaptureError(f"{build_label}: raw archive must retain exactly one wheel")
     try:
         build = json.loads(files[f"builds/{build_label}/build.json"])
+        environment_integrity = json.loads(
+            files[f"builds/{build_label}/environment-integrity.json"]
+        )
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise D4CaptureError(f"{build_label}: archived build metadata is invalid") from error
+    except KeyError as error:
+        raise D4CaptureError(f"{build_label}: archived build evidence is incomplete") from error
+    validate_private_environment_integrity(environment_integrity, build_label=build_label)
     wheel_name = wheel_names[0]
     wheel_bytes = files[wheel_name]
     with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-wheel-verify-") as temporary:
@@ -1231,43 +1604,64 @@ def validate_archived_phase_c(
     capture_created = timestamp(capture.get("created_at"), f"{build_label}.capture.created_at")
     reports: dict[str, str] = {}
     report_times: dict[str, datetime] = {}
+    repository_root = Path(__file__).resolve().parent.parent
+    try:
+        wheel_contents = build["runtime_reconciliation"]["wheel_contents"]
+        expected_runtime = {
+            "package": "qwen_mm",
+            "version": build["runtime"]["package_version"],
+            "package_artifact_sha256": wheel_contents["package_artifact_sha256"],
+            "native_module": "qwen_mm._native",
+            "native_artifact_sha256": build["runtime"]["native_sha256"],
+        }
+        wheel_name = build["identity"]["wheel"]["name"]
+        wheel_bytes = files[f"builds/{build_label}/{wheel_name}"]
+    except (KeyError, TypeError) as error:
+        raise D4CaptureError(f"{build_label}: Phase C build binding is incomplete") from error
     for position in ("pre", "post"):
         name = f"phase-c/{build_label}/{position}/report.json"
         try:
             report = json.loads(files[name])
-            runtime = report["candidate"]["runtime_identity"]
-            scope = report["scope"]
-            git = report["provenance"]["git"]
+            capture = report["current_candidate"]["capture"]
+            runtime = capture["runtime_identity"]
+            wheel = capture["wheel"]
         except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError) as error:
             raise D4CaptureError(
                 f"{build_label}: archived Phase C {position} is invalid"
             ) from error
         if (
-            report.get("status") != "pass"
+            report.get("schema_id") != "qwen-mm-phase-c-conformance-overlay-v2"
+            or report.get("schema_version") != 2
+            or report.get("status") != "pass"
             or report.get("passed") is not True
-            or scope.get("profiles") != list(PROFILES)
-            or scope.get("skipped_case_ids") != []
-            or scope.get("declared_case_ids") != scope.get("executed_case_ids")
-            or git.get("revision") != provenance.get("source_revision")
-            or git.get("gate_inputs_clean") is not True
-            or git.get("gate_input_status") != []
-            or runtime.get("native_artifact_sha256")
-            != build.get("runtime", {}).get("native_sha256")
-            or runtime.get("package_artifact_sha256")
-            != build.get("runtime_reconciliation", {})
-            .get("wheel_contents", {})
-            .get("package_artifact_sha256")
+            or report.get("current_candidate", {}).get("revision")
+            != provenance.get("source_revision")
+            or runtime != expected_runtime
+            or wheel.get("sha256") != build["identity"]["wheel"]["sha256"]
         ):
             raise D4CaptureError(f"{build_label}: Phase C {position} provenance is stale")
-        if assets_root is not None:
-            try:
-                from qwen_mm_reference.phase_c_conformance import validate_report
+        try:
+            from qwen_mm_reference.benchmark_v2 import _validate_phase_c_report
+            from qwen_mm_reference.phase_c_overlay_v2 import validate_overlay
 
-                validate_report(report, assets_root=assets_root)
-            except (ImportError, OSError, RuntimeError, TypeError, ValueError) as error:
-                raise D4CaptureError(
-                    f"{build_label}: Phase C {position} failed full validation"
-                ) from error
+            with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-phase-c-wheel-") as temporary:
+                wheel_path = Path(temporary) / wheel_name
+                wheel_path.write_bytes(wheel_bytes)
+                validate_overlay(report, wheel_path=wheel_path)
+            _validate_phase_c_report(
+                report,
+                root=repository_root,
+                assets_root=(
+                    assets_root
+                    if assets_root is not None
+                    else repository_root / "reference/.cache/huggingface"
+                ),
+                candidate_identity={"resolved": True, "runtime_identity": expected_runtime},
+            )
+        except (ImportError, OSError, RuntimeError, TypeError, ValueError) as error:
+            raise D4CaptureError(
+                f"{build_label}: Phase C {position} failed full resize-v2 validation"
+            ) from error
         reports[position] = sha256_bytes(files[name])
         report_times[position] = timestamp(
             report.get("created_at"), f"{build_label}.phase_c.{position}.created_at"

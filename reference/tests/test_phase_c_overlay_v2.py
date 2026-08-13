@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import copy
 import json
+import sys
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
+from qwen_mm_reference import phase_c_overlay_v2 as overlay
 from qwen_mm_reference.benchmark_v2 import evaluate_image_release_gate
 from qwen_mm_reference.phase_c_overlay_v2 import REPORT_PATH, repository_root, validate_overlay
 
@@ -61,6 +66,46 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
         hostile["current_candidate"]["capture"]["isolation"]["forbidden_imports"] = ["PIL"]
         with self.assertRaisesRegex(ValueError, "isolation"):
             validate_overlay(hostile)
+
+    def test_controlled_capture_reuses_production_evidence_without_rewriting_it(self) -> None:
+        root = repository_root()
+        blob_path = root / overlay.PRODUCTION_BLOB_PATH
+        result_path = root / overlay.PRODUCTION_RESULT_PATH
+        before_blob = blob_path.read_bytes()
+        before_result = result_path.read_bytes()
+        capture = {"case_count": 45, "quality_result": json.loads(before_result)}
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            with (
+                mock.patch.object(
+                    overlay, "capture_installed_wheel_resize", return_value=capture
+                ) as capture_call,
+                mock.patch.object(overlay, "build_overlay", return_value={"status": "pass"}),
+                mock.patch.object(overlay, "_write_summary"),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "phase_c_overlay_v2",
+                        "capture",
+                        "--candidate-python",
+                        "/venv/bin/python",
+                        "--wheel",
+                        str(temporary_root / "candidate.whl"),
+                        "--production-blob",
+                        str(blob_path),
+                        "--reuse-committed-production-evidence",
+                        "--report",
+                        str(temporary_root / "report.json"),
+                        "--summary",
+                        str(temporary_root / "summary.md"),
+                    ],
+                ),
+            ):
+                overlay.main()
+        self.assertFalse(capture_call.call_args.kwargs["write_candidate_blob"])
+        self.assertEqual(blob_path.read_bytes(), before_blob)
+        self.assertEqual(result_path.read_bytes(), before_result)
 
 
 if __name__ == "__main__":

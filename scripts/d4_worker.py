@@ -24,19 +24,20 @@ from d4_capture_support import (  # noqa: E402
     PRODUCTION_THREAD_BUDGET,
     THREAD_BUDGETS,
     D4CaptureError,
+    initialize_private_environment_integrity,
     installed_build_identity,
     normalized_capture_environment,
     result_noise_assessment,
+    verify_private_environment_integrity,
 )
 from profile_capture_support import (  # noqa: E402
     benchmark_validation_command,
-    phase_c_command,
-    phase_c_validation_command,
+    phase_c_overlay_command,
+    phase_c_overlay_validation_command,
 )
 
 REPOSITORY_ROOT = SCRIPT_DIRECTORY.parent
 WORKLOAD = REPOSITORY_ROOT / "benchmarks/workloads-v2.json"
-PHASE_C_SCHEMA = REPOSITORY_ROOT / "reference/phase-c/v1/schema-v1.json"
 PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
 CACHED_CASE = "repeat24_cached"
 THREAD_ENVIRONMENT_NAMES = (
@@ -185,7 +186,7 @@ def capture_plan(
         "build_label": build_label,
         "python": str(python),
         "wheel": str(wheel),
-        "pre_conformance": phase_c_command(
+        "pre_conformance": phase_c_overlay_command(
             python=python,
             wheel=wheel,
             assets_root=assets_root,
@@ -194,7 +195,7 @@ def capture_plan(
             summary=phase_c_root / "pre/summary.md",
         ),
         "timed_matrix": [],
-        "post_conformance": phase_c_command(
+        "post_conformance": phase_c_overlay_command(
             python=python,
             wheel=wheel,
             assets_root=assets_root,
@@ -327,6 +328,18 @@ def run_capture(
     matrix_log = output_root / "logs" / build_label / "matrix.log"
     environment = normalized_capture_environment(os.environ)
     cached_unsupported: list[dict[str, Any]] = []
+    integrity_path = build_root / "environment-integrity.json"
+    if execute:
+        initialize_private_environment_integrity(
+            python.parent.parent,
+            build_label=build_label,
+            evidence_path=integrity_path,
+        )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="before-pre-phase-c-v2",
+        )
 
     pre_command = list(plan["pre_conformance"])
     _run_logged(
@@ -339,9 +352,9 @@ def run_capture(
     if execute:
         pre_report = output_root / "phase-c" / build_label / "pre/report.json"
         _run_logged(
-            phase_c_validation_command(
+            phase_c_overlay_validation_command(
                 python=python,
-                assets_root=assets_root,
+                wheel=wheel,
                 report=pre_report,
             ),
             log=matrix_log,
@@ -349,8 +362,19 @@ def run_capture(
             append=True,
             execute=True,
         )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="after-pre-phase-c-v2",
+        )
 
     for coordinate in plan["timed_matrix"]:
+        if execute:
+            verify_private_environment_integrity(
+                python.parent.parent,
+                evidence_path=integrity_path,
+                checkpoint=f"before-t{coordinate['thread_budget']}",
+            )
         _run_logged(
             coordinate["command"],
             log=matrix_log,
@@ -383,7 +407,18 @@ def run_capture(
                     thread_budget=int(coordinate["thread_budget"]),
                 )
             )
+            verify_private_environment_integrity(
+                python.parent.parent,
+                evidence_path=integrity_path,
+                checkpoint=f"after-t{coordinate['thread_budget']}",
+            )
 
+    if execute:
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="before-post-phase-c-v2",
+        )
     _run_logged(
         plan["post_conformance"],
         log=matrix_log,
@@ -394,15 +429,20 @@ def run_capture(
     if execute:
         post_report = output_root / "phase-c" / build_label / "post/report.json"
         _run_logged(
-            phase_c_validation_command(
+            phase_c_overlay_validation_command(
                 python=python,
-                assets_root=assets_root,
+                wheel=wheel,
                 report=post_report,
             ),
             log=matrix_log,
             environment=environment,
             append=True,
             execute=True,
+        )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="after-post-phase-c-v2",
         )
         cached_path = output_root / "captures" / build_label / "repeat24_cached-unsupported.json"
         cached_path.parent.mkdir(parents=True, exist_ok=True)

@@ -24,6 +24,7 @@ from qwen_mm_reference.profile_v1 import (
     SAMPLER_PROTOCOLS,
     ProfileArtifactError,
     _artifact_identity,
+    _authenticate_sampler_after_capture,
     _is_qwen_binding_frame,
     _is_qwen_core_frame,
     _is_qwen_native_frame,
@@ -35,6 +36,7 @@ from qwen_mm_reference.profile_v1 import (
     _source_tree_digest_at_revision,
     _source_tree_digest_excluding,
     _stack_rankings,
+    merge_bundles,
     summarize_bundle,
     validate_bundle,
     validate_observation,
@@ -368,6 +370,39 @@ class ObservationValidationTests(unittest.TestCase):
 
 
 class SampleValidationTests(unittest.TestCase):
+    def test_sampler_executable_identity_is_reauthenticated_after_capture(self) -> None:
+        initial = {
+            "binary_path": "/workspace/qwen-mm/.venv/bin/py-spy",
+            "binary_sha256": "a" * 64,
+            "binary_bytes": 123,
+            "version": "py-spy 0.4.1",
+        }
+        with patch(
+            "qwen_mm_reference.profile_v1._sampler_executable_identity",
+            return_value=copy.deepcopy(initial),
+        ) as authenticate:
+            _authenticate_sampler_after_capture(initial, architecture="x86_64", py_spy="py-spy")
+        authenticate.assert_called_once_with("x86_64", "py-spy")
+
+        for field, replacement in (
+            ("binary_path", "/tmp/replaced-py-spy"),
+            ("binary_sha256", "b" * 64),
+            ("binary_bytes", 124),
+            ("version", "py-spy 0.4.2"),
+        ):
+            with self.subTest(field=field):
+                changed = {**initial, field: replacement}
+                with (
+                    patch(
+                        "qwen_mm_reference.profile_v1._sampler_executable_identity",
+                        return_value=changed,
+                    ),
+                    self.assertRaisesRegex(ProfileArtifactError, "identity changed"),
+                ):
+                    _authenticate_sampler_after_capture(
+                        initial, architecture="x86_64", py_spy="py-spy"
+                    )
+
     def test_native_frame_classifiers_accept_exact_demangled_and_rust_v0_crates(self) -> None:
         core_frames = (
             "qwen_mm_core::processor::execute_plan_into",
@@ -1138,10 +1173,23 @@ class BundleValidationTests(unittest.TestCase):
             log_path = directory / f"build-{architecture}.log"
             log_path.write_text("profiled-release build completed\n", encoding="utf-8")
             phase_path = directory / f"phase-c-{architecture}.json"
-            phase_report = {"candidate": {"runtime_identity": runtime}}
+            phase_report = {
+                "schema_id": "qwen-mm-phase-c-conformance-overlay-v2",
+                "schema_version": 2,
+                "status": "pass",
+                "passed": True,
+                "current_candidate": {
+                    "revision": "test-revision",
+                    "capture": {"runtime_identity": runtime},
+                },
+            }
             phase_path.write_text(json.dumps(phase_report), encoding="utf-8")
             phase_identity = _artifact_identity(phase_path)
-            evidence = {"candidate_runtime_identity": runtime}
+            evidence = {
+                "schema_id": "qwen-mm-phase-c-conformance-overlay-v2",
+                "schema_version": 2,
+                "candidate_runtime_identity": runtime,
+            }
             gate = {
                 "status": "pass",
                 "reason_codes": [],
@@ -1425,6 +1473,21 @@ Total number in stack (recursive counted multiple, when >=5):
     def _git_output(*args: str) -> str:
         return "later-descendant" if args[:2] == ("rev-parse", "HEAD") else ""
 
+    def test_source_identity_rejects_declared_fallback_when_git_metadata_is_present(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="profile-source-unreadable-") as temporary:
+            root = Path(temporary)
+            (root / ".git").mkdir()
+            with (
+                patch("qwen_mm_reference.profile_v1.repository_root", return_value=root),
+                patch("qwen_mm_reference.profile_v1._git_output", return_value=None),
+                self.assertRaisesRegex(ProfileArtifactError, "cannot be authenticated"),
+            ):
+                _source_identity(
+                    revision="f" * 40,
+                    source_digest="e" * 64,
+                    declared_clean=True,
+                )
+
     def test_recorded_source_digest_is_independent_of_current_head(self) -> None:
         with tempfile.TemporaryDirectory(prefix="profile-source-git-") as temporary:
             root = Path(temporary)
@@ -1450,6 +1513,15 @@ Total number in stack (recursive counted multiple, when >=5):
             ).stdout.strip()
             expected = committed_source_tree_digest(root, revision)
             with patch("qwen_mm_reference.profile_v1.repository_root", return_value=root):
+                with (
+                    patch.dict(
+                        "qwen_mm_reference.profile_v1.os.environ",
+                        {"QWEN_MM_SOURCE_REVISION": "f" * 40},
+                        clear=False,
+                    ),
+                    self.assertRaisesRegex(ProfileArtifactError, "differs from observed"),
+                ):
+                    _source_identity()
                 self.assertEqual(_source_tree_digest_at_revision(revision, set()), expected)
 
                 (root / ".DS_Store").write_bytes(b"ignored metadata")
@@ -1512,7 +1584,10 @@ Total number in stack (recursive counted multiple, when >=5):
             )
             with (
                 patch("qwen_mm_reference.profile_v1.validate_result_portable"),
-                patch("qwen_mm_reference.profile_v1.validate_phase_c_report"),
+                patch(
+                    "qwen_mm_reference.profile_v1.validate_result_authenticated_portable"
+                ) as portable_auth,
+                patch("qwen_mm_reference.profile_v1.validate_phase_c_overlay"),
                 patch("qwen_mm_reference.profile_v1._git_output", side_effect=self._git_output),
                 patch(
                     "qwen_mm_reference.profile_v1._source_tree_digest_at_revision",
@@ -1520,6 +1595,29 @@ Total number in stack (recursive counted multiple, when >=5):
                 ),
             ):
                 validate_bundle(bundle, require_arm_x86=True)
+                self.assertEqual(portable_auth.call_count, 2)
+                merged = merge_bundles(
+                    [
+                        {
+                            **copy.deepcopy(bundle),
+                            "captures": [copy.deepcopy(bundle["captures"][0])],
+                            "summary": summarize_bundle(
+                                {"captures": [copy.deepcopy(bundle["captures"][0])]}
+                            ),
+                        },
+                        {
+                            **copy.deepcopy(bundle),
+                            "captures": [copy.deepcopy(bundle["captures"][1])],
+                            "summary": summarize_bundle(
+                                {"captures": [copy.deepcopy(bundle["captures"][1])]}
+                            ),
+                        },
+                    ]
+                )
+                self.assertEqual(
+                    {capture["host"]["architecture_family"] for capture in merged["captures"]},
+                    {"arm64", "x86_64"},
+                )
                 self.assertNotEqual(
                     bundle["captures"][0]["build"]["candidate_identity"]["runtime_identity"][
                         "native_artifact_sha256"
@@ -1530,6 +1628,19 @@ Total number in stack (recursive counted multiple, when >=5):
                 )
                 self.assertEqual(len(bundle["captures"][0]["observations"]), 72)
                 self.assertEqual(len(bundle["captures"][0]["sampled_profiles"]), 24)
+
+                def relabel_phase_c_v1(value: dict) -> None:
+                    capture = value["captures"][0]
+                    benchmark_path = root / capture["paired_benchmark"]["path"]
+                    benchmark = json.loads(benchmark_path.read_text(encoding="utf-8"))
+                    benchmark["release_eligibility"]["phase_c"]["evidence"].update(
+                        schema_id="qwen-mm-phase-c-conformance-report-v1",
+                        schema_version=1,
+                    )
+                    relabeled_path = Path(temporary) / "phase-c-v1-relabeled-benchmark.json"
+                    relabeled_path.write_text(json.dumps(benchmark), encoding="utf-8")
+                    capture["paired_benchmark"].update(_artifact_identity(relabeled_path))
+
                 mutations = {
                     "dirty_source": lambda value: value["captures"][0]["source"].update(dirty=True),
                     "source_digest": lambda value: value["captures"][0]["source"].update(
@@ -1547,6 +1658,7 @@ Total number in stack (recursive counted multiple, when >=5):
                     "phase_hash": lambda value: value["captures"][0]["phase_c_report"].update(
                         sha256="0" * 64
                     ),
+                    "phase_c_v1_relabel": relabel_phase_c_v1,
                     "missing_observation": lambda value: value["captures"][0]["observations"].pop(),
                     "duplicate_sample_artifact": lambda value: value["captures"][0][
                         "sampled_profiles"
@@ -1628,7 +1740,7 @@ Total number in stack (recursive counted multiple, when >=5):
             with (
                 patch("qwen_mm_reference.profile_v1.validate_result_portable"),
                 patch(
-                    "qwen_mm_reference.profile_v1.validate_phase_c_report",
+                    "qwen_mm_reference.profile_v1.validate_phase_c_overlay",
                     side_effect=ValueError("semantic failure"),
                 ),
                 patch("qwen_mm_reference.profile_v1._git_output", side_effect=self._git_output),
@@ -1637,7 +1749,7 @@ Total number in stack (recursive counted multiple, when >=5):
                     return_value=source_tuple,
                 ),
             ):
-                with self.assertRaisesRegex(ProfileArtifactError, "semantically invalid"):
+                with self.assertRaisesRegex(ProfileArtifactError, "invalid or stale"):
                     validate_bundle(bundle, require_arm_x86=True)
 
     @patch("qwen_mm_reference.benchmark_protocol._encode_rgb", return_value=b"encoded")
@@ -1688,7 +1800,8 @@ Total number in stack (recursive counted multiple, when >=5):
             )
             with (
                 patch("qwen_mm_reference.profile_v1.validate_result_portable"),
-                patch("qwen_mm_reference.profile_v1.validate_phase_c_report"),
+                patch("qwen_mm_reference.profile_v1.validate_result_authenticated_portable"),
+                patch("qwen_mm_reference.profile_v1.validate_phase_c_overlay"),
                 patch("qwen_mm_reference.profile_v1._git_output", side_effect=self._git_output),
                 patch(
                     "qwen_mm_reference.profile_v1._source_tree_digest_at_revision",

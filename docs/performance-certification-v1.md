@@ -45,20 +45,43 @@ show the requested build/capture plan without producing certification data:
 ./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference \
   python scripts/d4_linux.py
 modal run scripts/modal_d4.py --dry-run
+modal run scripts/modal_d4.py --short-probe
 ```
 
 The local capture rejects anything except native macOS ARM on the current M4
-baseline. The Modal capture requests one non-preemptible, single-use native
-Linux x86 container with 16 CPUs, 32 GiB of memory, and a 12-hour timeout. It
-rejects emulation, inadequate cgroup resources, or fewer than eight distinct
-physical cores, and now runs the same native-thread t1 enforcement preflight
-before starting a long capture. The Modal image is pinned by digest and installs
-the locked uv and Rust toolchains; no long-running app or service remains after
-`modal run` returns. The Modal/gVisor runtime tested on 2026-08-03 reported a
-one-CPU affinity mask but allowed two and four native threads to consume 1.885
-and 3.775 CPUs, respectively, so that runtime is not eligible certification
-evidence. A future Modal runtime may be used only if the unchanged preflight
-passes.
+baseline. The Modal path uses a CPU-only [VM Sandbox][modal-vm], not a Modal
+Function or gVisor container. It supplies `(request, hard limit)` tuples of
+`(16.0, 16.0)` physical CPU cores and `(32768, 32768)` MiB, enables
+`experimental_options={"vm_runtime": True}`, and sets a 12-hour lifetime plus a
+10-minute idle timeout. CPU-only [Modal Sandboxes are not subject to
+preemption][modal-preemption]. Each invocation resolves the source-built image,
+re-opens it by immutable `im-...` identity, creates exactly one named Sandbox,
+and records the `im-...` and `sb-...` IDs. The controller always calls
+`terminate(wait=True)`, verifies a terminal status, and detaches in a nested
+`finally`; it accepts the downloaded artifact only after this cleanup and writes
+a sibling `*.modal-lifecycle.json` record.
+
+The worker rejects anything except KVM, an exact `0-15` process affinity and
+effective cgroup cpuset, exactly 16 online logical CPUs mapping one-to-one to 16
+physical cores, and nested t1/t2/t4/t8 masks. Root `cpu.max` and `memory.max`
+files are not invented when the VM omits them: the fixed limits are instead
+bound to the authenticated `Sandbox.create` call and recorded alongside the
+observed cpuset. The unchanged native-thread t1 enforcement probes run both
+before and after the capture. `--short-probe` runs just these topology and
+pre/post affinity controls and still guarantees termination; it cannot produce
+performance evidence.
+
+The dry-run includes the explicit resource-price calculation. At the repository
+price snapshot it is about $3.04 per requested-resource hour (about $36.47 for
+the 12-hour ceiling), before image-build
+or provider adjustments; unlike non-preemptible Functions, CPU-only Sandboxes
+do not add the Function 3x non-preemptibility multiplier. The base image remains
+pinned by digest and installs the locked uv and Rust toolchains. The earlier
+Modal/gVisor runtime is permanently ineligible: it reported a one-CPU affinity
+mask while two and four native threads consumed 1.885 and 3.775 CPUs.
+
+[modal-vm]: https://modal.com/docs/guide/vm-sandboxes
+[modal-preemption]: https://modal.com/docs/guide/preemption
 
 As an alternative x86 provider, `scripts/d4_linux.py` runs inside a native
 Linux x86 container on a controlled local host. Its image must contain the

@@ -162,7 +162,8 @@ d4-test:
 		reference.tests.test_performance_certification_v1 \
 		scripts.tests.test_d4_capture \
 		scripts.tests.test_d4_linux \
-		scripts.tests.test_d4_evidence
+		scripts.tests.test_d4_evidence \
+		scripts.tests.test_modal_d4
 
 d4-arm-capture:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_local.py \

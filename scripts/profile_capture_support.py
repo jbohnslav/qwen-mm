@@ -18,6 +18,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+
 ARTIFACT_SCHEMA_ID = "qwen-mm-modal-profile-artifact-v1"
 ARTIFACT_SCHEMA_VERSION = 1
 PROVENANCE_SCHEMA_ID = "qwen-mm-modal-profile-provenance-v1"
@@ -310,6 +312,55 @@ def phase_c_validation_command(*, python: Path, assets_root: Path, report: Path)
         str(assets_root),
         "--report",
         str(report),
+    ]
+
+
+def phase_c_overlay_command(
+    *,
+    python: Path,
+    wheel: Path,
+    assets_root: Path,
+    output: Path,
+    report: Path,
+    summary: Path,
+) -> list[str]:
+    """Capture the current resize-v2 Phase C overlay for one installed wheel."""
+
+    return [
+        str(python),
+        "-m",
+        "qwen_mm_reference.phase_c_overlay_v2",
+        "capture",
+        "--candidate-python",
+        str(python),
+        "--wheel",
+        str(wheel),
+        "--assets-root",
+        str(assets_root),
+        "--output",
+        str(output),
+        "--production-blob",
+        str(REPOSITORY_ROOT / "reference/phase-c/v2/production-resize.rgb8.bin"),
+        "--reuse-committed-production-evidence",
+        "--report",
+        str(report),
+        "--summary",
+        str(summary),
+    ]
+
+
+def phase_c_overlay_validation_command(*, python: Path, wheel: Path, report: Path) -> list[str]:
+    """Validate a resize-v2 overlay and bind it to its retained wheel."""
+
+    return [
+        str(python),
+        "-m",
+        "qwen_mm_reference.phase_c_overlay_v2",
+        "validate",
+        "--report",
+        str(report),
+        "--wheel",
+        str(wheel),
     ]
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sys
@@ -363,6 +364,86 @@ class D4CaptureSupportTests(unittest.TestCase):
                 masks=masks,
             )
 
+    def test_modal_vm_sandbox_archive_attestation_rebuilds_exact_controls(self) -> None:
+        topology = "# CPU,Core,Socket,Online\n" + "\n".join(f"{cpu},{cpu},0,Y" for cpu in range(16))
+        masks = {budget: tuple(range(budget)) for budget in support.THREAD_BUDGETS}
+
+        def phase(offset: int) -> dict[str, object]:
+            return {
+                "probes": [
+                    {
+                        "native_thread_count": count,
+                        "wall_seconds": 1.0,
+                        "process_cpu_seconds": 1.0,
+                        "process_cpu_wall_ratio": 1.0,
+                        "worker_reports": [
+                            {
+                                "worker_index": index,
+                                "native_thread_id": offset + index,
+                                "affinity": [0],
+                                "observed_cpus": [0],
+                                "iterations": 100,
+                            }
+                            for index in range(count)
+                        ],
+                    }
+                    for count in (1, 2, 4)
+                ]
+            }
+
+        attestation = {
+            "mode": support.MODAL_VM_SANDBOX_ATTESTATION_MODE,
+            "requested_resources_bound_by": "Modal Sandbox.create request/limit tuples",
+            "requested_physical_cores": support.MODAL_CPU,
+            "requested_memory_mib": support.MODAL_MEMORY_MIB,
+            "nonpreemptible": True,
+            "nonpreemptible_basis": "Modal CPU-only Sandbox runtime semantics",
+            "single_use_container": True,
+            "sandbox_id": "sb-test",
+            "resolved_modal_image_id": "im-test",
+            "vm_runtime": True,
+            "virtualization": "kvm",
+            "visible_affinity": list(range(16)),
+            "physical_core_masks": {
+                f"t{budget}": list(masks[budget]) for budget in support.THREAD_BUDGETS
+            },
+            "cgroup_limits": {"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"},
+            "api_resource_request": {
+                "cpu_request_and_hard_limit": [support.MODAL_CPU, support.MODAL_CPU],
+                "memory_request_and_hard_limit_mib": [
+                    support.MODAL_MEMORY_MIB,
+                    support.MODAL_MEMORY_MIB,
+                ],
+                "vm_runtime": True,
+                "nonpreemptible": True,
+                "single_use": True,
+            },
+            "affinity_enforcement": {
+                "method": "taskset-t1-python-native-threads-v1",
+                "expected_affinity": [0],
+                "probe_seconds": 1.0,
+                "cpu_wall_ratio_max": 1.25,
+                "pre": phase(100),
+                "post": phase(200),
+            },
+        }
+        self.assertEqual(
+            support.validate_modal_vm_sandbox_attestation(
+                attestation=attestation,
+                lscpu_parse=topology,
+                recomputed_masks=masks,
+            ),
+            attestation,
+        )
+        mutated = copy.deepcopy(attestation)
+        mutated["api_resource_request"]["cpu_request_and_hard_limit"] = [16.0, 32.0]
+        with self.assertRaisesRegex(support.D4CaptureError, "resource/topology"):
+            support.validate_modal_vm_sandbox_attestation(
+                attestation=mutated,
+                lscpu_parse=topology,
+                recomputed_masks=masks,
+            )
+
     def test_local_linux_resource_attestation_requires_fixed_dedicated_cgroup(self) -> None:
         masks = {budget: tuple(range(budget)) for budget in support.THREAD_BUDGETS}
         cgroups = {
@@ -444,34 +525,31 @@ class D4CaptureSupportTests(unittest.TestCase):
         package_sha = "b" * 64
         revision = "c" * 40
         build = {
-            "runtime": {"native_sha256": native_sha},
+            "runtime": {"native_sha256": native_sha, "package_version": "0.1.0"},
             "runtime_reconciliation": {"wheel_contents": {"package_artifact_sha256": package_sha}},
+            "identity": {"wheel": {"name": "qwen_mm-test.whl", "sha256": "d" * 64}},
         }
 
         def report(created_at: str) -> bytes:
             return json.dumps(
                 {
+                    "schema_id": "qwen-mm-phase-c-conformance-overlay-v2",
+                    "schema_version": 2,
                     "status": "pass",
                     "passed": True,
                     "created_at": created_at,
-                    "candidate": {
-                        "runtime_identity": {
-                            "native_artifact_sha256": native_sha,
-                            "package_artifact_sha256": package_sha,
-                        }
-                    },
-                    "scope": {
-                        "profiles": list(support.PROFILES),
-                        "skipped_case_ids": [],
-                        "declared_case_ids": [],
-                        "executed_case_ids": [],
-                    },
-                    "provenance": {
-                        "git": {
-                            "revision": revision,
-                            "gate_inputs_clean": True,
-                            "gate_input_status": [],
-                        }
+                    "current_candidate": {
+                        "revision": revision,
+                        "capture": {
+                            "runtime_identity": {
+                                "package": "qwen_mm",
+                                "version": "0.1.0",
+                                "package_artifact_sha256": package_sha,
+                                "native_module": "qwen_mm._native",
+                                "native_artifact_sha256": native_sha,
+                            },
+                            "wheel": {"sha256": "d" * 64},
+                        },
                     },
                 }
             ).encode()
@@ -482,17 +560,95 @@ class D4CaptureSupportTests(unittest.TestCase):
             ).encode(),
             "phase-c/shipping/pre/report.json": report("2026-08-03T00:01:00+00:00"),
             "phase-c/shipping/post/report.json": report("2026-08-03T00:03:00+00:00"),
+            "builds/shipping/qwen_mm-test.whl": b"wheel",
         }
         provenance = {
             "started_at": "2026-08-03T00:00:00+00:00",
             "completed_at": "2026-08-03T00:05:00+00:00",
             "source_revision": revision,
         }
-        support.validate_archived_phase_c(files, provenance, "shipping", build, assets_root=None)
-        files["phase-c/shipping/post/report.json"] = report("2026-08-03T00:00:30+00:00")
-        with self.assertRaisesRegex(support.D4CaptureError, "stale or inverted"):
+        with (
+            mock.patch("qwen_mm_reference.phase_c_overlay_v2.validate_overlay"),
+            mock.patch("qwen_mm_reference.benchmark_v2._validate_phase_c_report"),
+        ):
             support.validate_archived_phase_c(
                 files, provenance, "shipping", build, assets_root=None
+            )
+        v1_files = dict(files)
+        v1_report = {
+            "schema_id": "qwen-mm-phase-c-conformance-report-v1",
+            "schema_version": 1,
+            "status": "pass",
+            "passed": True,
+            "created_at": "2026-08-03T00:01:00+00:00",
+        }
+        v1_files["phase-c/shipping/pre/report.json"] = json.dumps(v1_report).encode()
+        with self.assertRaisesRegex(support.D4CaptureError, "archived Phase C pre is invalid"):
+            support.validate_archived_phase_c(
+                v1_files, provenance, "shipping", build, assets_root=None
+            )
+        files["phase-c/shipping/post/report.json"] = report("2026-08-03T00:00:30+00:00")
+        with (
+            mock.patch("qwen_mm_reference.phase_c_overlay_v2.validate_overlay"),
+            mock.patch("qwen_mm_reference.benchmark_v2._validate_phase_c_report"),
+            self.assertRaisesRegex(support.D4CaptureError, "stale or inverted"),
+        ):
+            support.validate_archived_phase_c(
+                files, provenance, "shipping", build, assets_root=None
+            )
+
+    def test_private_environment_mutation_fails_closed_with_path_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            venv = root / "venv"
+            package = venv / "lib/python3.11/site-packages/PIL/Image.py"
+            package.parent.mkdir(parents=True)
+            package.write_text("original\n", encoding="utf-8")
+            evidence = root / "environment-integrity.json"
+            support.initialize_private_environment_integrity(
+                venv, build_label="shipping", evidence_path=evidence
+            )
+            package.write_text("mutated\n", encoding="utf-8")
+            with self.assertRaisesRegex(support.D4CaptureError, "mutated.*PIL/Image.py"):
+                support.verify_private_environment_integrity(
+                    venv, evidence_path=evidence, checkpoint="before-t1"
+                )
+            recorded = json.loads(evidence.read_text(encoding="utf-8"))
+            self.assertFalse(recorded["checkpoints"][-1]["matches_baseline"])
+            self.assertEqual(
+                recorded["checkpoints"][-1]["differences"][0]["path"],
+                "lib/python3.11/site-packages/PIL/Image.py",
+            )
+
+    def test_complete_private_environment_checkpoint_evidence_validates(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            venv = root / "venv"
+            package = venv / "lib/python3.11/site-packages/qwen_mm/__init__.py"
+            package.parent.mkdir(parents=True)
+            package.write_text("__version__ = 'test'\n", encoding="utf-8")
+            evidence = root / "environment-integrity.json"
+            support.initialize_private_environment_integrity(
+                venv, build_label="shipping", evidence_path=evidence
+            )
+            checkpoints = [
+                "before-pre-phase-c-v2",
+                "after-pre-phase-c-v2",
+                *(
+                    f"{position}-t{budget}"
+                    for budget in support.THREAD_BUDGETS
+                    for position in ("before", "after")
+                ),
+                "before-post-phase-c-v2",
+                "after-post-phase-c-v2",
+                "before-archive",
+            ]
+            for checkpoint in checkpoints:
+                support.verify_private_environment_integrity(
+                    venv, evidence_path=evidence, checkpoint=checkpoint
+                )
+            support.validate_private_environment_integrity(
+                json.loads(evidence.read_text(encoding="utf-8")), build_label="shipping"
             )
 
     def test_capture_archive_round_trip_and_tamper_rejection(self) -> None:
@@ -584,8 +740,10 @@ class D4CaptureSupportTests(unittest.TestCase):
             affinity_masks=masks,
         )
         self.assertEqual(len(plan["timed_matrix"]), 4)
-        self.assertIn("qwen_mm_reference.phase_c_conformance", plan["pre_conformance"])
-        self.assertIn("qwen_mm_reference.phase_c_conformance", plan["post_conformance"])
+        self.assertIn("qwen_mm_reference.phase_c_overlay_v2", plan["pre_conformance"])
+        self.assertIn("qwen_mm_reference.phase_c_overlay_v2", plan["post_conformance"])
+        self.assertIn("--reuse-committed-production-evidence", plan["pre_conformance"])
+        self.assertNotIn("qwen_mm_reference.phase_c_conformance", plan["pre_conformance"])
         for budget, coordinate in zip(support.THREAD_BUDGETS, plan["timed_matrix"], strict=True):
             self.assertEqual(coordinate["thread_budget"], budget)
             self.assertEqual(coordinate["command"][:2], ["taskset", "--cpu-list"])

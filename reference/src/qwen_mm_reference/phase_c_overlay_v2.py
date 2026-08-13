@@ -204,6 +204,7 @@ def capture_installed_wheel_resize(
     output_directory: Path,
     production_blob_source: Path,
     candidate_blob_path: Path,
+    write_candidate_blob: bool = True,
 ) -> dict[str, Any]:
     """Bind direct production output to an isolated installed-wheel sample.
 
@@ -314,8 +315,11 @@ def capture_installed_wheel_resize(
         expected = production_blob[record["offset"] : record["offset"] + record["byte_length"]]
         if packed != expected:
             raise RuntimeError(f"{case['id']}: installed wheel differs from production core blob")
-    candidate_blob_path.parent.mkdir(parents=True, exist_ok=True)
-    candidate_blob_path.write_bytes(production_blob)
+    if write_candidate_blob:
+        candidate_blob_path.parent.mkdir(parents=True, exist_ok=True)
+        candidate_blob_path.write_bytes(production_blob)
+    elif not candidate_blob_path.is_file() or candidate_blob_path.read_bytes() != production_blob:
+        raise RuntimeError("committed production RGB8 evidence differs from capture input")
     quality = _portable_quality_result(
         compare_candidate(candidate_blob_path, root / RESIZE_DIRECTORY), candidate_blob_path
     )
@@ -617,6 +621,14 @@ def main() -> None:
     )
     capture_parser.add_argument("--output", type=Path)
     capture_parser.add_argument("--production-blob", type=Path, required=True)
+    capture_parser.add_argument(
+        "--reuse-committed-production-evidence",
+        action="store_true",
+        help=(
+            "authenticate but do not rewrite the committed production RGB/result files; "
+            "used by read-only controlled performance captures"
+        ),
+    )
     capture_parser.add_argument("--report", type=Path, default=REPORT_PATH)
     capture_parser.add_argument("--summary", type=Path, default=SUMMARY_PATH)
     validate_parser = subparsers.add_parser("validate")
@@ -639,8 +651,13 @@ def main() -> None:
         output_directory=output,
         production_blob_source=args.production_blob.resolve(),
         candidate_blob_path=root / PRODUCTION_BLOB_PATH,
+        write_candidate_blob=not args.reuse_committed_production_evidence,
     )
-    _write_json(root / PRODUCTION_RESULT_PATH, capture["quality_result"])
+    if args.reuse_committed_production_evidence:
+        if _json(root / PRODUCTION_RESULT_PATH) != capture["quality_result"]:
+            raise RuntimeError("committed production quality result differs from fresh capture")
+    else:
+        _write_json(root / PRODUCTION_RESULT_PATH, capture["quality_result"])
     report = build_overlay(
         wheel_path=wheel,
         capture=capture,

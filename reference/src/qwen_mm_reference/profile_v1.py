@@ -44,10 +44,14 @@ from .benchmark_v2 import (
     candidate_artifact_identity,
     validate_legacy_result_v2_portable,
     validate_result,
+    validate_result_authenticated_portable,
     validate_result_portable,
 )
 from .fixtures import repository_root
 from .phase_c_conformance import validate_report as validate_phase_c_report
+from .phase_c_overlay_v2 import SCHEMA_ID as PHASE_C_OVERLAY_SCHEMA_ID
+from .phase_c_overlay_v2 import SCHEMA_VERSION as PHASE_C_OVERLAY_SCHEMA_VERSION
+from .phase_c_overlay_v2 import validate_overlay as validate_phase_c_overlay
 
 PROFILE_SCHEMA_ID = "qwen-mm-profile-bundle-v2"
 PROFILE_SCHEMA_VERSION = 2
@@ -182,8 +186,14 @@ def _source_identity(
     source_digest: str | None = None,
     declared_clean: bool = False,
 ) -> dict[str, Any]:
+    git_metadata_present = (repository_root() / ".git").exists()
     observed_revision = _git_output("rev-parse", "HEAD")
-    effective_revision = revision or os.environ.get("QWEN_MM_SOURCE_REVISION") or observed_revision
+    declared_revision = revision or os.environ.get("QWEN_MM_SOURCE_REVISION")
+    if git_metadata_present and observed_revision is None:
+        raise ProfileArtifactError(
+            "Git metadata is present but the source revision cannot be authenticated"
+        )
+    effective_revision = declared_revision or observed_revision
     if not effective_revision:
         raise ProfileArtifactError("source revision is required when .git is unavailable")
     declared_digest = source_digest or os.environ.get("QWEN_MM_SOURCE_DIGEST")
@@ -192,7 +202,7 @@ def _source_identity(
     total_bytes: int | None = None
     status = _git_output("status", "--porcelain")
     if observed_revision is not None:
-        if revision is not None and revision != observed_revision:
+        if declared_revision is not None and declared_revision != observed_revision:
             raise ProfileArtifactError("declared source revision differs from observed git HEAD")
         if status is None:
             raise ProfileArtifactError("git status is unavailable for the observed source revision")
@@ -252,6 +262,65 @@ def _source_identity(
         "dirty": dirty,
         "clean_attestation": clean_attestation,
     }
+
+
+def _sampler_executable_identity(architecture: str, py_spy: str) -> dict[str, Any]:
+    """Resolve and authenticate the exact sampler executable at one instant."""
+
+    expected_sampler = SAMPLER_PROTOCOLS.get(architecture)
+    if expected_sampler is None:
+        raise ProfileArtifactError("D1 sampler architecture is unsupported")
+    binary = "/usr/bin/sample" if architecture == "arm64" else shutil.which(py_spy)
+    if binary is None:
+        raise ProfileArtifactError(f"cannot resolve sampler binary: {py_spy}")
+    binary_path = Path(binary).resolve()
+    if architecture == "x86_64" and str(binary_path) != expected_sampler["binary_path"]:
+        raise ProfileArtifactError("D1 x86 sampler is not the locked workspace py-spy executable")
+    try:
+        binary_sha256 = _sha256_path(binary_path)
+        binary_bytes = binary_path.stat().st_size
+        if architecture == "arm64":
+            version_output = subprocess.run(
+                ["/usr/bin/what", str(binary_path)], check=True, capture_output=True, text=True
+            ).stdout
+            version = next(
+                (line.strip() for line in version_output.splitlines() if "PROGRAM:sample" in line),
+                "",
+            )
+            if not version:
+                raise ProfileArtifactError("cannot identify the macOS sample tool version")
+        else:
+            version = subprocess.run(
+                [str(binary_path), "--version"], check=True, capture_output=True, text=True
+            ).stdout.strip()
+            if version != "py-spy 0.4.1":
+                raise ProfileArtifactError("D1 requires exactly py-spy 0.4.1")
+        resolved_after = (
+            Path("/usr/bin/sample").resolve()
+            if architecture == "arm64"
+            else Path(shutil.which(py_spy) or "").resolve()
+        )
+        if (
+            resolved_after != binary_path
+            or _sha256_path(binary_path) != binary_sha256
+            or binary_path.stat().st_size != binary_bytes
+        ):
+            raise ProfileArtifactError("sampler executable identity changed while authenticating")
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ProfileArtifactError("cannot authenticate the D1 sampler executable") from error
+    return {
+        "binary_path": str(binary_path),
+        "binary_sha256": binary_sha256,
+        "binary_bytes": binary_bytes,
+        "version": version,
+    }
+
+
+def _authenticate_sampler_after_capture(
+    initial: Mapping[str, Any], *, architecture: str, py_spy: str
+) -> None:
+    if _sampler_executable_identity(architecture, py_spy) != dict(initial):
+        raise ProfileArtifactError("sampler executable identity changed during capture")
 
 
 def _source_tree_digest_excluding(excluded: set[str]) -> tuple[str, int, int]:
@@ -970,30 +1039,8 @@ def capture_sampled_profile(
         raise ProfileArtifactError("D1 sampler settings do not match the architecture protocol")
     if architecture == "x86_64" and rate_hz != expected_sampler["rate_hz"]:
         raise ProfileArtifactError("D1 x86 sampler is frozen to Python py-spy at 99 Hz for 2 s")
-    binary = "/usr/bin/sample" if architecture == "arm64" else shutil.which(py_spy)
-    if binary is None:
-        raise ProfileArtifactError(f"cannot resolve sampler binary: {py_spy}")
-    binary_path = Path(binary).resolve()
-    if architecture == "x86_64" and str(binary_path) != expected_sampler["binary_path"]:
-        raise ProfileArtifactError("D1 x86 sampler is not the locked workspace py-spy executable")
-    binary_sha256 = _sha256_path(binary_path)
-    binary_bytes = binary_path.stat().st_size
-    if architecture == "arm64":
-        version_output = subprocess.run(
-            ["/usr/bin/what", str(binary_path)], check=True, capture_output=True, text=True
-        ).stdout
-        version = next(
-            (line.strip() for line in version_output.splitlines() if "PROGRAM:sample" in line),
-            "",
-        )
-        if not version:
-            raise ProfileArtifactError("cannot identify the macOS sample tool version")
-    else:
-        version = subprocess.run(
-            [str(binary_path), "--version"], check=True, capture_output=True, text=True
-        ).stdout.strip()
-        if version != "py-spy 0.4.1":
-            raise ProfileArtifactError("D1 requires exactly py-spy 0.4.1")
+    sampler_identity = _sampler_executable_identity(architecture, py_spy)
+    binary_path = Path(sampler_identity["binary_path"])
     artifact_directory.mkdir(parents=True, exist_ok=True)
     slug = f"{architecture}-{profile}-{case_id}-t{thread_budget}"
     raw_path = artifact_directory / f"{slug}.sampler.raw"
@@ -1124,13 +1171,12 @@ def capture_sampled_profile(
         raise ProfileArtifactError("macOS samples omit CPython/binding/core boundary evidence")
     if result["before_signature"] != result["after_signature"]:
         raise ProfileArtifactError("sample worker outputs changed across measurement")
+    _authenticate_sampler_after_capture(sampler_identity, architecture=architecture, py_spy=py_spy)
     raw_path.write_text(raw, encoding="utf-8")
     collapsed_path.write_text(collapsed, encoding="utf-8")
     worker_result_path.write_text(
         json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    if _sha256_path(binary_path) != binary_sha256 or binary_path.stat().st_size != binary_bytes:
-        raise ProfileArtifactError("sampler binary changed during capture")
     worker_source = Path(__file__).resolve()
     return {
         "profile_alias": profile,
@@ -1160,10 +1206,10 @@ def capture_sampled_profile(
         },
         "sampler": {
             "name": expected_sampler["name"],
-            "version": version,
+            "version": sampler_identity["version"],
             "binary_path": str(binary_path),
-            "binary_sha256": binary_sha256,
-            "binary_bytes": binary_bytes,
+            "binary_sha256": sampler_identity["binary_sha256"],
+            "binary_bytes": sampler_identity["binary_bytes"],
             "command": shlex.join(sampler_command),
             "native": expected_sampler["native"],
             "duration_seconds": duration_seconds,
@@ -2129,6 +2175,7 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool, legacy
             budgets=protocol["thread_budgets"],
             legacy_artifact_bytes=benchmark_bytes if legacy else None,
             legacy_artifact_sha256=benchmark["sha256"] if legacy else None,
+            require_phase_c_v2=not legacy,
         )
         if benchmark_result.get("workload") != protocol["workload"]:
             raise ProfileArtifactError("paired benchmark and profile workload provenance differ")
@@ -2152,7 +2199,7 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool, legacy
         if not isinstance(native_hash, str) or len(native_hash) != 64:
             raise ProfileArtifactError("profile build lacks the native artifact hash")
         _, build_log = _read_authenticated_artifact(build.get("log", {}))
-        _, wheel = _read_authenticated_artifact(build.get("wheel", {}))
+        wheel_path, wheel = _read_authenticated_artifact(build.get("wheel", {}))
         if not build_log or not wheel:
             raise ProfileArtifactError("profile build log and wheel evidence must be non-empty")
         _validate_wheel_runtime(wheel, build_runtime)
@@ -2165,25 +2212,45 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool, legacy
         if phase_c_gate.get("report_sha256") != capture["phase_c_report"]["sha256"]:
             raise ProfileArtifactError("paired Phase C report hash differs from bundled report")
         phase_c_runtime = phase_c_gate.get("evidence", {}).get("candidate_runtime_identity")
-        if (
-            phase_c_runtime != build_runtime
-            or phase_c_report.get("candidate", {}).get("runtime_identity") != build_runtime
-        ):
+        if phase_c_runtime != build_runtime:
             raise ProfileArtifactError("Phase C report runtime differs from profiled wheel runtime")
         assets_relative = Path(str(phase_c_gate.get("assets_root", "")))
         if assets_relative.is_absolute() or ".." in assets_relative.parts:
             raise ProfileArtifactError(
                 "Phase C assets root must be portable and repository-relative"
             )
-        try:
-            validate_phase_c_report(
+        if legacy:
+            if phase_c_report.get("candidate", {}).get("runtime_identity") != build_runtime:
+                raise ProfileArtifactError(
+                    "Phase C report runtime differs from profiled wheel runtime"
+                )
+            try:
+                validate_phase_c_report(
+                    phase_c_report,
+                    assets_root=repository_root() / assets_relative,
+                )
+            except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
+                raise ProfileArtifactError(
+                    "authenticated Phase C report is semantically invalid"
+                ) from error
+        else:
+            _validate_current_phase_c_v2(
                 phase_c_report,
-                assets_root=repository_root() / assets_relative,
+                runtime=build_runtime,
+                wheel_path=wheel_path,
+                source_revision=source["revision"],
             )
-        except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
-            raise ProfileArtifactError(
-                "authenticated Phase C report is semantically invalid"
-            ) from error
+            try:
+                validate_result_authenticated_portable(
+                    benchmark_result,
+                    expected_runtime_identity=build_runtime,
+                    phase_c_report_override=phase_c_path,
+                    phase_c_assets_root_override=repository_root() / assets_relative,
+                )
+            except BenchmarkProtocolError as error:
+                raise ProfileArtifactError(
+                    f"paired benchmark authenticated portable validation failed: {error}"
+                ) from error
         gate_material = {
             "report_sha256": capture["phase_c_report"]["sha256"],
             "evidence": phase_c_gate.get("evidence"),
@@ -2231,6 +2298,7 @@ def _validate_paired_benchmark(
     phase_c_report_override: Path | None = None,
     legacy_artifact_bytes: bytes | None = None,
     legacy_artifact_sha256: str | None = None,
+    require_phase_c_v2: bool = True,
 ) -> None:
     try:
         if legacy_artifact_bytes is not None or legacy_artifact_sha256 is not None:
@@ -2259,6 +2327,13 @@ def _validate_paired_benchmark(
         raise ProfileArtifactError(
             "paired benchmark must have a passing exact-runtime Phase C gate"
         )
+    phase_c_evidence = phase_c.get("evidence")
+    if require_phase_c_v2 and (
+        not isinstance(phase_c_evidence, Mapping)
+        or phase_c_evidence.get("schema_id") != PHASE_C_OVERLAY_SCHEMA_ID
+        or phase_c_evidence.get("schema_version") != PHASE_C_OVERLAY_SCHEMA_VERSION
+    ):
+        raise ProfileArtifactError("paired benchmark must have current passing Phase C v2 evidence")
     if protocol["thread_regimes"] != ["one", "production"] or protocol.get(
         "thread_budget_mapping"
     ) != {"one": 1, "production": 4}:
@@ -2272,6 +2347,36 @@ def _validate_paired_benchmark(
         raise ProfileArtifactError(
             "paired benchmark and profile capture use different thread budgets"
         )
+
+
+def _validate_current_phase_c_v2(
+    report: Mapping[str, Any],
+    *,
+    runtime: Mapping[str, Any],
+    wheel_path: Path,
+    source_revision: str | None = None,
+) -> None:
+    if (
+        report.get("schema_id") != PHASE_C_OVERLAY_SCHEMA_ID
+        or report.get("schema_version") != PHASE_C_OVERLAY_SCHEMA_VERSION
+        or report.get("status") != "pass"
+        or report.get("passed") is not True
+    ):
+        raise ProfileArtifactError("profile evidence requires a passing Phase C v2 overlay")
+    report_runtime = report.get("current_candidate", {}).get("capture", {}).get("runtime_identity")
+    if report_runtime != runtime:
+        raise ProfileArtifactError("Phase C v2 runtime differs from profiled wheel runtime")
+    if (
+        source_revision is not None
+        and report.get("current_candidate", {}).get("revision") != source_revision
+    ):
+        raise ProfileArtifactError("Phase C v2 revision differs from profiled source revision")
+    try:
+        validate_phase_c_overlay(report, wheel_path=wheel_path)
+    except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
+        raise ProfileArtifactError(
+            "authenticated Phase C v2 overlay is invalid or stale"
+        ) from error
 
 
 def _capture_operation(
@@ -2380,6 +2485,17 @@ def capture_bundle(
     if not isinstance(build_runtime, Mapping):
         raise ProfileArtifactError("profiled wheel runtime identity cannot be resolved")
     _validate_wheel_runtime(wheel_path.read_bytes(), build_runtime)
+    try:
+        phase_c_report = json.loads(phase_c_report_path.read_bytes())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ProfileArtifactError("Phase C v2 report is unreadable") from error
+    if not isinstance(phase_c_report, Mapping):
+        raise ProfileArtifactError("Phase C v2 report must contain an object")
+    benchmark_phase_c = benchmark.get("release_eligibility", {}).get("phase_c", {})
+    if benchmark_phase_c.get("report_sha256") != phase_c_identity["sha256"]:
+        raise ProfileArtifactError("paired benchmark is not bound to the captured Phase C report")
+    if benchmark_phase_c.get("evidence", {}).get("candidate_runtime_identity") != build_runtime:
+        raise ProfileArtifactError("paired Phase C runtime differs from profiled wheel runtime")
     host = _host_provenance()
     if host["architecture_family"] not in {"arm64", "x86_64"}:
         raise ProfileArtifactError("profile evidence requires a native ARM64 or x86_64 host")
@@ -2390,6 +2506,12 @@ def capture_bundle(
     )
     if source["dirty"]:
         raise ProfileArtifactError("profile capture must start from an exact clean source")
+    _validate_current_phase_c_v2(
+        phase_c_report,
+        runtime=build_runtime,
+        wheel_path=wheel_path,
+        source_revision=source["revision"],
+    )
     observations: list[dict[str, Any]] = []
     for profile in profiles:
         for case in selected:
