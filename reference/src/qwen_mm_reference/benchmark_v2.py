@@ -36,6 +36,7 @@ from .benchmark_protocol import (
     environment_metadata,
     load_workload,
     materialize_case,
+    media_source_dimensions,
     percentile,
     physical_cpu_count,
     run_worker,
@@ -54,9 +55,14 @@ from .phase_c_conformance import (
 from .phase_c_conformance import (
     validate_report as validate_phase_c_report,
 )
+from .phase_c_overlay_v2 import SCHEMA_ID as PHASE_C_OVERLAY_SCHEMA_ID
+from .phase_c_overlay_v2 import SCHEMA_VERSION as PHASE_C_OVERLAY_SCHEMA_VERSION
+from .phase_c_overlay_v2 import validate_overlay as validate_phase_c_overlay
+from .resize_conformance_v2 import COMPARISON_ID as RESIZE_V2_COMPARISON_ID
+from .resize_conformance_v2 import validate_witness as validate_resize_v2_witness
 
 DEFAULT_WORKLOAD = Path("benchmarks/workloads-v2.json")
-DEFAULT_PHASE_C_REPORT = Path("reference/phase-c/v1/report.json")
+DEFAULT_PHASE_C_REPORT = Path("reference/phase-c/v2/report.json")
 DEFAULT_PHASE_C_ASSETS_ROOT = Path("reference/.cache/huggingface")
 PHASE_C_REPORT_SCHEMA_ID = "qwen-mm-phase-c-conformance-report-v1"
 PHASE_C_REPORT_SCHEMA_VERSION = 1
@@ -69,6 +75,12 @@ PHASE_C_GATE_STATUSES = {
     "not_applicable",
     "pass",
     "stale",
+}
+OUTPUT_COMPARISON_POLICY = {
+    "official_candidate_still_image": RESIZE_V2_COMPARISON_ID,
+    "non_image": "qwen-mm-exact-output-comparison-v1",
+    "candidate_self_comparison": "qwen-mm-exact-output-comparison-v1",
+    "pre_post_witnesses": "required",
 }
 MODE_DEFAULTS: dict[str, dict[str, Any]] = {
     "smoke": {
@@ -332,8 +344,12 @@ def _validate_phase_c_report(
             "performance_claim",
             "Phase C correctness evidence must not contain performance claims",
         )
+    is_resize_v2_overlay = report.get("schema_id") == PHASE_C_OVERLAY_SCHEMA_ID
     try:
-        validate_phase_c_report(report, assets_root=assets_root)
+        if is_resize_v2_overlay:
+            validate_phase_c_overlay(report)
+        else:
+            validate_phase_c_report(report, assets_root=assets_root)
     except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
         detail = str(error)
         stale = any(token in detail.lower() for token in ("drifted", "mismatch", "stale"))
@@ -343,7 +359,11 @@ def _validate_phase_c_report(
             detail,
         ) from error
 
-    scope = report["scope"]
+    effective_report = report
+    if is_resize_v2_overlay:
+        base_record = report["base_phase_c_v1"]["artifact"]
+        effective_report = _load_json(root / base_record["path"])
+    scope = effective_report["scope"]
     declared = scope["declared_case_ids"]
     canonical_ids = expected_candidate_case_ids(root)
     if declared != canonical_ids:
@@ -353,8 +373,8 @@ def _validate_phase_c_report(
             "Phase C report does not match the canonical candidate case inventory",
         )
     expected_input_paths = [path.as_posix() for path in phase_c_source_inputs()]
-    reported_inputs = report.get("inputs")
-    if (
+    reported_inputs = effective_report.get("inputs")
+    if not is_resize_v2_overlay and (
         not isinstance(reported_inputs, list)
         or [item.get("path") for item in reported_inputs] != expected_input_paths
     ):
@@ -364,9 +384,11 @@ def _validate_phase_c_report(
             "Phase C report does not match the canonical authenticated input inventory",
         )
 
-    candidate = report.get("candidate")
+    candidate = effective_report.get("candidate")
     expected_runtime = (
-        None if not isinstance(candidate, Mapping) else candidate.get("runtime_identity")
+        report.get("current_candidate", {}).get("capture", {}).get("runtime_identity")
+        if is_resize_v2_overlay
+        else (None if not isinstance(candidate, Mapping) else candidate.get("runtime_identity"))
     )
     observed_runtime = candidate_identity.get("runtime_identity")
     if (
@@ -380,13 +402,28 @@ def _validate_phase_c_report(
             "Phase C candidate runtime does not match the benchmark candidate runtime",
         )
     return {
-        "schema_id": PHASE_C_REPORT_SCHEMA_ID,
-        "schema_version": PHASE_C_REPORT_SCHEMA_VERSION,
-        "contract_id": "qwen-mm-compat-v1",
+        "schema_id": (
+            PHASE_C_OVERLAY_SCHEMA_ID if is_resize_v2_overlay else PHASE_C_REPORT_SCHEMA_ID
+        ),
+        "schema_version": (
+            PHASE_C_OVERLAY_SCHEMA_VERSION
+            if is_resize_v2_overlay
+            else PHASE_C_REPORT_SCHEMA_VERSION
+        ),
+        "contract_id": report.get("contract_id"),
         "profiles": sorted(PHASE_C_PROFILES),
         "declared_case_ids": declared,
         "candidate_runtime_identity": dict(observed_runtime),
         "inputs": reported_inputs,
+        **(
+            {
+                "base_report_sha256": report["base_phase_c_v1"]["artifact"]["sha256"],
+                "resize_holdout_sha256": report["resize_v2"]["holdout_manifest"]["sha256"],
+                "production_rgb8_sha256": report["resize_v2"]["production_rgb8"]["sha256"],
+            }
+            if is_resize_v2_overlay
+            else {}
+        ),
     }
 
 
@@ -1172,12 +1209,126 @@ def _validate_instrumentation_free_worker(
         raise BenchmarkProtocolError("benchmark worker summary differs from raw samples/census")
 
 
+def _validate_output_conformance_witness(
+    conformance: Any,
+    *,
+    require_resize_v2: bool,
+    reference_output_signature: Mapping[str, Any] | None = None,
+    candidate_output_signature: Mapping[str, Any] | None = None,
+    source_dimensions: Sequence[tuple[int, int]] = (),
+) -> None:
+    if not isinstance(conformance, Mapping):
+        raise BenchmarkProtocolError("benchmark output conformance metadata is missing")
+    pre_witness = conformance.get("pre_measurement_witness")
+    post_witness = conformance.get("post_measurement_witness")
+    exact = {
+        "comparison_id": "qwen-mm-exact-output-comparison-v1",
+        "contract_id": "qwen-mm-compat-v1",
+        "passed": True,
+    }
+    if require_resize_v2:
+        if not isinstance(pre_witness, Mapping) or not isinstance(post_witness, Mapping):
+            raise BenchmarkProtocolError("resize-v2 conformance witness is missing")
+        if reference_output_signature is None or candidate_output_signature is None:
+            raise BenchmarkProtocolError("resize-v2 paired output signatures are missing")
+        try:
+            validate_resize_v2_witness(
+                pre_witness,
+                reference_output_signature=reference_output_signature,
+                candidate_output_signature=candidate_output_signature,
+                source_dimensions=source_dimensions,
+            )
+            validate_resize_v2_witness(
+                post_witness,
+                reference_output_signature=reference_output_signature,
+                candidate_output_signature=candidate_output_signature,
+                source_dimensions=source_dimensions,
+            )
+        except ValueError as error:
+            raise BenchmarkProtocolError(str(error)) from error
+        if pre_witness != post_witness:
+            raise BenchmarkProtocolError("resize-v2 pre/post conformance witnesses differ")
+        return
+    if pre_witness != exact or post_witness != exact:
+        raise BenchmarkProtocolError("exact pre/post conformance witness is invalid")
+
+
+def _validate_pair_output_signatures(
+    reference: Mapping[str, Any], candidate: Mapping[str, Any], payload: Any
+) -> None:
+    expected_keys = ["input_ids", "attention_mask", "mm_token_type_ids"]
+    if payload.buffers:
+        expected_keys.extend(("pixel_values", "image_grid_thw"))
+    signatures: list[Mapping[str, Any]] = []
+    for implementation_name, implementation in (
+        ("reference", reference),
+        ("candidate", candidate),
+    ):
+        signature = implementation.get("output_signature")
+        if not isinstance(signature, Mapping) or list(signature) != expected_keys:
+            raise BenchmarkProtocolError(
+                f"benchmark {implementation_name} output signature key/order is invalid"
+            )
+        for name, descriptor in signature.items():
+            if not isinstance(descriptor, Mapping) or set(descriptor) != {
+                "dtype",
+                "shape",
+                "strides",
+                "nbytes",
+                "sha256",
+            }:
+                raise BenchmarkProtocolError("benchmark output signature descriptor is incomplete")
+            dtype = descriptor.get("dtype")
+            shape = descriptor.get("shape")
+            strides = descriptor.get("strides")
+            nbytes = descriptor.get("nbytes")
+            digest = descriptor.get("sha256")
+            expected_dtype = "float32" if name == "pixel_values" else "int64"
+            if (
+                dtype != expected_dtype
+                or not isinstance(shape, list)
+                or len(shape) != 2
+                or any(
+                    isinstance(item, bool) or not isinstance(item, int) or item < 0
+                    for item in shape
+                )
+                or not isinstance(strides, list)
+                or len(strides) != 2
+                or any(
+                    isinstance(item, bool) or not isinstance(item, int) or item <= 0
+                    for item in strides
+                )
+                or strides != [shape[1] * np.dtype(dtype).itemsize, np.dtype(dtype).itemsize]
+                or isinstance(nbytes, bool)
+                or nbytes != math.prod(shape) * np.dtype(dtype).itemsize
+                or not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+            ):
+                raise BenchmarkProtocolError("benchmark output signature descriptor is invalid")
+        signatures.append(signature)
+    reference_signature, candidate_signature = signatures
+    for name in expected_keys:
+        if name == "pixel_values":
+            reference_layout = {
+                key: value for key, value in reference_signature[name].items() if key != "sha256"
+            }
+            candidate_layout = {
+                key: value for key, value in candidate_signature[name].items() if key != "sha256"
+            }
+            if reference_layout != candidate_layout:
+                raise BenchmarkProtocolError("paired pixel output layouts differ")
+        elif reference_signature[name] != candidate_signature[name]:
+            raise BenchmarkProtocolError(f"paired non-pixel output signature differs: {name}")
+
+
 def _validate_case_bindings(
     result: Mapping[str, Any],
     pairs: Sequence[Mapping[str, Any]],
     summaries: Sequence[Mapping[str, Any]],
     *,
     portable: bool,
+    require_output_comparison_policy: bool = True,
 ) -> dict[str, str]:
     workload = _authenticated_workload(result)
     by_id = {case["case_id"]: case for case in workload["cases"]}
@@ -1213,6 +1364,11 @@ def _validate_case_bindings(
         if re.fullmatch(r"t[1-9][0-9]*", regime) and budget != int(regime[1:]):
             raise BenchmarkProtocolError("explicit tN regime differs from its thread budget")
     instrumentation_free = protocol.get("timing_protocol") is not None
+    output_comparison_policy = protocol.get("output_comparison_policy")
+    if require_output_comparison_policy and output_comparison_policy != OUTPUT_COMPARISON_POLICY:
+        raise BenchmarkProtocolError("benchmark output comparison policy is invalid")
+    if not require_output_comparison_policy and output_comparison_policy is not None:
+        raise BenchmarkProtocolError("legacy benchmark result contains a post-v2 policy")
     if instrumentation_free:
         if (
             protocol.get("timing_protocol") != "instrumentation-free-v1"
@@ -1457,6 +1613,27 @@ def _validate_case_bindings(
                     work_units=payload.work_units,
                     protocol=protocol,
                 )
+        if require_output_comparison_policy:
+            reference_implementation = implementations["reference"]
+            candidate_implementation = implementations["candidate"]
+            _validate_pair_output_signatures(
+                reference_implementation, candidate_implementation, payload
+            )
+            _validate_output_conformance_witness(
+                reference_implementation.get("conformance"), require_resize_v2=False
+            )
+            candidate_is_distinct = bool(payload.buffers) and protocol.get(
+                "candidate_adapter"
+            ) != protocol.get("reference_adapter")
+            _validate_output_conformance_witness(
+                candidate_implementation.get("conformance"),
+                require_resize_v2=candidate_is_distinct,
+                reference_output_signature=reference_implementation.get("output_signature"),
+                candidate_output_signature=candidate_implementation.get("output_signature"),
+                source_dimensions=(
+                    media_source_dimensions(payload) if candidate_is_distinct else ()
+                ),
+            )
 
     if len(process_ids) != len(set(process_ids)):
         raise BenchmarkProtocolError("benchmark workers did not use unique fresh process IDs")
@@ -1468,13 +1645,9 @@ def _validate_case_bindings(
     return {case_id: payload.input_fingerprint for case_id, payload in payloads.items()}
 
 
-def validate_result_portable(result: Mapping[str, Any]) -> None:
-    """Validate immutable result evidence without importing the measured native wheel."""
-
-    if result.get("schema_version") != RESULT_SCHEMA_VERSION:
-        raise BenchmarkProtocolError("unsupported benchmark result schema version")
-    if result.get("schema_id") != RESULT_SCHEMA_ID:
-        raise BenchmarkProtocolError("benchmark result schema ID mismatch")
+def _validate_result_portable_body(
+    result: Mapping[str, Any], *, require_output_comparison_policy: bool
+) -> None:
     if result.get("mode") not in MODE_DEFAULTS:
         raise BenchmarkProtocolError("benchmark result has an invalid mode")
     family = result.get("architecture_family")
@@ -1484,7 +1657,13 @@ def validate_result_portable(result: Mapping[str, Any]) -> None:
     summaries = result.get("summaries")
     if not isinstance(pairs, list) or not pairs or not isinstance(summaries, list):
         raise BenchmarkProtocolError("benchmark result pairs and summaries must be arrays")
-    _validate_case_bindings(result, pairs, summaries, portable=True)
+    _validate_case_bindings(
+        result,
+        pairs,
+        summaries,
+        portable=True,
+        require_output_comparison_policy=require_output_comparison_policy,
+    )
     for pair in pairs:
         implementations = pair.get("implementations")
         if not isinstance(implementations, Mapping):
@@ -1519,6 +1698,50 @@ def validate_result_portable(result: Mapping[str, Any]) -> None:
             if conformance.get("all_measured_iterations_stable") is not True:
                 raise BenchmarkProtocolError("measured outputs were not stable")
     _validate_release_eligibility(result, verify_live_runtime=False)
+
+
+def validate_result_portable(result: Mapping[str, Any]) -> None:
+    """Validate current immutable v3 evidence without importing the measured wheel."""
+
+    if result.get("schema_version") != RESULT_SCHEMA_VERSION:
+        raise BenchmarkProtocolError("unsupported benchmark result schema version")
+    if result.get("schema_id") != RESULT_SCHEMA_ID:
+        raise BenchmarkProtocolError("benchmark result schema ID mismatch")
+    _validate_result_portable_body(result, require_output_comparison_policy=True)
+
+
+def validate_legacy_result_v2_portable(
+    result: Mapping[str, Any], *, artifact_bytes: bytes, expected_artifact_sha256: str
+) -> None:
+    """Validate explicitly authenticated historical benchmark-result-v2 evidence.
+
+    The caller must supply a trusted canonical artifact digest.  This separate
+    entry point cannot be reached by relabeling a v3 result through the normal
+    validator, and it rejects the post-v2 output-comparison policy.
+    """
+
+    if (
+        not isinstance(expected_artifact_sha256, str)
+        or len(expected_artifact_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in expected_artifact_sha256)
+    ):
+        raise BenchmarkProtocolError("legacy benchmark authentication digest is invalid")
+    if not isinstance(artifact_bytes, bytes):
+        raise BenchmarkProtocolError("legacy benchmark raw artifact bytes are required")
+    if result.get("schema_version") != 2 or result.get("schema_id") != (
+        "qwen-mm-benchmark-result-v2"
+    ):
+        raise BenchmarkProtocolError("not a historical benchmark result v2")
+    observed = hashlib.sha256(artifact_bytes).hexdigest()
+    if observed != expected_artifact_sha256:
+        raise BenchmarkProtocolError("legacy benchmark result authentication failed")
+    try:
+        parsed = json.loads(artifact_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise BenchmarkProtocolError("legacy benchmark artifact is not valid JSON") from error
+    if parsed != result:
+        raise BenchmarkProtocolError("legacy benchmark mapping differs from authenticated bytes")
+    _validate_result_portable_body(result, require_output_comparison_policy=False)
 
 
 def validate_result_authenticated_portable(
@@ -1836,6 +2059,7 @@ def run_benchmark(
             "affinity_cpu_mapping": affinity_mapping,
             "build_labels": effective_builds,
             "timing_protocol": "instrumentation-free-v1",
+            "output_comparison_policy": OUTPUT_COMPARISON_POLICY,
             "timing_sample_fields": list(TIMING_SAMPLE_FIELDS),
             "timing_floor_policy": TIMING_FLOOR_POLICY,
             "resource_census_position": "after_all_timed_samples",
@@ -1974,7 +2198,7 @@ def _run_command(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run paired qwen-mm benchmark protocol v2.")
+    parser = argparse.ArgumentParser(description="Run paired qwen-mm benchmark result protocol v3.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="run paired fresh-process measurements")

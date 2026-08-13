@@ -18,8 +18,8 @@ ARTIFACT_SCHEMA_ID = "qwen-mm-modal-benchmark-artifact-v1"
 ARTIFACT_SCHEMA_VERSION = 1
 PROVENANCE_SCHEMA_ID = "qwen-mm-modal-benchmark-provenance-v1"
 PROVENANCE_SCHEMA_VERSION = 1
-BENCHMARK_SCHEMA_ID = "qwen-mm-benchmark-result-v2"
-BENCHMARK_SCHEMA_VERSION = 2
+BENCHMARK_SCHEMA_ID = "qwen-mm-benchmark-result-v3"
+BENCHMARK_SCHEMA_VERSION = 3
 
 REQUIRED_ARTIFACT_FILES = frozenset(
     {

@@ -1325,7 +1325,8 @@ Total number in stack (recursive counted multiple, when >=5):
                     }
                 )
             benchmark = {
-                "schema_id": "qwen-mm-benchmark-result-v2",
+                "schema_id": "qwen-mm-benchmark-result-v3",
+                "schema_version": 3,
                 "architecture_family": architecture,
                 "workload": copy.deepcopy(protocol["workload"]),
                 "protocol": {
@@ -1391,7 +1392,8 @@ Total number in stack (recursive counted multiple, when >=5):
                 "paired_benchmark": {
                     **_artifact_identity(benchmark_path),
                     "architecture_family": architecture,
-                    "schema_id": "qwen-mm-benchmark-result-v2",
+                    "schema_id": "qwen-mm-benchmark-result-v3",
+                    "schema_version": 3,
                     "candidate_identity": candidate_identity,
                 },
                 "observations": observations,
@@ -1399,8 +1401,8 @@ Total number in stack (recursive counted multiple, when >=5):
             }
 
         bundle = {
-            "schema_id": "qwen-mm-profile-bundle-v1",
-            "schema_version": 1,
+            "schema_id": "qwen-mm-profile-bundle-v2",
+            "schema_version": 2,
             "created_at": datetime.now(UTC).isoformat(),
             "protocol": protocol,
             "captures": [capture("arm64"), capture("x86_64")],

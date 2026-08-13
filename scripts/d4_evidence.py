@@ -248,13 +248,13 @@ def _identity(provenances: Sequence[Mapping[str, Any]]) -> dict[str, str]:
         "source_revision": revision,
         "source_sha256": _sha(source["sha256"], "source.sha256"),
         "benchmark_schema_sha256": _sha(
-            expected_inputs["benchmarks/result-schema-v2.json"]["sha256"], "benchmark schema"
+            expected_inputs["benchmarks/result-schema-v3.json"]["sha256"], "benchmark schema"
         ),
         "workload_sha256": _sha(
             expected_inputs["benchmarks/workloads-v2.json"]["sha256"], "workload"
         ),
         "profile_schema_sha256": _sha(
-            expected_inputs["benchmarks/profile-schema-v1.json"]["sha256"], "profile schema"
+            expected_inputs["benchmarks/profile-schema-v2.json"]["sha256"], "profile schema"
         ),
         "model_registry_sha256": _sha(
             expected_inputs["reference/models.json"]["sha256"], "model registry"

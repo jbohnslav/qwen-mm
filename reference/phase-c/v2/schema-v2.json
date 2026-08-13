@@ -1,0 +1,30 @@
+{
+  "$id": "qwen-mm-phase-c-conformance-overlay-v2",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "base_phase_c_v1": {"type": "object"},
+    "contract_id": {"const": "qwen-mm-still-image-resize-v2"},
+    "created_at": {"format": "date-time", "type": "string"},
+    "current_candidate": {"type": "object"},
+    "passed": {"const": true},
+    "provenance": {"type": "object"},
+    "resize_v2": {"type": "object"},
+    "schema_id": {"const": "qwen-mm-phase-c-conformance-overlay-v2"},
+    "schema_version": {"const": 2},
+    "status": {"const": "pass"}
+  },
+  "required": [
+    "schema_id",
+    "schema_version",
+    "contract_id",
+    "status",
+    "passed",
+    "created_at",
+    "base_phase_c_v1",
+    "current_candidate",
+    "resize_v2",
+    "provenance"
+  ],
+  "type": "object"
+}

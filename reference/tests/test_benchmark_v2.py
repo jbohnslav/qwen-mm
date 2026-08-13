@@ -21,6 +21,7 @@ from qwen_mm_reference.benchmark_protocol import (
     TIMING_SAMPLE_FIELDS,
     BenchmarkProtocolError,
     compare_outputs,
+    compare_outputs_resize_v2,
     load_workload,
     materialize_case,
     normalize_outputs,
@@ -36,15 +37,17 @@ from qwen_mm_reference.benchmark_v2 import (
     randomized_orders,
     render_report,
     run_benchmark,
+    validate_legacy_result_v2_portable,
     validate_result,
     validate_result_authenticated_portable,
     validate_result_portable,
 )
 from qwen_mm_reference.fixtures import repository_root
+from qwen_mm_reference.resize_conformance_v2 import compare_final_tensors, patchify_rgb8
 
 WORKLOAD_PATH = repository_root() / "benchmarks" / "workloads-v2.json"
 WORKLOAD_SCHEMA_PATH = repository_root() / "benchmarks" / "workload-schema-v2.json"
-RESULT_SCHEMA_PATH = repository_root() / "benchmarks" / "result-schema-v2.json"
+RESULT_SCHEMA_PATH = repository_root() / "benchmarks" / "result-schema-v3.json"
 IMAGE_CASE = {"case_id": "image", "boundary": "encoded_to_numpy"}
 PHASE_C_CASE_IDS = ["image", "text"]
 RUNTIME_IDENTITY = {
@@ -143,6 +146,37 @@ class WorkloadTests(unittest.TestCase):
                 implementation["environment"]["architecture_family"] = "x86_64"
             candidate = pair["implementations"]["candidate"]
             candidate["adapter_spec"] = adapter
+            grid_signature = candidate["output_signature"].get("image_grid_thw")
+            occurrence_count = 0 if grid_signature is None else grid_signature["shape"][0]
+            if occurrence_count:
+                workload = benchmark_v2._authenticated_workload(result)
+                case = next(
+                    item for item in workload["cases"] if item["case_id"] == pair["case_id"]
+                )
+                source_dimensions = benchmark_protocol.media_source_dimensions(
+                    materialize_case(case)
+                )
+                image = patchify_rgb8(np.full((32, 32, 3), 128, dtype=np.uint8))
+                tensor = np.concatenate([image] * occurrence_count)
+                grids = np.tile(np.asarray([[1, 2, 2]], dtype=np.int64), (occurrence_count, 1))
+                witness = compare_final_tensors(
+                    tensor,
+                    tensor.copy(),
+                    grids,
+                    source_dimensions=source_dimensions,
+                )
+                bound_grid = {
+                    key: value
+                    for key, value in witness["bindings"]["image_grid_thw"].items()
+                    if key != "rows"
+                }
+                for implementation in pair["implementations"].values():
+                    implementation["output_signature"]["pixel_values"] = copy.deepcopy(
+                        witness["bindings"]["reference_pixel_values"]
+                    )
+                    implementation["output_signature"]["image_grid_thw"] = copy.deepcopy(bound_grid)
+                candidate["conformance"]["pre_measurement_witness"] = witness
+                candidate["conformance"]["post_measurement_witness"] = copy.deepcopy(witness)
             model = benchmark_protocol.total_thread_budget_model(adapter, pair["thread_budget"])
             candidate["thread_settings"]["environment"] = model["environment"]
             candidate["thread_settings"]["total_budget_model"] = model
@@ -436,6 +470,9 @@ class WorkloadTests(unittest.TestCase):
 
     def test_result_schema_closes_phase_c_release_states(self) -> None:
         schema = json.loads(RESULT_SCHEMA_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(schema["properties"]["schema_version"], {"const": 3})
+        protocol = schema["properties"]["protocol"]
+        self.assertIn("output_comparison_policy", protocol["required"])
         eligibility = schema["properties"]["release_eligibility"]
         self.assertEqual(eligibility["properties"]["releasable"], {"const": False})
         phase_c = eligibility["properties"]["phase_c"]
@@ -607,6 +644,26 @@ class ConformanceTests(unittest.TestCase):
         compare_outputs(expected, actual, self.payload)
         with self.assertRaisesRegex(BenchmarkProtocolError, "values differ"):
             compare_outputs(expected, actual, self.payload, exact_float=True)
+
+    def test_resize_v2_comparison_is_per_channel_and_keeps_integer_outputs_exact(self) -> None:
+        expected = normalize_outputs(self.outputs, self.payload)
+        actual = {name: value.copy() for name, value in expected.items()}
+        reference_rgb = np.full((32, 32, 3), 128, dtype=np.uint8)
+        candidate_rgb = reference_rgb.copy()
+        candidate_rgb[8:16, 8:16, 1] += 3
+        expected["pixel_values"] = patchify_rgb8(reference_rgb)
+        actual["pixel_values"] = patchify_rgb8(candidate_rgb)
+
+        witness = compare_outputs_resize_v2(expected, actual, self.payload)
+
+        self.assertTrue(witness["passed"])
+        self.assertEqual(
+            [item["channel"] for item in witness["occurrences"][0]["channels"]],
+            ["R", "G", "B"],
+        )
+        actual["input_ids"][0, 0] = 1
+        with self.assertRaisesRegex(BenchmarkProtocolError, "input_ids"):
+            compare_outputs_resize_v2(expected, actual, self.payload)
 
     def test_mixed_codec_pixels_keep_lossless_occurrences_strict(self) -> None:
         workload = load_workload(WORKLOAD_PATH)
@@ -1193,6 +1250,10 @@ class ProtocolTests(unittest.TestCase):
         }
         self.assertEqual(len(process_ids), 4)
         self.assertTrue(result["protocol"]["self_test_only"])
+        self.assertEqual(
+            result["protocol"]["output_comparison_policy"]["candidate_self_comparison"],
+            "qwen-mm-exact-output-comparison-v1",
+        )
         self.assertEqual(result["release_eligibility"]["phase_c"]["status"], "not_applicable")
         self.assertFalse(result["release_eligibility"]["releasable"])
         report = render_report(result)
@@ -1297,6 +1358,11 @@ class ProtocolTests(unittest.TestCase):
                 "OMP_NUM_THREADS"
             ] = "99"
 
+        def remove_conformance_witness(value: dict[str, Any]) -> None:
+            del value["pairs"][0]["implementations"]["candidate"]["conformance"][
+                "pre_measurement_witness"
+            ]
+
         mutations = {
             "gate-bypass": gate_bypass,
             "pair": pair_relabel,
@@ -1307,6 +1373,7 @@ class ProtocolTests(unittest.TestCase):
             "summary": summary_relabel,
             "pair-budget": pair_budget_relabel,
             "worker-thread-environment": worker_thread_environment_relabel,
+            "conformance-witness": remove_conformance_witness,
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name):
@@ -1314,6 +1381,128 @@ class ProtocolTests(unittest.TestCase):
                 mutate(forged)
                 with self.assertRaises(BenchmarkProtocolError):
                     validate_result(forged)
+
+    def test_result_v3_rejects_resize_witness_and_policy_downgrades(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["image1"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            seed=31,
+        )
+        result, _ = WorkloadTests._foreign_candidate_result(result)
+        validate_result_portable(result)
+
+        def candidate_witness(value: dict[str, Any]) -> dict[str, Any]:
+            return value["pairs"][0]["implementations"]["candidate"]["conformance"]
+
+        def mutate_witness_pair(
+            value: dict[str, Any], mutate: Callable[[dict[str, Any]], Any]
+        ) -> None:
+            conformance = candidate_witness(value)
+            mutate(conformance["pre_measurement_witness"])
+            mutate(conformance["post_measurement_witness"])
+
+        exact = {
+            "comparison_id": "qwen-mm-exact-output-comparison-v1",
+            "contract_id": "qwen-mm-compat-v1",
+            "passed": True,
+        }
+        mutations = {
+            "policy-deletion": lambda value: value["protocol"].pop("output_comparison_policy"),
+            "exact-substitution": lambda value: candidate_witness(value).update(
+                pre_measurement_witness=copy.deepcopy(exact),
+                post_measurement_witness=copy.deepcopy(exact),
+            ),
+            "missing-v2-witness": lambda value: candidate_witness(value).pop(
+                "pre_measurement_witness"
+            ),
+            "pre-post-mismatch": lambda value: candidate_witness(value)["post_measurement_witness"][
+                "occurrences"
+            ][0].update(shape=[32, 64, 3]),
+            "comparison-id": lambda value: mutate_witness_pair(
+                value, lambda witness: witness.update(comparison_id="forged")
+            ),
+            "gates": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["gates"].update(maximum_absolute_error_max=33.0),
+            ),
+            "diagnostics": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["occurrences"][0]["channels"][0].pop("absolute_error_p90"),
+            ),
+            "pixel-binding": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["bindings"]["candidate_pixel_values"].update(
+                    sha256="0" * 64
+                ),
+            ),
+            "grid-content": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["bindings"]["image_grid_thw"]["rows"][0].__setitem__(2, 4),
+            ),
+            "occurrence-range": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["occurrences"][0].update(pixel_rows=[0, 999]),
+            ),
+            "source-geometry": lambda value: mutate_witness_pair(
+                value,
+                lambda witness: witness["occurrences"][0].update(source_shape=[32, 32, 3]),
+            ),
+            "nonpixel-signature": lambda value: value["pairs"][0]["implementations"]["candidate"][
+                "output_signature"
+            ]["input_ids"].update(sha256="0" * 64),
+            "signature-extra-field": lambda value: value["pairs"][0]["implementations"][
+                "candidate"
+            ]["output_signature"]["pixel_values"].update(extra="forged"),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                forged = copy.deepcopy(result)
+                mutate(forged)
+                with self.assertRaises(BenchmarkProtocolError):
+                    validate_result_portable(forged)
+
+    def test_legacy_result_v2_requires_explicit_external_authentication(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["text_short"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            seed=37,
+        )
+        result["schema_version"] = 2
+        result["schema_id"] = "qwen-mm-benchmark-result-v2"
+        del result["protocol"]["output_comparison_policy"]
+        for implementation in result["pairs"][0]["implementations"].values():
+            implementation["conformance"].pop("pre_measurement_witness")
+            implementation["conformance"].pop("post_measurement_witness")
+        artifact_bytes = (json.dumps(result, indent=2) + "\n").encode()
+        digest = hashlib.sha256(artifact_bytes).hexdigest()
+
+        validate_legacy_result_v2_portable(
+            result, artifact_bytes=artifact_bytes, expected_artifact_sha256=digest
+        )
+        with self.assertRaises(BenchmarkProtocolError):
+            validate_result_portable(result)
+        with self.assertRaisesRegex(BenchmarkProtocolError, "authentication"):
+            validate_legacy_result_v2_portable(
+                result,
+                artifact_bytes=artifact_bytes,
+                expected_artifact_sha256="0" * 64,
+            )
 
     def test_result_validation_rejects_release_status_tampering(self) -> None:
         result = run_benchmark(

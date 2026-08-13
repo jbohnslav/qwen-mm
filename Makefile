@@ -3,7 +3,7 @@
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
-	phase-c-conformance phase-c-conformance-validate phase-c-release-check python-binding-test \
+	phase-c-conformance phase-c-conformance-validate phase-c-v2-validate phase-c-release-check python-binding-test \
 	d4-arm-capture d4-certify d4-linux-capture d4-modal-capture d4-test d4-validate \
 	modal-benchmark-test profile-d1-arm-archive profile-d1-ingest profile-d1-ingest-arm \
 	profile-d1-ingest-x86 profile-d1-merge profile-d1-modal-archive profile-d1-test \
@@ -203,5 +203,9 @@ phase-c-conformance-validate:
 		python -m qwen_mm_reference.phase_c_conformance validate \
 		--assets-root "$(PHASE_C_ASSETS_ROOT)" \
 		--report reference/phase-c/v1/report.json
+
+phase-c-v2-validate:
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference \
+		python -m qwen_mm_reference.phase_c_overlay_v2 validate
 
 phase-c-release-check: phase-c-binding-check phase-c-conformance

@@ -110,8 +110,8 @@ BUILD_ENVIRONMENT_CAPTURE_NAMES = (
 CAPTURE_INPUT_PATHS = (
     "Cargo.lock",
     "benchmarks/performance-certification-schema-v1.json",
-    "benchmarks/profile-schema-v1.json",
-    "benchmarks/result-schema-v2.json",
+    "benchmarks/profile-schema-v2.json",
+    "benchmarks/result-schema-v3.json",
     "benchmarks/workload-schema-v2.json",
     "benchmarks/workloads-v2.json",
     "reference/models.json",

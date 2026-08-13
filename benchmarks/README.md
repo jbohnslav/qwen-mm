@@ -153,12 +153,26 @@ evidence remains diagnostic. Use `--phase-c-report PATH` only to select another
 report location and `--phase-c-assets-root PATH` to locate its authenticated
 profile assets; neither option overrides validation.
 
-[`result-schema-v2.json`](result-schema-v2.json) is the versioned artifact
-schema. A result contains exactly one `architecture_family`; ARM and x86 data
+Image benchmarks default to the current
+[`phase-c/v2`](../reference/phase-c/v2/summary.md) correctness overlay. It
+authenticates the immutable 290-case v1 report and binds the selected production
+resizer to the frozen resize-v2 holdout and installed wheel. The v1 report is
+still available as historical exact-Pillow evidence, but it is stale for the
+pic-scale production wheel.
+
+[`result-schema-v3.json`](result-schema-v3.json) is the current artifact
+schema; [`result-schema-v2.json`](result-schema-v2.json) remains immutable
+historical evidence. A result contains exactly one `architecture_family`; ARM and x86 data
 must remain in separate files and reports. The harness records performance but
 contains no `2x` or regression threshold. Ticket D4 owns release enforcement on
 controlled hosts, including an eligible authenticated Modal CPU class; noisy
 pull-request workers do not.
+
+The v3 JSON schema fixes the public envelope and requires the named comparison
+policy. The program validator deliberately owns the detailed per-occurrence
+resize witness checks, including comparison identity, frozen gates, required
+channel diagnostics, exact downstream transformation, and matching pre/post
+witnesses.
 
 Phase D1 whole-operation capture and the native ARM/Modal x86 publication
 workflow are documented in

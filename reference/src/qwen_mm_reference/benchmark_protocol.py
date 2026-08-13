@@ -21,11 +21,12 @@ from typing import Any, Protocol
 import numpy as np
 
 from .fixtures import fixture_directory, repository_root
+from .resize_conformance_v2 import compare_final_tensors
 
 WORKLOAD_SCHEMA_VERSION = 2
 WORKLOAD_SCHEMA_ID = "qwen-mm-benchmark-workload-v2"
-RESULT_SCHEMA_VERSION = 2
-RESULT_SCHEMA_ID = "qwen-mm-benchmark-result-v2"
+RESULT_SCHEMA_VERSION = 3
+RESULT_SCHEMA_ID = "qwen-mm-benchmark-result-v3"
 INTEGER_KEYS = ("input_ids", "attention_mask", "mm_token_type_ids", "image_grid_thw")
 FLOAT_KEYS = ("pixel_values",)
 THREAD_ENVIRONMENT_NAMES = (
@@ -433,6 +434,90 @@ def compare_outputs(
             raise BenchmarkProtocolError(
                 f"{payload.case_id}/{name}: values differ (maximum absolute error {maximum})"
             )
+
+
+def compare_outputs_resize_v2(
+    expected: Mapping[str, np.ndarray],
+    actual: Mapping[str, np.ndarray],
+    payload: CasePayload,
+) -> dict[str, Any]:
+    """Compare official and candidate outputs under the still-image resize-v2 contract.
+
+    Only ``pixel_values`` may differ numerically.  All structure and every
+    integer output remain exact; the pixel difference must produce a passing
+    per-occurrence/per-channel RGB8 witness and both tensor slices must be the
+    exact canonical downstream transform of their represented RGB8 values.
+    """
+
+    if not payload.buffers:
+        compare_outputs(expected, actual, payload, exact_float=True)
+        return {
+            "comparison_id": "qwen-mm-exact-output-comparison-v1",
+            "contract_id": "qwen-mm-compat-v1",
+            "passed": True,
+        }
+    if list(expected) != list(actual):
+        raise BenchmarkProtocolError(f"{payload.case_id}: compared output keys differ")
+    for name in expected:
+        left = expected[name]
+        right = actual[name]
+        if left.dtype != right.dtype or left.shape != right.shape or left.strides != right.strides:
+            raise BenchmarkProtocolError(
+                f"{payload.case_id}/{name}: dtype, shape, or strides differ"
+            )
+        if name != "pixel_values" and not np.array_equal(left, right):
+            raise BenchmarkProtocolError(f"{payload.case_id}/{name}: values differ")
+    try:
+        witness = compare_final_tensors(
+            expected["pixel_values"],
+            actual["pixel_values"],
+            expected["image_grid_thw"],
+            source_dimensions=media_source_dimensions(payload),
+        )
+    except (OSError, ValueError) as error:
+        raise BenchmarkProtocolError(f"{payload.case_id}/pixel_values: {error}") from error
+    if not witness["passed"]:
+        failed = [
+            occurrence["occurrence"]
+            for occurrence in witness["occurrences"]
+            if not occurrence["passed"]
+        ]
+        raise BenchmarkProtocolError(
+            f"{payload.case_id}/pixel_values: resize-v2 quality failed for occurrences {failed}"
+        )
+    return witness
+
+
+def media_source_dimensions(payload: CasePayload) -> list[tuple[int, int]]:
+    """Return authenticated source H/W for every still-image occurrence."""
+
+    dimensions: list[tuple[int, int]] = []
+    for media in payload.buffers:
+        if isinstance(media.value, np.ndarray):
+            dimensions.append((int(media.value.shape[0]), int(media.value.shape[1])))
+        else:
+            from PIL import Image
+
+            with Image.open(io.BytesIO(media.value)) as image:
+                dimensions.append((int(image.height), int(image.width)))
+    return dimensions
+
+
+def _compare_oracle_outputs(
+    expected: Mapping[str, np.ndarray],
+    actual: Mapping[str, np.ndarray],
+    payload: CasePayload,
+    *,
+    require_resize_v2: bool,
+) -> dict[str, Any]:
+    if require_resize_v2:
+        return compare_outputs_resize_v2(expected, actual, payload)
+    compare_outputs(expected, actual, payload, exact_float=True)
+    return {
+        "comparison_id": "qwen-mm-exact-output-comparison-v1",
+        "contract_id": "qwen-mm-compat-v1",
+        "passed": True,
+    }
 
 
 def output_signature(outputs: Mapping[str, np.ndarray]) -> dict[str, Any]:
@@ -1242,7 +1327,13 @@ def run_worker(config: Mapping[str, Any], case: Mapping[str, Any]) -> dict[str, 
 
     oracle_pre = normalize_outputs(oracle.run(payload), payload)
     primary_pre = normalize_outputs(primary.run(payload), payload)
-    compare_outputs(oracle_pre, primary_pre, payload)
+    require_resize_v2 = bool(payload.buffers) and primary_spec != config["oracle_adapter_spec"]
+    pre_measurement_witness = _compare_oracle_outputs(
+        oracle_pre,
+        primary_pre,
+        payload,
+        require_resize_v2=require_resize_v2,
+    )
     baseline = {name: value.copy() for name, value in primary_pre.items()}
 
     for _ in range(warmups):
@@ -1279,7 +1370,12 @@ def run_worker(config: Mapping[str, Any], case: Mapping[str, Any]) -> dict[str, 
     primary_post = normalize_outputs(primary.run(payload), payload)
     oracle_post = normalize_outputs(oracle.run(payload), payload)
     compare_outputs(baseline, primary_post, payload, exact_float=True)
-    compare_outputs(oracle_post, primary_post, payload)
+    post_measurement_witness = _compare_oracle_outputs(
+        oracle_post,
+        primary_post,
+        payload,
+        require_resize_v2=require_resize_v2,
+    )
     compare_outputs(oracle_pre, oracle_post, payload, exact_float=True)
 
     census_spec = _resource_adapter_spec(config)
@@ -1324,8 +1420,10 @@ def run_worker(config: Mapping[str, Any], case: Mapping[str, Any]) -> dict[str, 
         "output_signature": output_signature(baseline),
         "conformance": {
             "pre_measurement": "pass",
+            "pre_measurement_witness": pre_measurement_witness,
             "all_measured_iterations_stable": True,
             "post_measurement": "pass",
+            "post_measurement_witness": post_measurement_witness,
             "float_atol": payload.float_atol,
         },
         "timing_scope": {

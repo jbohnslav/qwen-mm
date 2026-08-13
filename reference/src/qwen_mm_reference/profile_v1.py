@@ -42,14 +42,17 @@ from .benchmark_protocol import (
 )
 from .benchmark_v2 import (
     candidate_artifact_identity,
+    validate_legacy_result_v2_portable,
     validate_result,
     validate_result_portable,
 )
 from .fixtures import repository_root
 from .phase_c_conformance import validate_report as validate_phase_c_report
 
-PROFILE_SCHEMA_ID = "qwen-mm-profile-bundle-v1"
-PROFILE_SCHEMA_VERSION = 1
+PROFILE_SCHEMA_ID = "qwen-mm-profile-bundle-v2"
+PROFILE_SCHEMA_VERSION = 2
+LEGACY_PROFILE_SCHEMA_ID = "qwen-mm-profile-bundle-v1"
+LEGACY_PROFILE_SCHEMA_VERSION = 1
 OBSERVATION_SCHEMA_VERSION = "qwen-mm-observation-v1"
 DEFAULT_CASES = ("text_short", "text_long", "image1", "image24", "ragged24", "rgb24")
 DEFAULT_PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
@@ -143,8 +146,9 @@ def _sha256_path(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _schema() -> dict[str, Any]:
-    path = repository_root() / "benchmarks" / "profile-schema-v1.json"
+def _schema(*, legacy: bool = False) -> dict[str, Any]:
+    name = "profile-schema-v1.json" if legacy else "profile-schema-v2.json"
+    path = repository_root() / "benchmarks" / name
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -1852,16 +1856,28 @@ def summarize_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
 
 def validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool = True) -> None:
     try:
-        _validate_bundle(bundle, require_arm_x86=require_arm_x86)
+        _validate_bundle(bundle, require_arm_x86=require_arm_x86, legacy=False)
     except ProfileArtifactError:
         raise
     except (AttributeError, IndexError, KeyError, OSError, TypeError, ValueError) as error:
         raise ProfileArtifactError(f"profile bundle is malformed: {error}") from error
 
 
-def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> None:
+def validate_legacy_bundle_v1(bundle: Mapping[str, Any], *, require_arm_x86: bool = True) -> None:
+    """Validate immutable profile-v1 evidence through authenticated result-v2 routing."""
+
+    try:
+        _validate_bundle(bundle, require_arm_x86=require_arm_x86, legacy=True)
+    except ProfileArtifactError:
+        raise
+    except (AttributeError, IndexError, KeyError, OSError, TypeError, ValueError) as error:
+        raise ProfileArtifactError(f"legacy profile bundle is malformed: {error}") from error
+
+
+def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool, legacy: bool) -> None:
     errors = sorted(
-        Draft202012Validator(_schema()).iter_errors(bundle), key=lambda item: list(item.path)
+        Draft202012Validator(_schema(legacy=legacy)).iter_errors(bundle),
+        key=lambda item: list(item.path),
     )
     if errors:
         first = errors[0]
@@ -2111,6 +2127,8 @@ def _validate_bundle(bundle: Mapping[str, Any], *, require_arm_x86: bool) -> Non
             profiles=protocol["profiles"],
             cases=protocol["cases"],
             budgets=protocol["thread_budgets"],
+            legacy_artifact_bytes=benchmark_bytes if legacy else None,
+            legacy_artifact_sha256=benchmark["sha256"] if legacy else None,
         )
         if benchmark_result.get("workload") != protocol["workload"]:
             raise ProfileArtifactError("paired benchmark and profile workload provenance differ")
@@ -2211,9 +2229,19 @@ def _validate_paired_benchmark(
     budgets: Sequence[int],
     live_runtime: bool = False,
     phase_c_report_override: Path | None = None,
+    legacy_artifact_bytes: bytes | None = None,
+    legacy_artifact_sha256: str | None = None,
 ) -> None:
     try:
-        if live_runtime:
+        if legacy_artifact_bytes is not None or legacy_artifact_sha256 is not None:
+            if live_runtime or legacy_artifact_bytes is None or legacy_artifact_sha256 is None:
+                raise BenchmarkProtocolError("legacy benchmark authentication is incomplete")
+            validate_legacy_result_v2_portable(
+                result,
+                artifact_bytes=legacy_artifact_bytes,
+                expected_artifact_sha256=legacy_artifact_sha256,
+            )
+        elif live_runtime:
             validate_result(result, phase_c_report_override=phase_c_report_override)
         else:
             validate_result_portable(result)
@@ -2428,6 +2456,7 @@ def capture_bundle(
         ),
         "architecture_family": benchmark["architecture_family"],
         "schema_id": benchmark["schema_id"],
+        "schema_version": benchmark["schema_version"],
         "candidate_identity": benchmark["protocol"]["candidate_identity"],
     }
     bundle: dict[str, Any] = {
@@ -2497,7 +2526,7 @@ def render_report(bundle: Mapping[str, Any]) -> str:
     validate_bundle(bundle, require_arm_x86=len(bundle["captures"]) > 1)
     protocol = bundle["protocol"]
     lines = [
-        "# qwen-mm whole-operation profile v1",
+        "# qwen-mm whole-operation profile v2",
         "",
         f"- Source revision: `{bundle['captures'][0]['source']['revision']}`",
         f"- Profiles: `{', '.join(protocol['profiles'])}`",
@@ -2613,7 +2642,7 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Capture and validate qwen-mm profile v1 bundles")
+    parser = argparse.ArgumentParser(description="Capture and validate qwen-mm profile v2 bundles")
     commands = parser.add_subparsers(dest="command", required=True)
     worker = commands.add_parser("_sample_worker", help=argparse.SUPPRESS)
     worker.add_argument("--config", type=Path, required=True)
@@ -2648,6 +2677,9 @@ def main() -> None:
     validate = commands.add_parser("validate")
     validate.add_argument("bundle", type=Path)
     validate.add_argument("--allow-single-architecture", action="store_true")
+    validate_legacy = commands.add_parser("validate-legacy-v1")
+    validate_legacy.add_argument("bundle", type=Path)
+    validate_legacy.add_argument("--allow-single-architecture", action="store_true")
 
     report = commands.add_parser("report")
     report.add_argument("bundle", type=Path)
@@ -2690,6 +2722,11 @@ def main() -> None:
                 args.report.write_text(render_report(bundle), encoding="utf-8")
         elif args.command == "validate":
             validate_bundle(
+                _load_json(args.bundle),
+                require_arm_x86=not args.allow_single_architecture,
+            )
+        elif args.command == "validate-legacy-v1":
+            validate_legacy_bundle_v1(
                 _load_json(args.bundle),
                 require_arm_x86=not args.allow_single_architecture,
             )
