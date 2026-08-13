@@ -17,6 +17,7 @@ tokenizers.workspace = true
 
 [dev-dependencies]
 fast_image_resize.workspace = true
+pic-scale.workspace = true
 
 [lints]
 workspace = true
