@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 image.workspace = true
 libjpeg-turbo-rs.workspace = true
+pic-scale.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -17,7 +18,6 @@ tokenizers.workspace = true
 
 [dev-dependencies]
 fast_image_resize.workspace = true
-pic-scale.workspace = true
 
 [lints]
 workspace = true

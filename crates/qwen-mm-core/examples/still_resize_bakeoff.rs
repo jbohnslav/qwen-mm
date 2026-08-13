@@ -1,7 +1,8 @@
-//! Compare still-image resize candidates against the authenticated 17-case corpus.
+//! Compare the selected production still-image resizer and alternatives against
+//! the authenticated 17-case corpus.
 //!
-//! This is an informational D3.5 checkpoint. It does not select a production
-//! implementation, change the frozen tolerance, or evaluate the video path.
+//! This is an informational post-selection diagnostic. It does not change the
+//! production implementation, frozen tolerance, or video path.
 
 use std::{
     collections::BTreeMap,
@@ -31,7 +32,7 @@ use sha2::{Digest, Sha256};
 const DEFAULT_MANIFEST: &str = "reference/resize/v1/manifest.json";
 const WARMUP_ITERATIONS: usize = 5;
 const TIMED_ITERATIONS: usize = 30;
-const SCALAR: &str = "qwen-mm-scalar-pillow-port";
+const PRODUCTION_SELECTED: &str = "qwen-mm-selected-production";
 
 #[derive(Deserialize)]
 struct Fixture {
@@ -135,12 +136,10 @@ struct CandidateSummary {
     setup_and_reuse: &'static str,
     exact_case_failures: usize,
     contract_case_failures: usize,
-    cases_faster_than_scalar: usize,
-    geometric_mean_speedup_vs_scalar: f64,
-    integration_cases_faster_than_scalar: usize,
-    integration_geometric_mean_speedup_vs_scalar: f64,
-    actual_resize_integration_cases_faster_than_scalar: usize,
-    actual_resize_integration_geometric_mean_speedup_vs_scalar: f64,
+    integration_cases_faster_than_production_selected: usize,
+    integration_geometric_mean_speedup_vs_production_selected: f64,
+    actual_resize_integration_cases_faster_than_production_selected: usize,
+    actual_resize_integration_geometric_mean_speedup_vs_production_selected: f64,
 }
 
 #[derive(Serialize)]
@@ -202,7 +201,7 @@ struct Measurement {
 
 #[derive(Clone, Copy)]
 enum CandidateKind {
-    Scalar,
+    ProductionSelected,
     Fir(FirFilter),
     Pic(ResamplingFunction, WorkloadStrategy),
 }
@@ -219,12 +218,12 @@ struct CandidateDefinition {
 fn candidate_definitions() -> Vec<CandidateDefinition> {
     vec![
         CandidateDefinition {
-            name: SCALAR,
-            kind: CandidateKind::Scalar,
-            version: "qwen-mm-core=0.1.0",
-            license: "project-local",
-            filter: "Pillow-compatible Catmull-Rom bicubic antialias",
-            setup_and_reuse: "public API recomputes weights and allocates output per call",
+            name: PRODUCTION_SELECTED,
+            kind: CandidateKind::ProductionSelected,
+            version: "qwen-mm-core=0.1.0; pic-scale=0.7.11",
+            license: "project-local; BSD-3-Clause OR Apache-2.0 dependency",
+            filter: "selected pic-scale Bicubic / PreferQuality / single-thread",
+            setup_and_reuse: "production API creates a plan and allocates scratch/output per call",
         },
         CandidateDefinition {
             name: "fir-6.1.0-catmull-rom",
@@ -411,64 +410,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<BTreeMap<_, _>>();
     for case in &cases {
-        let scalar_us = case.candidates[SCALAR]
-            .resize_only_timing
-            .median_microseconds;
         for (name, result) in &case.candidates {
             let summary = candidates.get_mut(name).expect("known candidate");
             summary.exact_case_failures += usize::from(!result.exact_passed);
             summary.contract_case_failures += usize::from(!result.contract_passed);
-            summary.cases_faster_than_scalar +=
-                usize::from(result.resize_only_timing.median_microseconds < scalar_us);
-            let scalar_integration_us = case.candidates[SCALAR]
+            let production_integration_us = case.candidates[PRODUCTION_SELECTED]
                 .end_to_end_integration_timing
                 .median_microseconds;
-            summary.integration_cases_faster_than_scalar += usize::from(
-                result.end_to_end_integration_timing.median_microseconds < scalar_integration_us,
+            summary.integration_cases_faster_than_production_selected += usize::from(
+                result.end_to_end_integration_timing.median_microseconds
+                    < production_integration_us,
             );
             if case.resize_required
-                && result.end_to_end_integration_timing.median_microseconds < scalar_integration_us
+                && result.end_to_end_integration_timing.median_microseconds
+                    < production_integration_us
             {
-                summary.actual_resize_integration_cases_faster_than_scalar += 1;
+                summary.actual_resize_integration_cases_faster_than_production_selected += 1;
             }
         }
     }
     for (name, summary) in &mut candidates {
-        summary.geometric_mean_speedup_vs_scalar = geometric_mean(cases.iter().map(|case| {
-            case.candidates[SCALAR]
-                .resize_only_timing
-                .median_microseconds
-                / case.candidates[name].resize_only_timing.median_microseconds
-        }));
-        summary.integration_geometric_mean_speedup_vs_scalar =
+        summary.integration_geometric_mean_speedup_vs_production_selected =
             geometric_mean(cases.iter().map(|case| {
-                case.candidates[SCALAR]
+                case.candidates[PRODUCTION_SELECTED]
                     .end_to_end_integration_timing
                     .median_microseconds
                     / case.candidates[name]
                         .end_to_end_integration_timing
                         .median_microseconds
             }));
-        summary.actual_resize_integration_geometric_mean_speedup_vs_scalar = geometric_mean(
-            cases
-                .iter()
-                .filter(|case| case.resize_required)
-                .map(|case| {
-                    case.candidates[SCALAR]
-                        .end_to_end_integration_timing
-                        .median_microseconds
-                        / case.candidates[name]
+        summary.actual_resize_integration_geometric_mean_speedup_vs_production_selected =
+            geometric_mean(
+                cases
+                    .iter()
+                    .filter(|case| case.resize_required)
+                    .map(|case| {
+                        case.candidates[PRODUCTION_SELECTED]
                             .end_to_end_integration_timing
                             .median_microseconds
-                }),
-        );
+                            / case.candidates[name]
+                                .end_to_end_integration_timing
+                                .median_microseconds
+                    }),
+            );
     }
 
     let actual_resize_case_count = cases.iter().filter(|case| case.resize_required).count();
     let report = Report {
         schema_version: 1,
         scope: "still-image-only informational candidate bake-off; video unchanged",
-        status: "informational-no-selection",
+        status: "informational-post-selection",
         contract_id: fixture.contract_id,
         stage_id: fixture.stage_id,
         manifest_path: manifest_path.display().to_string(),
@@ -478,11 +469,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         no_op_case_count: cases.len() - actual_resize_case_count,
         warmup_iterations: WARMUP_ITERATIONS,
         timed_iterations: TIMED_ITERATIONS,
-        timing_policy: "resize_only_timing is a warm steady-state kernel call with setup excluded and state/output reused; end_to_end_integration_timing starts from the authenticated possibly-padded RGB8 view and includes validation/packing, weight or plan setup, allocation, resize, and packed Vec output materialization",
+        timing_policy: "for direct library candidates, resize_only_timing is a warm steady-state kernel call with setup excluded and state/output reused; for qwen-mm-selected-production it is a public API call and therefore includes its per-call plan, scratch, and output setup; end_to_end_integration_timing starts from the authenticated possibly-padded RGB8 view and includes validation/packing, weight or plan setup, allocation, resize, and packed Vec output materialization for every candidate",
         diagnostics_scope: "legacy aggregate RGB-channel byte diagnostics; per-channel quality analysis remains future work",
         excluded_candidates: BTreeMap::from([(
             "zenresize=0.3.1",
-            "diagnostic trial excluded from checked-in harness: AGPL-3.0-only OR commercial license; its Catmull-Rom sRGB path was slower than the scalar port on all 17 local ARM64 cases",
+            "historical diagnostic trial excluded from the checked-in harness: AGPL-3.0-only OR commercial license; its Catmull-Rom sRGB path was slower than the former scalar port on all 17 local ARM64 cases",
         )]),
         host: Host {
             os: env::consts::OS,
@@ -510,7 +501,7 @@ fn measure_candidate(
     plan: &qwen_mm_core::ImageGeometryPlan,
 ) -> Result<Measurement, Box<dyn std::error::Error>> {
     match kind {
-        CandidateKind::Scalar => measure_scalar(source, dimensions, plan),
+        CandidateKind::ProductionSelected => measure_production_selected(source, dimensions, plan),
         CandidateKind::Fir(filter) => measure_fir(source, packed, dimensions, destination, filter),
         CandidateKind::Pic(filter, workload) => {
             measure_pic(source, dimensions, destination, filter, workload)
@@ -518,7 +509,7 @@ fn measure_candidate(
     }
 }
 
-fn measure_scalar(
+fn measure_production_selected(
     source: &[u8],
     dimensions: &Source,
     plan: &qwen_mm_core::ImageGeometryPlan,

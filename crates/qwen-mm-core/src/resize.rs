@@ -1,6 +1,11 @@
 //! Reference-compatible spatial resize entry points.
 
-use std::mem;
+use std::{borrow::Cow, mem};
+
+use pic_scale::{
+    BufferStore, ImageSize, ImageStore, ImageStoreMut, PicScaleError, ResamplingFunction, Scaler,
+    ThreadingPolicy, WorkloadStrategy,
+};
 
 use crate::{
     error::{ErrorCategory, QwenError, Result},
@@ -11,7 +16,7 @@ use crate::{
 
 const RGB_CHANNELS: u64 = 3;
 
-/// Resizes one RGB8 image with a Pillow-compatible bicubic kernel.
+/// Resizes one RGB8 image with the selected SIMD-dispatched bicubic kernel.
 ///
 /// The source may have row padding. The returned image is packed HWC RGB8 and
 /// its dimensions are taken from `plan`.
@@ -20,8 +25,9 @@ const RGB_CHANNELS: u64 = 3;
 ///
 /// Returns `media_geometry` for an inconsistent source buffer or stride,
 /// `arithmetic_overflow` for unrepresentable capacities, and
-/// `internal_invariant` if the validated plan cannot be represented by the
-/// selected kernel.
+/// `resource_limit` if the selected kernel cannot allocate its bounded
+/// destination or scratch, and `internal_invariant` if validated state cannot
+/// be represented by the selected kernel.
 pub fn resize_image_rgb8(
     source: &[u8],
     source_height: u64,
@@ -74,7 +80,7 @@ fn resize_image_rgb8_internal(
     let (destination_height, destination_width) = validate_resize_plan(plan)?;
     let source = validate_source(source, source_height, source_width, source_stride_bytes)?;
 
-    resize_fixed_point_u8(
+    resize_pic_scale_u8(
         source,
         destination_height,
         destination_width,
@@ -164,6 +170,171 @@ fn resize_torchvision_f32(
 
 fn quantize_torchvision_u8_to_f32(value: f32) -> f32 {
     value.clamp(0.0, 255.0).round_ties_even()
+}
+
+const PIC_SCALE_DESTINATION: &str = "resize.pic_scale.destination";
+const PIC_SCALE_SCRATCH: &str = "resize.pic_scale.scratch";
+
+/// A validated positive-stride RGB8 view. Still-image resize reads this view
+/// directly so row padding never requires a whole-image packing allocation.
+#[derive(Clone, Copy, Debug)]
+struct Rgb8Source<'a> {
+    data: &'a [u8],
+    height: usize,
+    width: usize,
+    stride: usize,
+    row_bytes: usize,
+    packed_capacity: usize,
+}
+
+/// Executes the selected still-image kernel. The source store borrows the
+/// validated positive-stride view directly, so padded input never needs a
+/// packing copy. Threading stays at one because image-level parallelism is
+/// owned by the caller.
+fn resize_pic_scale_u8(
+    source: Rgb8Source<'_>,
+    destination_height: usize,
+    destination_width: usize,
+    mut recorder: Option<&mut ObservationRecorder>,
+    scope: ObservationScope,
+) -> Result<Vec<u8>> {
+    if source.height == destination_height && source.width == destination_width {
+        let destination = copy_source_rows(source)?;
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                "resize.noop.source_copy",
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
+            recorder.record_copy(
+                "resize.noop.source_copy",
+                scope,
+                usize_bytes(destination.len()),
+            );
+            recorder.rename_live_transient("resize.noop.source_copy", "prepared_rgb", scope);
+        }
+        return Ok(destination);
+    }
+
+    let destination_len = destination_height
+        .checked_mul(destination_width)
+        .and_then(|pixels| pixels.checked_mul(3))
+        .ok_or_else(|| overflow("still-image resize destination capacity"))?;
+    let source_store = ImageStore::<u8, 3> {
+        buffer: Cow::Borrowed(source.data),
+        channels: 3,
+        width: source.width,
+        height: source.height,
+        stride: source.stride,
+        bit_depth: 0,
+    };
+    let scaler = Scaler::new(ResamplingFunction::Bicubic)
+        .set_threading_policy(ThreadingPolicy::Single)
+        .set_workload_strategy(WorkloadStrategy::PreferQuality);
+    let plan = scaler
+        .plan_rgb_resampling(
+            ImageSize::new(source.width, source.height),
+            ImageSize::new(destination_width, destination_height),
+        )
+        .map_err(|error| map_pic_scale_error(&error))?;
+
+    let mut destination = allocate_resize_buffer(PIC_SCALE_DESTINATION, destination_len)?;
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.record_allocation(
+            PIC_SCALE_DESTINATION,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&destination),
+        );
+    }
+
+    let scratch_len = plan.scratch_size();
+    let mut scratch = match allocate_resize_buffer(PIC_SCALE_SCRATCH, scratch_len) {
+        Ok(scratch) => scratch,
+        Err(error) => {
+            if let Some(recorder) = recorder {
+                recorder.release_transient(
+                    PIC_SCALE_DESTINATION,
+                    scope,
+                    vec_capacity_bytes(&destination),
+                );
+            }
+            return Err(error);
+        }
+    };
+    if let Some(recorder) = recorder.as_deref_mut()
+        && scratch.capacity() != 0
+    {
+        recorder.record_allocation(
+            PIC_SCALE_SCRATCH,
+            BufferClass::Transient,
+            scope,
+            vec_capacity_bytes(&scratch),
+        );
+    }
+
+    let resize_result = {
+        let mut destination_store = ImageStoreMut::<u8, 3> {
+            buffer: BufferStore::Borrowed(&mut destination),
+            channels: 3,
+            width: destination_width,
+            height: destination_height,
+            stride: destination_width * 3,
+            bit_depth: 0,
+        };
+        plan.resample_with_scratch(&source_store, &mut destination_store, &mut scratch)
+    };
+
+    if let Some(recorder) = recorder {
+        if scratch.capacity() != 0 {
+            recorder.release_transient(PIC_SCALE_SCRATCH, scope, vec_capacity_bytes(&scratch));
+        }
+        if resize_result.is_ok() {
+            recorder.rename_live_transient(PIC_SCALE_DESTINATION, "prepared_rgb", scope);
+        } else {
+            recorder.release_transient(
+                PIC_SCALE_DESTINATION,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
+        }
+    }
+    resize_result.map_err(|error| map_pic_scale_error(&error))?;
+    Ok(destination)
+}
+
+fn allocate_resize_buffer(name: &'static str, elements: usize) -> Result<Vec<u8>> {
+    let mut values = Vec::new();
+    values.try_reserve_exact(elements).map_err(|error| {
+        resource("unable to reserve still-image resize allocation")
+            .with_context("buffer", name)
+            .with_context("bytes", elements)
+            .with_context("detail", error.to_string())
+    })?;
+    values.resize(elements, 0);
+    Ok(values)
+}
+
+fn map_pic_scale_error(error: &PicScaleError) -> QwenError {
+    let code = error.code();
+    let detail = error.to_string();
+    match error {
+        PicScaleError::OutOfMemory(bytes) => {
+            resource("pic-scale could not allocate still-image resize storage")
+                .with_context("bytes", *bytes)
+                .with_context("pic_scale_code", code)
+                .with_context("detail", detail)
+        }
+        PicScaleError::SourceImageIsTooLarge | PicScaleError::DestinationImageIsTooLarge => {
+            resource("still-image dimensions exceed pic-scale resource capabilities")
+                .with_context("pic_scale_code", code)
+                .with_context("detail", detail)
+        }
+        _ => invariant("pic-scale rejected validated still-image resize state")
+            .with_context("pic_scale_code", code)
+            .with_context("detail", detail),
+    }
 }
 
 #[allow(
@@ -300,78 +471,131 @@ fn convolve_vertical_f32(
     Ok(destination)
 }
 
-#[derive(Debug)]
-struct FixedWeights {
-    bounds: Vec<(usize, usize)>,
-    coefficients: Vec<i32>,
-    kernel_size: usize,
-}
+#[cfg(test)]
+mod legacy_pillow_image_kernel {
+    use super::*;
 
-/// A validated positive-stride RGB8 view. Still-image resize reads this view
-/// directly so row padding never requires a whole-image packing allocation.
-#[derive(Clone, Copy, Debug)]
-struct Rgb8Source<'a> {
-    data: &'a [u8],
-    height: usize,
-    width: usize,
-    stride: usize,
-    row_bytes: usize,
-    packed_capacity: usize,
-}
-
-#[derive(Clone, Copy)]
-struct ResizeAllocationNames {
-    floating: &'static str,
-    bounds: &'static str,
-    coefficients: &'static str,
-    destination: &'static str,
-}
-
-const HORIZONTAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
-    floating: "resize.horizontal.weights_f64",
-    bounds: "resize.horizontal.bounds",
-    coefficients: "resize.horizontal.coefficients_i32",
-    destination: "resize.horizontal.destination",
-};
-
-const VERTICAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
-    floating: "resize.vertical.weights_f64",
-    bounds: "resize.vertical.bounds",
-    coefficients: "resize.vertical.coefficients_i32",
-    destination: "resize.vertical.destination",
-};
-
-/// A source-faithful port of Pillow's separable 8-bit bicubic resampler.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-fn resize_fixed_point_u8(
-    source: Rgb8Source<'_>,
-    destination_height: usize,
-    destination_width: usize,
-    mut recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<Vec<u8>> {
-    if source.height == destination_height && source.width == destination_width {
-        let destination = copy_source_rows(source);
-        if let Some(recorder) = recorder {
-            recorder.record_allocation(
-                "resize.noop.source_copy",
-                BufferClass::Transient,
-                scope,
-                vec_capacity_bytes(&destination),
-            );
-            recorder.record_copy(
-                "resize.noop.source_copy",
-                scope,
-                usize_bytes(destination.len()),
-            );
-            recorder.rename_live_transient("resize.noop.source_copy", "prepared_rgb", scope);
-        }
-        return Ok(destination);
+    #[derive(Debug)]
+    struct FixedWeights {
+        bounds: Vec<(usize, usize)>,
+        coefficients: Vec<i32>,
+        kernel_size: usize,
     }
 
-    // When width is already final, run the vertical kernel against the
-    // validated stride directly. The old path first packed/copied every row.
-    if source.width == destination_width {
+    #[derive(Clone, Copy)]
+    struct ResizeAllocationNames {
+        floating: &'static str,
+        bounds: &'static str,
+        coefficients: &'static str,
+        destination: &'static str,
+    }
+
+    const HORIZONTAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
+        floating: "resize.horizontal.weights_f64",
+        bounds: "resize.horizontal.bounds",
+        coefficients: "resize.horizontal.coefficients_i32",
+        destination: "resize.horizontal.destination",
+    };
+
+    const VERTICAL_RESIZE_NAMES: ResizeAllocationNames = ResizeAllocationNames {
+        floating: "resize.vertical.weights_f64",
+        bounds: "resize.vertical.bounds",
+        coefficients: "resize.vertical.coefficients_i32",
+        destination: "resize.vertical.destination",
+    };
+
+    /// A source-faithful port of Pillow's separable 8-bit bicubic resampler.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    pub(super) fn resize_fixed_point_u8(
+        source: Rgb8Source<'_>,
+        destination_height: usize,
+        destination_width: usize,
+        mut recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) -> Result<Vec<u8>> {
+        if source.height == destination_height && source.width == destination_width {
+            let destination = copy_source_rows(source)?;
+            if let Some(recorder) = recorder {
+                recorder.record_allocation(
+                    "resize.noop.source_copy",
+                    BufferClass::Transient,
+                    scope,
+                    vec_capacity_bytes(&destination),
+                );
+                recorder.record_copy(
+                    "resize.noop.source_copy",
+                    scope,
+                    usize_bytes(destination.len()),
+                );
+                recorder.rename_live_transient("resize.noop.source_copy", "prepared_rgb", scope);
+            }
+            return Ok(destination);
+        }
+
+        // When width is already final, run the vertical kernel against the
+        // validated stride directly. The old path first packed/copied every row.
+        if source.width == destination_width {
+            let weights = fixed_cubic_weights(
+                source.height,
+                destination_height,
+                VERTICAL_RESIZE_NAMES,
+                recorder.as_deref_mut(),
+                scope,
+            )?;
+            let destination = convolve_vertical_source(
+                source,
+                destination_height,
+                &weights,
+                recorder.as_deref_mut(),
+                scope,
+            )?;
+            release_fixed_weights(
+                &weights,
+                VERTICAL_RESIZE_NAMES,
+                recorder.as_deref_mut(),
+                scope,
+            );
+            if let Some(recorder) = recorder {
+                recorder.rename_live_transient(
+                    VERTICAL_RESIZE_NAMES.destination,
+                    "prepared_rgb",
+                    scope,
+                );
+            }
+            return Ok(destination);
+        }
+
+        let weights = fixed_cubic_weights(
+            source.width,
+            destination_width,
+            HORIZONTAL_RESIZE_NAMES,
+            recorder.as_deref_mut(),
+            scope,
+        )?;
+        let horizontal = convolve_horizontal(
+            source,
+            destination_width,
+            &weights,
+            recorder.as_deref_mut(),
+            scope,
+        )?;
+        release_fixed_weights(
+            &weights,
+            HORIZONTAL_RESIZE_NAMES,
+            recorder.as_deref_mut(),
+            scope,
+        );
+
+        if source.height == destination_height {
+            if let Some(recorder) = recorder.as_deref_mut() {
+                recorder.rename_live_transient(
+                    HORIZONTAL_RESIZE_NAMES.destination,
+                    "prepared_rgb",
+                    scope,
+                );
+            }
+            return Ok(horizontal);
+        }
         let weights = fixed_cubic_weights(
             source.height,
             destination_height,
@@ -379,9 +603,11 @@ fn resize_fixed_point_u8(
             recorder.as_deref_mut(),
             scope,
         )?;
-        let destination = convolve_vertical_source(
-            source,
+        let destination = convolve_vertical(
+            &horizontal,
+            source.height,
             destination_height,
+            destination_width,
             &weights,
             recorder.as_deref_mut(),
             scope,
@@ -393,335 +619,273 @@ fn resize_fixed_point_u8(
             scope,
         );
         if let Some(recorder) = recorder {
-            recorder.rename_live_transient(
-                VERTICAL_RESIZE_NAMES.destination,
-                "prepared_rgb",
-                scope,
-            );
-        }
-        return Ok(destination);
-    }
-
-    let weights = fixed_cubic_weights(
-        source.width,
-        destination_width,
-        HORIZONTAL_RESIZE_NAMES,
-        recorder.as_deref_mut(),
-        scope,
-    )?;
-    let horizontal = convolve_horizontal(
-        source,
-        destination_width,
-        &weights,
-        recorder.as_deref_mut(),
-        scope,
-    )?;
-    release_fixed_weights(
-        &weights,
-        HORIZONTAL_RESIZE_NAMES,
-        recorder.as_deref_mut(),
-        scope,
-    );
-
-    if source.height == destination_height {
-        if let Some(recorder) = recorder.as_deref_mut() {
-            recorder.rename_live_transient(
+            recorder.release_transient(
                 HORIZONTAL_RESIZE_NAMES.destination,
-                "prepared_rgb",
                 scope,
+                vec_capacity_bytes(&horizontal),
+            );
+            recorder.rename_live_transient("resize.vertical.destination", "prepared_rgb", scope);
+        }
+        Ok(destination)
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_precision_loss,
+        clippy::cast_sign_loss
+    )] // All casts deliberately mirror pinned PyTorch C++ conversions.
+    fn fixed_cubic_weights(
+        input_size: usize,
+        output_size: usize,
+        names: ResizeAllocationNames,
+        mut recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) -> Result<FixedWeights> {
+        const PRECISION: u32 = 22;
+        if input_size == 0 || output_size == 0 {
+            return Err(geometry("resize dimensions must be non-zero"));
+        }
+        let scale = input_size as f64 / output_size as f64;
+        let support = if scale >= 1.0 { 2.0 * scale } else { 2.0 };
+        let kernel_size = usize::try_from(support.ceil() as u64)
+            .map_err(|_| overflow("video resize kernel size"))?
+            .checked_mul(2)
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| overflow("video resize kernel size"))?;
+        let inverse_scale = if scale >= 1.0 { scale.recip() } else { 1.0 };
+        let floating_len = output_size
+            .checked_mul(kernel_size)
+            .ok_or_else(|| overflow("image resize weights capacity"))?;
+        let mut floating = vec![0.0_f64; floating_len];
+        let mut bounds = Vec::with_capacity(output_size);
+        if let Some(recorder) = recorder.as_deref_mut() {
+            recorder.record_allocation(
+                names.floating,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&floating),
+            );
+            recorder.record_allocation(
+                names.bounds,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&bounds),
             );
         }
-        return Ok(horizontal);
-    }
-    let weights = fixed_cubic_weights(
-        source.height,
-        destination_height,
-        VERTICAL_RESIZE_NAMES,
-        recorder.as_deref_mut(),
-        scope,
-    )?;
-    let destination = convolve_vertical(
-        &horizontal,
-        source.height,
-        destination_height,
-        destination_width,
-        &weights,
-        recorder.as_deref_mut(),
-        scope,
-    )?;
-    release_fixed_weights(
-        &weights,
-        VERTICAL_RESIZE_NAMES,
-        recorder.as_deref_mut(),
-        scope,
-    );
-    if let Some(recorder) = recorder {
-        recorder.release_transient(
-            HORIZONTAL_RESIZE_NAMES.destination,
-            scope,
-            vec_capacity_bytes(&horizontal),
-        );
-        recorder.rename_live_transient("resize.vertical.destination", "prepared_rgb", scope);
-    }
-    Ok(destination)
-}
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss
-)] // All casts deliberately mirror pinned PyTorch C++ conversions.
-fn fixed_cubic_weights(
-    input_size: usize,
-    output_size: usize,
-    names: ResizeAllocationNames,
-    mut recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<FixedWeights> {
-    const PRECISION: u32 = 22;
-    if input_size == 0 || output_size == 0 {
-        return Err(geometry("resize dimensions must be non-zero"));
-    }
-    let scale = input_size as f64 / output_size as f64;
-    let support = if scale >= 1.0 { 2.0 * scale } else { 2.0 };
-    let kernel_size = usize::try_from(support.ceil() as u64)
-        .map_err(|_| overflow("video resize kernel size"))?
-        .checked_mul(2)
-        .and_then(|value| value.checked_add(1))
-        .ok_or_else(|| overflow("video resize kernel size"))?;
-    let inverse_scale = if scale >= 1.0 { scale.recip() } else { 1.0 };
-    let floating_len = output_size
-        .checked_mul(kernel_size)
-        .ok_or_else(|| overflow("image resize weights capacity"))?;
-    let mut floating = vec![0.0_f64; floating_len];
-    let mut bounds = Vec::with_capacity(output_size);
-    if let Some(recorder) = recorder.as_deref_mut() {
-        recorder.record_allocation(
-            names.floating,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&floating),
-        );
-        recorder.record_allocation(
-            names.bounds,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&bounds),
-        );
-    }
+        for output_index in 0..output_size {
+            let center = scale * (output_index as f64 + 0.5);
+            // C++ conversion truncates toward zero. Preserve that behavior at the
+            // left edge instead of substituting mathematical floor.
+            let minimum_unclamped = (center - support + 0.5) as i64;
+            let maximum_unclamped = (center + support + 0.5) as i64;
+            let minimum = minimum_unclamped.max(0) as usize;
+            let maximum = maximum_unclamped
+                .min(i64::try_from(input_size).map_err(|_| overflow("video input dimension"))?)
+                .max(i64::try_from(minimum).map_err(|_| overflow("video weight bound"))?)
+                as usize;
+            let count = (maximum - minimum).min(kernel_size);
+            if count == 0 {
+                return Err(invariant("image resize produced an empty filter window"));
+            }
+            bounds.push((minimum, count));
 
-    for output_index in 0..output_size {
-        let center = scale * (output_index as f64 + 0.5);
-        // C++ conversion truncates toward zero. Preserve that behavior at the
-        // left edge instead of substituting mathematical floor.
-        let minimum_unclamped = (center - support + 0.5) as i64;
-        let maximum_unclamped = (center + support + 0.5) as i64;
-        let minimum = minimum_unclamped.max(0) as usize;
-        let maximum = maximum_unclamped
-            .min(i64::try_from(input_size).map_err(|_| overflow("video input dimension"))?)
-            .max(i64::try_from(minimum).map_err(|_| overflow("video weight bound"))?)
-            as usize;
-        let count = (maximum - minimum).min(kernel_size);
-        if count == 0 {
-            return Err(invariant("image resize produced an empty filter window"));
-        }
-        bounds.push((minimum, count));
-
-        let row = &mut floating[output_index * kernel_size..(output_index + 1) * kernel_size];
-        let mut total = 0.0_f64;
-        for (index, weight) in row.iter_mut().take(count).enumerate() {
-            let distance = (index as f64 + minimum as f64 - center + 0.5) * inverse_scale;
-            *weight = keys_cubic(distance);
-            total += *weight;
-        }
-        if total != 0.0 {
-            for weight in row.iter_mut().take(count) {
-                *weight /= total;
+            let row = &mut floating[output_index * kernel_size..(output_index + 1) * kernel_size];
+            let mut total = 0.0_f64;
+            for (index, weight) in row.iter_mut().take(count).enumerate() {
+                let distance = (index as f64 + minimum as f64 - center + 0.5) * inverse_scale;
+                *weight = keys_cubic(distance);
+                total += *weight;
+            }
+            if total != 0.0 {
+                for weight in row.iter_mut().take(count) {
+                    *weight /= total;
+                }
             }
         }
-    }
 
-    let scale = f64::from(1_u32 << PRECISION);
-    let floating_bytes = vec_capacity_bytes(&floating);
-    let coefficients = floating
-        .into_iter()
-        .map(|weight| {
-            let scaled = weight * scale;
-            if scaled < 0.0 {
-                (scaled - 0.5) as i32
-            } else {
-                (scaled + 0.5) as i32
-            }
+        let scale = f64::from(1_u32 << PRECISION);
+        let floating_bytes = vec_capacity_bytes(&floating);
+        let coefficients = floating
+            .into_iter()
+            .map(|weight| {
+                let scaled = weight * scale;
+                if scaled < 0.0 {
+                    (scaled - 0.5) as i32
+                } else {
+                    (scaled + 0.5) as i32
+                }
+            })
+            .collect::<Vec<_>>();
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                names.coefficients,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&coefficients),
+            );
+            recorder.release_transient(names.floating, scope, floating_bytes);
+        }
+
+        Ok(FixedWeights {
+            bounds,
+            coefficients,
+            kernel_size,
         })
-        .collect::<Vec<_>>();
-    if let Some(recorder) = recorder {
-        recorder.record_allocation(
-            names.coefficients,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&coefficients),
-        );
-        recorder.release_transient(names.floating, scope, floating_bytes);
     }
 
-    Ok(FixedWeights {
-        bounds,
-        coefficients,
-        kernel_size,
-    })
-}
-
-fn release_fixed_weights(
-    weights: &FixedWeights,
-    names: ResizeAllocationNames,
-    recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) {
-    if let Some(recorder) = recorder {
-        recorder.release_transient(names.bounds, scope, vec_capacity_bytes(&weights.bounds));
-        recorder.release_transient(
-            names.coefficients,
-            scope,
-            vec_capacity_bytes(&weights.coefficients),
-        );
+    fn release_fixed_weights(
+        weights: &FixedWeights,
+        names: ResizeAllocationNames,
+        recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) {
+        if let Some(recorder) = recorder {
+            recorder.release_transient(names.bounds, scope, vec_capacity_bytes(&weights.bounds));
+            recorder.release_transient(
+                names.coefficients,
+                scope,
+                vec_capacity_bytes(&weights.coefficients),
+            );
+        }
     }
-}
 
-fn keys_cubic(mut value: f64) -> f64 {
-    const A: f64 = -0.5;
-    value = value.abs();
-    if value < 1.0 {
-        ((A + 2.0) * value - (A + 3.0)) * value * value + 1.0
-    } else if value < 2.0 {
-        (((value - 5.0) * value + 8.0) * value - 4.0) * A
-    } else {
-        0.0
+    fn keys_cubic(mut value: f64) -> f64 {
+        const A: f64 = -0.5;
+        value = value.abs();
+        if value < 1.0 {
+            ((A + 2.0) * value - (A + 3.0)) * value * value + 1.0
+        } else if value < 2.0 {
+            (((value - 5.0) * value + 8.0) * value - 4.0) * A
+        } else {
+            0.0
+        }
     }
-}
 
-fn convolve_horizontal(
-    source: Rgb8Source<'_>,
-    destination_width: usize,
-    weights: &FixedWeights,
-    recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<Vec<u8>> {
-    const PRECISION: u32 = 22;
-    let destination_len = source
-        .height
-        .checked_mul(destination_width)
-        .and_then(|value| value.checked_mul(3))
-        .ok_or_else(|| overflow("horizontal video resize capacity"))?;
-    let mut destination = vec![0_u8; destination_len];
-    if let Some(recorder) = recorder {
-        recorder.record_allocation(
-            HORIZONTAL_RESIZE_NAMES.destination,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&destination),
-        );
+    fn convolve_horizontal(
+        source: Rgb8Source<'_>,
+        destination_width: usize,
+        weights: &FixedWeights,
+        recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) -> Result<Vec<u8>> {
+        const PRECISION: u32 = 22;
+        let destination_len = source
+            .height
+            .checked_mul(destination_width)
+            .and_then(|value| value.checked_mul(3))
+            .ok_or_else(|| overflow("horizontal video resize capacity"))?;
+        let mut destination = vec![0_u8; destination_len];
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                HORIZONTAL_RESIZE_NAMES.destination,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
+        }
+        for row in 0..source.height {
+            for output_x in 0..destination_width {
+                let (minimum, count) = weights.bounds[output_x];
+                let coefficients = &weights.coefficients
+                    [output_x * weights.kernel_size..output_x * weights.kernel_size + count];
+                for channel in 0..3 {
+                    let mut sum = 1_i64 << (PRECISION - 1);
+                    for (index, &coefficient) in coefficients.iter().enumerate() {
+                        let source_index = row * source.stride + (minimum + index) * 3 + channel;
+                        sum += i64::from(source.data[source_index]) * i64::from(coefficient);
+                    }
+                    let value =
+                        u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
+                    destination[(row * destination_width + output_x) * 3 + channel] = value;
+                }
+            }
+        }
+        Ok(destination)
     }
-    for row in 0..source.height {
-        for output_x in 0..destination_width {
-            let (minimum, count) = weights.bounds[output_x];
+
+    fn convolve_vertical_source(
+        source: Rgb8Source<'_>,
+        destination_height: usize,
+        weights: &FixedWeights,
+        recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) -> Result<Vec<u8>> {
+        const PRECISION: u32 = 22;
+        debug_assert_eq!(weights.bounds.len(), destination_height);
+        let destination_len = destination_height
+            .checked_mul(source.row_bytes)
+            .ok_or_else(|| overflow("vertical video resize capacity"))?;
+        let mut destination = vec![0_u8; destination_len];
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                VERTICAL_RESIZE_NAMES.destination,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
+        }
+        for output_y in 0..destination_height {
+            let (minimum, count) = weights.bounds[output_y];
+            debug_assert!(minimum + count <= source.height);
             let coefficients = &weights.coefficients
-                [output_x * weights.kernel_size..output_x * weights.kernel_size + count];
-            for channel in 0..3 {
+                [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
+            for byte in 0..source.row_bytes {
                 let mut sum = 1_i64 << (PRECISION - 1);
                 for (index, &coefficient) in coefficients.iter().enumerate() {
-                    let source_index = row * source.stride + (minimum + index) * 3 + channel;
-                    sum += i64::from(source.data[source_index]) * i64::from(coefficient);
+                    sum += i64::from(source.data[(minimum + index) * source.stride + byte])
+                        * i64::from(coefficient);
                 }
-                let value =
+                destination[output_y * source.row_bytes + byte] =
                     u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
-                destination[(row * destination_width + output_x) * 3 + channel] = value;
             }
         }
+        Ok(destination)
     }
-    Ok(destination)
-}
 
-fn convolve_vertical_source(
-    source: Rgb8Source<'_>,
-    destination_height: usize,
-    weights: &FixedWeights,
-    recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<Vec<u8>> {
-    const PRECISION: u32 = 22;
-    debug_assert_eq!(weights.bounds.len(), destination_height);
-    let destination_len = destination_height
-        .checked_mul(source.row_bytes)
-        .ok_or_else(|| overflow("vertical video resize capacity"))?;
-    let mut destination = vec![0_u8; destination_len];
-    if let Some(recorder) = recorder {
-        recorder.record_allocation(
-            VERTICAL_RESIZE_NAMES.destination,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&destination),
-        );
-    }
-    for output_y in 0..destination_height {
-        let (minimum, count) = weights.bounds[output_y];
-        debug_assert!(minimum + count <= source.height);
-        let coefficients = &weights.coefficients
-            [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
-        for byte in 0..source.row_bytes {
-            let mut sum = 1_i64 << (PRECISION - 1);
-            for (index, &coefficient) in coefficients.iter().enumerate() {
-                sum += i64::from(source.data[(minimum + index) * source.stride + byte])
-                    * i64::from(coefficient);
-            }
-            destination[output_y * source.row_bytes + byte] =
-                u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
+    fn convolve_vertical(
+        source: &[u8],
+        source_height: usize,
+        destination_height: usize,
+        width: usize,
+        weights: &FixedWeights,
+        recorder: Option<&mut ObservationRecorder>,
+        scope: ObservationScope,
+    ) -> Result<Vec<u8>> {
+        const PRECISION: u32 = 22;
+        debug_assert_eq!(weights.bounds.len(), destination_height);
+        let row_bytes = width
+            .checked_mul(3)
+            .ok_or_else(|| overflow("vertical video resize row"))?;
+        let destination_len = destination_height
+            .checked_mul(row_bytes)
+            .ok_or_else(|| overflow("vertical video resize capacity"))?;
+        let mut destination = vec![0_u8; destination_len];
+        if let Some(recorder) = recorder {
+            recorder.record_allocation(
+                VERTICAL_RESIZE_NAMES.destination,
+                BufferClass::Transient,
+                scope,
+                vec_capacity_bytes(&destination),
+            );
         }
-    }
-    Ok(destination)
-}
-
-fn convolve_vertical(
-    source: &[u8],
-    source_height: usize,
-    destination_height: usize,
-    width: usize,
-    weights: &FixedWeights,
-    recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<Vec<u8>> {
-    const PRECISION: u32 = 22;
-    debug_assert_eq!(weights.bounds.len(), destination_height);
-    let row_bytes = width
-        .checked_mul(3)
-        .ok_or_else(|| overflow("vertical video resize row"))?;
-    let destination_len = destination_height
-        .checked_mul(row_bytes)
-        .ok_or_else(|| overflow("vertical video resize capacity"))?;
-    let mut destination = vec![0_u8; destination_len];
-    if let Some(recorder) = recorder {
-        recorder.record_allocation(
-            VERTICAL_RESIZE_NAMES.destination,
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&destination),
-        );
-    }
-    for output_y in 0..destination_height {
-        let (minimum, count) = weights.bounds[output_y];
-        debug_assert!(minimum + count <= source_height);
-        let coefficients = &weights.coefficients
-            [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
-        for byte in 0..row_bytes {
-            let mut sum = 1_i64 << (PRECISION - 1);
-            for (index, &coefficient) in coefficients.iter().enumerate() {
-                sum += i64::from(source[(minimum + index) * row_bytes + byte])
-                    * i64::from(coefficient);
+        for output_y in 0..destination_height {
+            let (minimum, count) = weights.bounds[output_y];
+            debug_assert!(minimum + count <= source_height);
+            let coefficients = &weights.coefficients
+                [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
+            for byte in 0..row_bytes {
+                let mut sum = 1_i64 << (PRECISION - 1);
+                for (index, &coefficient) in coefficients.iter().enumerate() {
+                    sum += i64::from(source[(minimum + index) * row_bytes + byte])
+                        * i64::from(coefficient);
+                }
+                destination[output_y * row_bytes + byte] =
+                    u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
             }
-            destination[output_y * row_bytes + byte] =
-                u8::try_from((sum >> PRECISION).clamp(0, 255)).expect("clamped RGB8 value");
         }
+        Ok(destination)
     }
-    Ok(destination)
 }
 
 fn packed_source(
@@ -831,13 +995,20 @@ fn validate_source(
     })
 }
 
-fn copy_source_rows(source: Rgb8Source<'_>) -> Vec<u8> {
-    let mut packed = Vec::with_capacity(source.packed_capacity);
+fn copy_source_rows(source: Rgb8Source<'_>) -> Result<Vec<u8>> {
+    let mut packed = Vec::new();
+    packed
+        .try_reserve_exact(source.packed_capacity)
+        .map_err(|error| {
+            resource("unable to reserve no-op still-image output")
+                .with_context("bytes", source.packed_capacity)
+                .with_context("detail", error.to_string())
+        })?;
     for row in 0..source.height {
         let start = row * source.stride;
         packed.extend_from_slice(&source.data[start..start + source.row_bytes]);
     }
-    packed
+    Ok(packed)
 }
 
 #[allow(clippy::ptr_arg)] // Vec capacity, rather than slice length, is the allocation metric.
@@ -892,17 +1063,22 @@ fn overflow(message: impl Into<String>) -> QwenError {
     QwenError::new(ErrorCategory::ArithmeticOverflow, message)
 }
 
+fn resource(message: impl Into<String>) -> QwenError {
+    QwenError::new(ErrorCategory::ResourceLimit, message)
+}
+
 fn invariant(message: impl Into<String>) -> QwenError {
     QwenError::new(ErrorCategory::InternalInvariant, message)
 }
 
 #[cfg(test)]
 mod tests {
+    use rayon::ThreadPoolBuilder;
     use serde::Deserialize;
 
     use super::{
-        quantize_torchvision_u8_to_f32, resize_image_rgb8, resize_image_rgb8_observed,
-        resize_video_rgb8_to_f32,
+        legacy_pillow_image_kernel, quantize_torchvision_u8_to_f32, resize_image_rgb8,
+        resize_image_rgb8_observed, resize_video_rgb8_to_f32, validate_source,
     };
     use crate::{
         error::ErrorCategory,
@@ -961,8 +1137,8 @@ mod tests {
         assert_eq!(report.allocations.copy_count, 0);
         assert_eq!(report.allocations.copied_bytes, 0);
         assert!(report.copies.is_empty());
-        assert_eq!(report.allocations.allocation_count, 8);
-        assert_eq!(report.buffers.len(), 8);
+        assert_eq!(report.allocations.allocation_count, 2);
+        assert_eq!(report.buffers.len(), 2);
         assert_eq!(
             report.allocations.allocated_bytes,
             report
@@ -976,16 +1152,7 @@ mod tests {
             .iter()
             .map(|buffer| buffer.name.as_str())
             .collect::<Vec<_>>();
-        for required in [
-            "resize.horizontal.weights_f64",
-            "resize.horizontal.bounds",
-            "resize.horizontal.coefficients_i32",
-            "resize.horizontal.destination",
-            "resize.vertical.weights_f64",
-            "resize.vertical.bounds",
-            "resize.vertical.coefficients_i32",
-            "prepared_rgb",
-        ] {
+        for required in ["resize.pic_scale.scratch", "prepared_rgb"] {
             assert!(names.contains(&required), "missing {required}: {names:?}");
         }
         assert!(!names.contains(&"resize.packed_source"));
@@ -1035,7 +1202,7 @@ mod tests {
                 .expect("observed");
         assert_eq!(actual, expected);
         let report = recorder.report();
-        assert_eq!(report.allocations.allocation_count, 4);
+        assert_eq!(report.allocations.allocation_count, 1);
         assert_eq!(report.allocations.copy_count, 0);
         assert_eq!(report.allocations.copied_bytes, 0);
         assert!(report.copies.is_empty());
@@ -1107,6 +1274,153 @@ mod tests {
         assert!(report.buffers.iter().all(|buffer| {
             buffer.name != "resize.packed_source" && buffer.name != "resize.horizontal.source_copy"
         }));
+    }
+
+    #[test]
+    fn two_axis_resize_is_identical_for_packed_and_padded_sources() {
+        const HEIGHT: usize = 64;
+        const WIDTH: usize = 64;
+        const ROW_BYTES: usize = WIDTH * 3;
+        const PADDED_STRIDE: usize = ROW_BYTES + 13;
+        let packed = (0..HEIGHT * ROW_BYTES)
+            .map(|index| u8::try_from((index * 37 + index / 11) % 251).expect("value"))
+            .collect::<Vec<_>>();
+        let mut padded = vec![0xd3_u8; HEIGHT * PADDED_STRIDE];
+        for row in 0..HEIGHT {
+            padded[row * PADDED_STRIDE..row * PADDED_STRIDE + ROW_BYTES]
+                .copy_from_slice(&packed[row * ROW_BYTES..(row + 1) * ROW_BYTES]);
+        }
+        let geometry = plan_with_options(
+            64,
+            64,
+            ImageOptions {
+                resized_height: Some(96),
+                resized_width: Some(128),
+                ..ImageOptions::default()
+            },
+        );
+        let packed_output =
+            resize_image_rgb8(&packed, 64, 64, ROW_BYTES as u64, &geometry).expect("packed");
+        let padded_output =
+            resize_image_rgb8(&padded, 64, 64, PADDED_STRIDE as u64, &geometry).expect("padded");
+        assert_eq!(padded_output, packed_output);
+    }
+
+    #[test]
+    fn resize_preserves_constants_primaries_and_channel_independence() {
+        let geometry = plan_with_options(
+            64,
+            64,
+            ImageOptions {
+                resized_height: Some(96),
+                resized_width: Some(128),
+                ..ImageOptions::default()
+            },
+        );
+        for color in [
+            [0, 0, 0],
+            [255, 255, 255],
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [17, 93, 201],
+        ] {
+            let source = color
+                .into_iter()
+                .cycle()
+                .take(64 * 64 * 3)
+                .collect::<Vec<_>>();
+            let output = resize_image_rgb8(&source, 64, 64, 192, &geometry).expect("constant");
+            assert!(output.chunks_exact(3).all(|pixel| pixel == color));
+        }
+
+        let source = (0..64 * 64)
+            .flat_map(|index| {
+                let value = u8::try_from((index * 29 + index / 7) % 256).expect("value");
+                [value, 255 - value, value / 2]
+            })
+            .collect::<Vec<_>>();
+        let permuted = source
+            .chunks_exact(3)
+            .flat_map(|pixel| [pixel[2], pixel[1], pixel[0]])
+            .collect::<Vec<_>>();
+        let output = resize_image_rgb8(&source, 64, 64, 192, &geometry).expect("channels");
+        let permuted_output =
+            resize_image_rgb8(&permuted, 64, 64, 192, &geometry).expect("permuted channels");
+        assert!(
+            output
+                .chunks_exact(3)
+                .zip(permuted_output.chunks_exact(3))
+                .all(|(original, permuted)| {
+                    permuted == [original[2], original[1], original[0]]
+                })
+        );
+    }
+
+    #[test]
+    fn selected_quality_strategy_preserves_midgray_under_extreme_anisotropy() {
+        const SOURCE_HEIGHT: u64 = 31;
+        const SOURCE_WIDTH: u64 = 257;
+        const DESTINATION_HEIGHT: u64 = 256;
+        const DESTINATION_WIDTH: u64 = 32;
+        let source = vec![
+            128_u8;
+            usize::try_from(SOURCE_HEIGHT * SOURCE_WIDTH * 3)
+                .expect("source capacity")
+        ];
+        let geometry = crate::geometry::ImageGeometryPlan {
+            height: DESTINATION_HEIGHT,
+            width: DESTINATION_WIDTH,
+            image_grid_thw: [0; 3],
+            patch_rows: 0,
+            placeholder_count: 0,
+            rgb_row_stride_bytes: DESTINATION_WIDTH * 3,
+            rgb_capacity_bytes: DESTINATION_HEIGHT * DESTINATION_WIDTH * 3,
+            pixel_values_row_stride_bytes: 0,
+            pixel_values_capacity_bytes: 0,
+            image_grid_row_stride_bytes: 0,
+            image_grid_capacity_bytes: 0,
+        };
+
+        let output = resize_image_rgb8(
+            &source,
+            SOURCE_HEIGHT,
+            SOURCE_WIDTH,
+            SOURCE_WIDTH * 3,
+            &geometry,
+        )
+        .expect("anisotropic resize");
+
+        assert!(output.iter().all(|&value| value == 128));
+    }
+
+    #[test]
+    fn still_image_resize_is_repeatable_across_caller_thread_counts() {
+        let source = (0..64 * 64 * 3)
+            .map(|index| u8::try_from((index * 43 + index / 5) % 256).expect("value"))
+            .collect::<Vec<_>>();
+        let geometry = plan_with_options(
+            64,
+            64,
+            ImageOptions {
+                resized_height: Some(96),
+                resized_width: Some(128),
+                ..ImageOptions::default()
+            },
+        );
+        let resize = || resize_image_rgb8(&source, 64, 64, 192, &geometry).expect("resize");
+        let one_thread = ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .expect("one-thread pool")
+            .install(resize);
+        let four_threads = ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .expect("four-thread pool")
+            .install(resize);
+        assert_eq!(one_thread, four_threads);
+        assert_eq!(one_thread, resize());
     }
 
     #[derive(Deserialize)]
@@ -1256,6 +1570,12 @@ mod tests {
                 .category(),
             ErrorCategory::InternalInvariant
         );
+        assert_eq!(
+            resize_image_rgb8(&source[..1], 64, 64, 1, &inconsistent)
+                .expect_err("plan validation precedes invalid source")
+                .category(),
+            ErrorCategory::InternalInvariant
+        );
 
         let mut zero = plan(64, 64);
         zero.width = 0;
@@ -1337,7 +1657,37 @@ mod tests {
             .unwrap_or_else(|error| panic!("{} image resize: {error}", case.id));
             let expected_image = &PILLOW[case.pillow_image_rgb8.offset
                 ..case.pillow_image_rgb8.offset + case.pillow_image_rgb8.byte_length];
-            assert_eq!(actual_image, expected_image, "{} Pillow RGB8", case.id);
+            let historical_source = validate_source(
+                source,
+                case.source.height,
+                case.source.width,
+                case.source.stride_bytes,
+            )
+            .unwrap_or_else(|error| panic!("{} historical source: {error}", case.id));
+            let historical_image = legacy_pillow_image_kernel::resize_fixed_point_u8(
+                historical_source,
+                usize::try_from(geometry.height).expect("destination height"),
+                usize::try_from(geometry.width).expect("destination width"),
+                None,
+                ObservationScope::default(),
+            )
+            .unwrap_or_else(|error| panic!("{} historical image resize: {error}", case.id));
+            assert_eq!(
+                historical_image, expected_image,
+                "{} historical Pillow RGB8",
+                case.id
+            );
+            let maximum_image_error = actual_image
+                .iter()
+                .zip(expected_image)
+                .map(|(&actual, &expected)| u8::abs_diff(actual, expected))
+                .max()
+                .unwrap_or(0);
+            assert!(
+                maximum_image_error <= 32,
+                "{} production image max absolute error {maximum_image_error}",
+                case.id,
+            );
 
             let actual_video = resize_video_rgb8_to_f32(
                 source,

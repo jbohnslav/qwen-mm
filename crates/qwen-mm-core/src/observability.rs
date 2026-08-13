@@ -561,7 +561,7 @@ impl ObservationRecorder {
             copies: self.copies.clone(),
             allocations: self.allocations.clone(),
             calls: self.calls.clone(),
-            counter_scope: "qwen-mm decoded/prepared RGB, observed still-image resize scratch, official output destinations, and controlled packed/source-clone copies; prompt/token/plan metadata plus codec and tokenizer internal scratch remain profile-only; language-binding input ownership is added by the binding recorder".to_owned(),
+            counter_scope: "qwen-mm decoded/prepared RGB, qwen-mm-owned observed still-image resize scratch, official output destinations, and controlled packed/source-clone copies; third-party resize-plan weights plus prompt/token/plan metadata and codec/tokenizer internal scratch remain profile-only; language-binding input ownership is added by the binding recorder".to_owned(),
         }
     }
 }

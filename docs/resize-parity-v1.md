@@ -5,7 +5,8 @@
 > still-image kernel selection and Pillow RGB8 comparison rule with
 > [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md). The v1 video
 > kernel, video tolerances, corpus results, and historical candidate results
-> remain unchanged.
+> remain unchanged. The resulting production dependency decision is recorded
+> separately in [`resize-selection-v2`](resize-selection-v2.md).
 
 Status: accepted for B5 on 2026-08-01.
 

@@ -76,7 +76,7 @@ struct OutputSlice {
 
 #[derive(Clone, Copy)]
 enum Backend {
-    Scalar,
+    SelectedProduction,
     FirCatmullRom,
     Pic(ResamplingFunction, WorkloadStrategy),
 }
@@ -105,8 +105,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_length = authenticate_case_layout(&manifest, &sources)?;
     fs::create_dir_all(&output_directory)?;
 
+    let mut selected_production = None;
     for (name, backend) in [
-        ("scalar", Backend::Scalar),
+        ("selected-production", Backend::SelectedProduction),
         ("fir-catmull-rom", Backend::FirCatmullRom),
         (
             "pic-scale-bicubic",
@@ -158,6 +159,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             destination.copy_from_slice(&output);
         }
         let path = output_directory.join(format!("{name}.rgb8.bin"));
+        if name == "selected-production" {
+            selected_production = Some(blob.clone());
+        } else if name == "pic-scale-bicubic-prefer-quality"
+            && selected_production.as_deref() != Some(blob.as_slice())
+        {
+            return Err(
+                "selected production output differs from the frozen direct configuration".into(),
+            );
+        }
         fs::write(&path, blob)?;
         println!("wrote {}", path.display());
     }
@@ -258,7 +268,7 @@ fn resize_case(
         return pack_rgb8(source, &case.source);
     }
     match backend {
-        Backend::Scalar => {
+        Backend::SelectedProduction => {
             let plan = resize_plan(&case.destination)?;
             Ok(resize_image_rgb8(
                 source,
@@ -284,8 +294,9 @@ fn resize_plan(destination: &Dimensions) -> Result<ImageGeometryPlan, Box<dyn st
         .height
         .checked_mul(rgb_row_stride_bytes)
         .ok_or("destination RGB capacity overflow")?;
-    // The scalar resize entry point consumes only destination dimensions and
-    // the checked RGB layout. The other plan fields belong to later patching.
+    // The production resize entry point consumes only destination dimensions
+    // and the checked RGB layout. The other plan fields belong to later
+    // patching.
     Ok(ImageGeometryPlan {
         height: destination.height,
         width: destination.width,

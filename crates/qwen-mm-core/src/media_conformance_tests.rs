@@ -222,17 +222,27 @@ fn prepared_rgb_stage_matches_pinned_pillow_oracle() {
                 diagnostics.over_bound(expected_artifact.absolute_byte_error_max),
                 diagnostics.first
             );
-            assert!(
-                diagnostics.maximum <= expected_artifact.absolute_byte_error_max,
-                "{} exceeded byte bound {}: max={}, rmse={}, p99={}, count_over={}, first={:?}",
-                case.id,
-                expected_artifact.absolute_byte_error_max,
-                diagnostics.maximum,
-                diagnostics.rmse,
-                diagnostics.p99,
-                diagnostics.over_bound(expected_artifact.absolute_byte_error_max),
-                diagnostics.first
-            );
+            if case.tags.iter().any(|tag| tag == "resize") {
+                assert_v2_resize_quality(
+                    &actual.rgb,
+                    expected,
+                    expected_artifact.height,
+                    expected_artifact.width,
+                    &case.id,
+                );
+            } else {
+                assert!(
+                    diagnostics.maximum <= expected_artifact.absolute_byte_error_max,
+                    "{} exceeded byte bound {}: max={}, rmse={}, p99={}, count_over={}, first={:?}",
+                    case.id,
+                    expected_artifact.absolute_byte_error_max,
+                    diagnostics.maximum,
+                    diagnostics.rmse,
+                    diagnostics.p99,
+                    diagnostics.over_bound(expected_artifact.absolute_byte_error_max),
+                    diagnostics.first
+                );
+            }
         }
     }
 }
@@ -349,6 +359,132 @@ fn compare(actual: &[u8], expected: &[u8], width: u64) -> Diagnostics {
 
 fn percentile(sorted: &[u8], percentile: usize) -> u8 {
     sorted[((sorted.len() - 1) * percentile + 50) / 100]
+}
+
+#[allow(clippy::cast_precision_loss)] // The prepared-image resource cap keeps exact integer sums in f64.
+fn assert_v2_resize_quality(
+    actual: &[u8],
+    expected: &[u8],
+    height: u64,
+    width: u64,
+    case_id: &str,
+) {
+    let height = usize::try_from(height).expect("height fits usize");
+    let width = usize::try_from(width).expect("width fits usize");
+    let pixels = height.checked_mul(width).expect("pixel count");
+    assert_eq!(actual.len(), pixels * 3, "{case_id} RGB extent");
+    for channel in 0..3 {
+        let mut absolute_errors = Vec::with_capacity(pixels);
+        let mut squared_error = 0.0_f64;
+        let mut signed_error = 0.0_f64;
+        for pixel in 0..pixels {
+            let index = pixel * 3 + channel;
+            let error = f64::from(actual[index]) - f64::from(expected[index]);
+            absolute_errors.push(actual[index].abs_diff(expected[index]));
+            squared_error = error.mul_add(error, squared_error);
+            signed_error += error;
+        }
+        absolute_errors.sort_unstable();
+        let maximum = absolute_errors.last().copied().unwrap_or(0);
+        let rmse = (squared_error / pixels as f64).sqrt();
+        let p99_rank = (99 * pixels).div_ceil(100).max(1);
+        let p99 = absolute_errors[p99_rank - 1];
+        let bias = (signed_error / pixels as f64).abs();
+        let ssim = channel_ssim(actual, expected, height, width, channel);
+        assert!(
+            maximum <= 32 && rmse <= 5.0 && p99 <= 16 && bias <= 2.0 && ssim >= 0.98,
+            "{case_id} channel {channel} failed resize-v2: max={maximum}, rmse={rmse}, p99={p99}, abs_bias={bias}, ssim={ssim}"
+        );
+    }
+}
+
+#[allow(clippy::cast_precision_loss)] // Pixel coordinates are bounded by the prepared-image cap.
+fn channel_ssim(
+    actual: &[u8],
+    expected: &[u8],
+    height: usize,
+    width: usize,
+    channel: usize,
+) -> f64 {
+    const RADIUS: isize = 5;
+    const C1: f64 = 6.5025;
+    const C2: f64 = 58.5225;
+    let mut weights = Vec::with_capacity(121);
+    let mut weight_sum = 0.0_f64;
+    for y in -RADIUS..=RADIUS {
+        for x in -RADIUS..=RADIUS {
+            let squared_radius = (x * x + y * y) as f64;
+            let weight = (-squared_radius / (2.0 * 1.5_f64.powi(2))).exp();
+            weights.push(weight);
+            weight_sum += weight;
+        }
+    }
+    for weight in &mut weights {
+        *weight /= weight_sum;
+    }
+
+    let mut total = 0.0_f64;
+    for output_y in 0..height {
+        for output_x in 0..width {
+            let mut expected_mean = 0.0_f64;
+            let mut actual_mean = 0.0_f64;
+            for (weight_index, (offset_y, offset_x)) in (-RADIUS..=RADIUS)
+                .flat_map(|y| (-RADIUS..=RADIUS).map(move |x| (y, x)))
+                .enumerate()
+            {
+                let source_y = reflect_101(
+                    isize::try_from(output_y).expect("output y") + offset_y,
+                    height,
+                );
+                let source_x = reflect_101(
+                    isize::try_from(output_x).expect("output x") + offset_x,
+                    width,
+                );
+                let index = (source_y * width + source_x) * 3 + channel;
+                expected_mean += weights[weight_index] * f64::from(expected[index]);
+                actual_mean += weights[weight_index] * f64::from(actual[index]);
+            }
+            let mut expected_variance = 0.0_f64;
+            let mut actual_variance = 0.0_f64;
+            let mut covariance = 0.0_f64;
+            for (weight_index, (offset_y, offset_x)) in (-RADIUS..=RADIUS)
+                .flat_map(|y| (-RADIUS..=RADIUS).map(move |x| (y, x)))
+                .enumerate()
+            {
+                let source_y = reflect_101(
+                    isize::try_from(output_y).expect("output y") + offset_y,
+                    height,
+                );
+                let source_x = reflect_101(
+                    isize::try_from(output_x).expect("output x") + offset_x,
+                    width,
+                );
+                let index = (source_y * width + source_x) * 3 + channel;
+                let expected_delta = f64::from(expected[index]) - expected_mean;
+                let actual_delta = f64::from(actual[index]) - actual_mean;
+                expected_variance += weights[weight_index] * expected_delta * expected_delta;
+                actual_variance += weights[weight_index] * actual_delta * actual_delta;
+                covariance += weights[weight_index] * expected_delta * actual_delta;
+            }
+            let numerator = (2.0 * expected_mean * actual_mean + C1) * (2.0 * covariance + C2);
+            let denominator = (expected_mean.powi(2) + actual_mean.powi(2) + C1)
+                * (expected_variance + actual_variance + C2);
+            total += numerator / denominator;
+        }
+    }
+    total / (height * width) as f64
+}
+
+fn reflect_101(index: isize, length: usize) -> usize {
+    debug_assert!(length > 5);
+    if index < 0 {
+        usize::try_from(-index).expect("reflected index")
+    } else if usize::try_from(index).expect("nonnegative index") >= length {
+        usize::try_from(2 * isize::try_from(length).expect("length") - index - 2)
+            .expect("reflected index")
+    } else {
+        usize::try_from(index).expect("in-bounds index")
+    }
 }
 
 fn verify_blob(data: &[u8], expected: &ArtifactDigest, label: &str) {
