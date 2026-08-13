@@ -41,6 +41,32 @@ resize-report-macos`. The tracked Linux x86_64 report was executed under QEMU
 emulation and is labeled accordingly; see the decision record for its exact
 Docker command and limitations.
 
+The candidate-blind still-image quality amendment is captured separately under
+[`resize/v2/`](resize/v2/); it does not alter the authenticated v1 corpus. Its
+fixed-seed sources, Pillow 12.3 outputs, generator and source provenance are
+authenticated by the v2 manifest. Natural-image coverage uses fixed crops of
+NASA Earth Observatory's Blue Marble; the committed source asset, original
+NASA URL, SHA-256, credit, and NASA usage-policy URL are recorded in the
+manifest. The baseline image24 crops are separately and honestly labeled as
+procedural fixtures. Regenerate the holdout only before any candidate is
+inspected against it:
+
+```console
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.resize_quality_v2 generate
+```
+
+Verify the committed corpus, or compare a candidate RGB8 blob whose case
+offsets match `pillow-image-rgb8.bin`, with:
+
+```console
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.resize_quality_v2 verify
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference \
+  python -m qwen_mm_reference.resize_quality_v2 compare \
+  --candidate /path/to/candidate-image-rgb8.bin --output /path/to/report.json
+```
+
 ## Decode/color conformance
 
 The B6 decoder, color/orientation policy, dependency decision, corruption and
