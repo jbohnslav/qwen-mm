@@ -1,0 +1,3202 @@
+{
+  "candidate": {
+    "byte_length": 2914752,
+    "path": "/tmp/qwen-mm-resize-v2/scalar.rgb8.bin",
+    "sha256": "08cb8a810594adc903c6a398969cc4fb1ed3182fe804c244075c58684a2cbea0"
+  },
+  "cases": [
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "no_op_source_bytes": true
+      },
+      "id": "noop-padded-ramp",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-black-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-white-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-midgray-anisotropic",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-red-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-green-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "constant_rgb": true
+      },
+      "id": "solid-blue-one-axis",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "ramp-horizontal-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "ramp-vertical-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "ramp-independent-anisotropic",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "impulse-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "impulse-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "edge-vertical-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "edge-horizontal-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "checkerboard-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "checkerboard-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "nyquist-vertical-stripes",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "nyquist-horizontal-stripes",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "independent-rgb-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "alternating-channels-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "zero_source_channels_remain_zero": true
+      },
+      "id": "red-only-edge",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "zero_source_channels_remain_zero": true
+      },
+      "id": "green-only-ramp",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "zero_source_channels_remain_zero": true
+      },
+      "id": "blue-only-noise",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "identical_channels": true
+      },
+      "id": "identical-channels-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "channel-permutation-base",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "channel-permutation-bgr",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "noise-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "noise-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "factor-below",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "factor-at",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "factor-above",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "no_op_source_bytes": true
+      },
+      "id": "min-below",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "no_op_source_bytes": true
+      },
+      "id": "min-at",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "min-above",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "max-below",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "no_op_source_bytes": true
+      },
+      "id": "max-at",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {
+        "no_op_source_bytes": true
+      },
+      "id": "max-above",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "procedural-fixture-crop-00-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "procedural-fixture-crop-07-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "procedural-fixture-crop-13-portrait",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "procedural-fixture-crop-21-one-axis",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "natural-blue-marble-africa-down",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "natural-blue-marble-americas-portrait",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "natural-blue-marble-asia-up",
+      "passed": true
+    },
+    {
+      "channels": [
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "R",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "G",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        },
+        {
+          "absolute_error_p50": 0.0,
+          "absolute_error_p90": 0.0,
+          "absolute_error_p99": 0.0,
+          "absolute_signed_mean_bias": 0.0,
+          "channel": "B",
+          "gates": {
+            "absolute_error_p99": true,
+            "absolute_signed_mean_bias": true,
+            "maximum_absolute_error": true,
+            "rmse": true,
+            "ssim": true
+          },
+          "mae": 0.0,
+          "maximum_absolute_error": 0.0,
+          "passed": true,
+          "psnr": "Infinity",
+          "rmse": 0.0,
+          "signed_mean_bias": 0.0,
+          "ssim": 1.0
+        }
+      ],
+      "exact_invariants": {},
+      "id": "natural-blue-marble-ocean-anisotropic",
+      "passed": true
+    }
+  ],
+  "contract_id": "qwen-mm-still-image-resize-v2",
+  "cross_case_exact_invariants": [
+    {
+      "id": "channel-permutation",
+      "passed": true
+    }
+  ],
+  "holdout_manifest": {
+    "path": "reference/resize/v2/manifest.json",
+    "sha256": "c19c0de491480a3a9f08ceb988b3ae2b755c24732d54e58521f95509e026f4f7"
+  },
+  "passed": true,
+  "schema_version": 1
+}

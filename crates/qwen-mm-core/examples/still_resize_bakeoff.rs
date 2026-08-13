@@ -19,6 +19,7 @@ use fast_image_resize::{
 };
 use pic_scale::{
     ImageSize, ImageStore, ImageStoreMut, ResamplingFunction, Scaler, ThreadingPolicy,
+    WorkloadStrategy,
 };
 use qwen_mm_core::{
     ImageOptions, ProfileAlias, ProfileRegistry, ResourceLimits, plan_image_geometry,
@@ -203,7 +204,7 @@ struct Measurement {
 enum CandidateKind {
     Scalar,
     Fir(FirFilter),
-    Pic(ResamplingFunction),
+    Pic(ResamplingFunction, WorkloadStrategy),
 }
 
 struct CandidateDefinition {
@@ -243,7 +244,10 @@ fn candidate_definitions() -> Vec<CandidateDefinition> {
         },
         CandidateDefinition {
             name: "pic-scale-0.7.11-catmull-rom",
-            kind: CandidateKind::Pic(ResamplingFunction::CatmullRom),
+            kind: CandidateKind::Pic(
+                ResamplingFunction::CatmullRom,
+                WorkloadStrategy::PreferSpeed,
+            ),
             version: "pic-scale=0.7.11",
             license: "BSD-3-Clause OR Apache-2.0",
             filter: "CatmullRom / PreferSpeed / single-thread",
@@ -251,7 +255,7 @@ fn candidate_definitions() -> Vec<CandidateDefinition> {
         },
         CandidateDefinition {
             name: "pic-scale-0.7.11-bilinear",
-            kind: CandidateKind::Pic(ResamplingFunction::Bilinear),
+            kind: CandidateKind::Pic(ResamplingFunction::Bilinear, WorkloadStrategy::PreferSpeed),
             version: "pic-scale=0.7.11",
             license: "BSD-3-Clause OR Apache-2.0",
             filter: "Bilinear / PreferSpeed / single-thread",
@@ -259,7 +263,7 @@ fn candidate_definitions() -> Vec<CandidateDefinition> {
         },
         CandidateDefinition {
             name: "pic-scale-0.7.11-bicubic",
-            kind: CandidateKind::Pic(ResamplingFunction::Bicubic),
+            kind: CandidateKind::Pic(ResamplingFunction::Bicubic, WorkloadStrategy::PreferSpeed),
             version: "pic-scale=0.7.11",
             license: "BSD-3-Clause OR Apache-2.0",
             filter: "Bicubic / PreferSpeed / single-thread",
@@ -267,10 +271,29 @@ fn candidate_definitions() -> Vec<CandidateDefinition> {
         },
         CandidateDefinition {
             name: "pic-scale-0.7.11-area",
-            kind: CandidateKind::Pic(ResamplingFunction::Area),
+            kind: CandidateKind::Pic(ResamplingFunction::Area, WorkloadStrategy::PreferSpeed),
             version: "pic-scale=0.7.11",
             license: "BSD-3-Clause OR Apache-2.0",
             filter: "Area / PreferSpeed / single-thread",
+            setup_and_reuse: "plan, scratch, source view, and destination reused",
+        },
+        CandidateDefinition {
+            name: "pic-scale-0.7.11-catmull-rom-prefer-quality",
+            kind: CandidateKind::Pic(
+                ResamplingFunction::CatmullRom,
+                WorkloadStrategy::PreferQuality,
+            ),
+            version: "pic-scale=0.7.11",
+            license: "BSD-3-Clause OR Apache-2.0",
+            filter: "CatmullRom / PreferQuality / single-thread",
+            setup_and_reuse: "plan, scratch, source view, and destination reused",
+        },
+        CandidateDefinition {
+            name: "pic-scale-0.7.11-bicubic-prefer-quality",
+            kind: CandidateKind::Pic(ResamplingFunction::Bicubic, WorkloadStrategy::PreferQuality),
+            version: "pic-scale=0.7.11",
+            license: "BSD-3-Clause OR Apache-2.0",
+            filter: "Bicubic / PreferQuality / single-thread",
             setup_and_reuse: "plan, scratch, source view, and destination reused",
         },
     ]
@@ -489,7 +512,9 @@ fn measure_candidate(
     match kind {
         CandidateKind::Scalar => measure_scalar(source, dimensions, plan),
         CandidateKind::Fir(filter) => measure_fir(source, packed, dimensions, destination, filter),
-        CandidateKind::Pic(filter) => measure_pic(source, dimensions, destination, filter),
+        CandidateKind::Pic(filter, workload) => {
+            measure_pic(source, dimensions, destination, filter, workload)
+        }
     }
 }
 
@@ -582,6 +607,7 @@ fn measure_pic(
     dimensions: &Source,
     destination: &Dimensions,
     filter: ResamplingFunction,
+    workload: WorkloadStrategy,
 ) -> Result<Measurement, Box<dyn std::error::Error>> {
     let source_width = usize::try_from(dimensions.width)?;
     let source_height = usize::try_from(dimensions.height)?;
@@ -590,7 +616,9 @@ fn measure_pic(
     let mut source_store =
         ImageStore::<u8, 3>::borrow(strided_source, source_width, source_height)?;
     source_store.stride = usize::try_from(dimensions.stride_bytes)?;
-    let scaler = Scaler::new(filter).set_threading_policy(ThreadingPolicy::Single);
+    let scaler = Scaler::new(filter)
+        .set_threading_policy(ThreadingPolicy::Single)
+        .set_workload_strategy(workload);
     let plan = scaler.plan_rgb_resampling(
         ImageSize::new(source_width, source_height),
         ImageSize::new(destination_width, destination_height),
@@ -618,7 +646,7 @@ fn measure_pic(
             output,
             resize_only_timing: Timing::new(durations),
             end_to_end_integration_timing: benchmark_output(|| {
-                pic_once(strided_source, dimensions, destination, filter)
+                pic_once(strided_source, dimensions, destination, filter, workload)
             })?,
         })
     }
@@ -656,6 +684,7 @@ fn pic_once(
     dimensions: &Source,
     destination: &Dimensions,
     filter: ResamplingFunction,
+    workload: WorkloadStrategy,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let source_width = usize::try_from(dimensions.width)?;
     let source_height = usize::try_from(dimensions.height)?;
@@ -663,7 +692,9 @@ fn pic_once(
     let destination_height = usize::try_from(destination.height)?;
     let mut source_store = ImageStore::<u8, 3>::borrow(source, source_width, source_height)?;
     source_store.stride = usize::try_from(dimensions.stride_bytes)?;
-    let scaler = Scaler::new(filter).set_threading_policy(ThreadingPolicy::Single);
+    let scaler = Scaler::new(filter)
+        .set_threading_policy(ThreadingPolicy::Single)
+        .set_workload_strategy(workload);
     let plan = scaler.plan_rgb_resampling(
         ImageSize::new(source_width, source_height),
         ImageSize::new(destination_width, destination_height),
