@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import subprocess
@@ -48,6 +49,8 @@ PRODUCTION_BLOB_PATH = Path("reference/phase-c/v2/production-resize.rgb8.bin")
 PRODUCTION_RESULT_PATH = Path("reference/phase-c/v2/production-resize-result.json")
 PLATFORM_CAPTURE_MODE = "architecture-local-installed-wheel-v1"
 PLATFORM_BLOB_NAME = "installed-wheel-resize.rgb8.bin"
+QUALITY_RECOMPUTE_REL_TOLERANCE = 1e-12
+QUALITY_RECOMPUTE_ABS_TOLERANCE = 1e-12
 
 # These are the only package-tree files permitted to differ from the exact
 # Phase C v1 candidate revision. The examples and conformance test module are
@@ -103,6 +106,47 @@ def _portable_quality_result(
         else str(candidate_path)
     )
     return result
+
+
+def _assert_quality_result_equivalent(
+    recorded: Any, recomputed: Any, *, label: str, path: str = "<root>"
+) -> None:
+    """Require the same gate result while allowing float64 reduction roundoff."""
+
+    if isinstance(recorded, Mapping) and isinstance(recomputed, Mapping):
+        if set(recorded) != set(recomputed):
+            raise ValueError(f"{label} fields differ at {path}")
+        for key in sorted(recorded):
+            _assert_quality_result_equivalent(
+                recorded[key], recomputed[key], label=label, path=f"{path}.{key}"
+            )
+        return
+    if isinstance(recorded, list) and isinstance(recomputed, list):
+        if len(recorded) != len(recomputed):
+            raise ValueError(f"{label} list length differs at {path}")
+        for index, (recorded_item, recomputed_item) in enumerate(
+            zip(recorded, recomputed, strict=True)
+        ):
+            _assert_quality_result_equivalent(
+                recorded_item,
+                recomputed_item,
+                label=label,
+                path=f"{path}[{index}]",
+            )
+        return
+    if isinstance(recorded, float) and isinstance(recomputed, float):
+        if not math.isclose(
+            recorded,
+            recomputed,
+            rel_tol=QUALITY_RECOMPUTE_REL_TOLERANCE,
+            abs_tol=QUALITY_RECOMPUTE_ABS_TOLERANCE,
+        ):
+            raise ValueError(
+                f"{label} numeric value differs at {path}: {recorded!r} vs {recomputed!r}"
+            )
+        return
+    if type(recorded) is not type(recomputed) or recorded != recomputed:
+        raise ValueError(f"{label} value differs at {path}: {recorded!r} vs {recomputed!r}")
 
 
 def _record(root: Path, path: Path) -> dict[str, Any]:
@@ -565,8 +609,13 @@ def _validate_architecture_local_capture(
         rgb8_path,
         display_path=Path(evidence["rgb8"]["path"]),
     )
-    if local_quality.get("passed") is not True or capture.get("quality_result") != local_quality:
+    if local_quality.get("passed") is not True:
         raise ValueError("architecture-local installed-wheel output failed resize-v2")
+    _assert_quality_result_equivalent(
+        capture.get("quality_result"),
+        local_quality,
+        label="architecture-local installed-wheel quality result",
+    )
     return local_quality
 
 
@@ -767,8 +816,11 @@ def validate_overlay(
             label="production quality result",
         )
     )
-    if serialized_quality != recomputed_quality:
-        raise ValueError("serialized production quality result is stale")
+    _assert_quality_result_equivalent(
+        serialized_quality,
+        recomputed_quality,
+        label="serialized production quality result",
+    )
     expected_public_ids = [
         case["id"]
         for case in manifest["cases"]
@@ -790,11 +842,14 @@ def validate_overlay(
             manifest=manifest,
             committed_production_blob=production_path.read_bytes(),
         )
-    elif (
-        capture.get("public_processor_matches_production_blob") is not True
-        or capture.get("quality_result") != recomputed_quality
-    ):
+    elif capture.get("public_processor_matches_production_blob") is not True:
         raise ValueError("legacy installed-wheel quality result is missing or stale")
+    else:
+        _assert_quality_result_equivalent(
+            capture.get("quality_result"),
+            recomputed_quality,
+            label="legacy installed-wheel quality result",
+        )
     isolation = capture.get("isolation")
     if (
         not isinstance(isolation, Mapping)
@@ -907,8 +962,11 @@ def main() -> None:
             compare_candidate(root / PRODUCTION_BLOB_PATH, root / RESIZE_DIRECTORY),
             root / PRODUCTION_BLOB_PATH,
         )
-        if _json(root / PRODUCTION_RESULT_PATH) != committed_quality:
-            raise RuntimeError("committed production quality result is stale")
+        _assert_quality_result_equivalent(
+            _json(root / PRODUCTION_RESULT_PATH),
+            committed_quality,
+            label="committed production quality result",
+        )
     else:
         committed_quality = _portable_quality_result(
             compare_candidate(root / PRODUCTION_BLOB_PATH, root / RESIZE_DIRECTORY),

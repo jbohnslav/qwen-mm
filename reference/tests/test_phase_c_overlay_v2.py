@@ -77,6 +77,26 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "RGB length differs"):
             overlay._merge_public_processor_outputs(b"abcdef", [(cases[1], b"too-long")])
 
+    def test_quality_recomputation_allows_only_float64_roundoff(self) -> None:
+        recorded = {"passed": True, "metric": 0.98, "gates": {"ssim": True}}
+        overlay._assert_quality_result_equivalent(
+            recorded,
+            {"passed": True, "metric": 0.98 + 5e-13, "gates": {"ssim": True}},
+            label="quality",
+        )
+        with self.assertRaisesRegex(ValueError, "numeric value differs"):
+            overlay._assert_quality_result_equivalent(
+                recorded,
+                {"passed": True, "metric": 0.98 + 1e-8, "gates": {"ssim": True}},
+                label="quality",
+            )
+        with self.assertRaisesRegex(ValueError, "value differs"):
+            overlay._assert_quality_result_equivalent(
+                recorded,
+                {"passed": False, "metric": 0.98, "gates": {"ssim": True}},
+                label="quality",
+            )
+
     def test_controlled_capture_reuses_production_evidence_without_rewriting_it(self) -> None:
         root = repository_root()
         blob_path = root / overlay.PRODUCTION_BLOB_PATH
