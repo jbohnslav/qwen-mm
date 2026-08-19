@@ -155,6 +155,7 @@ REQUIRED_BASE_MEMBERS = frozenset(
 REQUIRED_BASE_MEMBERS = frozenset(
     set(REQUIRED_BASE_MEMBERS)
     | {f"builds/{build_label}/capture.json" for build_label in BUILD_LABELS}
+    | {f"builds/{build_label}/failures.json" for build_label in BUILD_LABELS}
     | {f"builds/{build_label}/environment-integrity.json" for build_label in BUILD_LABELS}
     | {
         f"captures/{build_label}/t{budget}/{name}"
@@ -1380,6 +1381,53 @@ def result_noise_assessment(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def capture_failure_report(
+    *, build_label: str, noise_by_budget: Mapping[int, Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Render every observed noise miss without changing or pruning the frozen evidence."""
+
+    if build_label not in BUILD_LABELS or set(noise_by_budget) != set(THREAD_BUDGETS):
+        raise D4CaptureError("capture failure report requires one complete build/thread matrix")
+    failures: list[dict[str, Any]] = []
+    for budget in THREAD_BUDGETS:
+        noise = noise_by_budget[budget]
+        assessments = noise.get("assessments")
+        if not isinstance(assessments, list) or not assessments:
+            raise D4CaptureError("capture failure report requires complete noise assessments")
+        for assessment in assessments:
+            if not isinstance(assessment, Mapping) or not isinstance(assessment.get("pass"), bool):
+                raise D4CaptureError("capture failure report contains an invalid assessment")
+            if assessment["pass"]:
+                continue
+            profile = str(assessment.get("profile_alias"))
+            case_id = str(assessment.get("case_id"))
+            implementation = str(assessment.get("implementation"))
+            failures.append(
+                {
+                    "gate_id": (
+                        f"noise/{build_label}/{profile}/{case_id}/t{budget}/{implementation}"
+                    ),
+                    "category": "noise",
+                    "build_label": build_label,
+                    "thread_budget": budget,
+                    "profile_alias": profile,
+                    "case_id": case_id,
+                    "implementation": implementation,
+                    "observed_cv": assessment.get("cv"),
+                    "threshold": assessment.get("threshold"),
+                    "rule": assessment.get("rule"),
+                }
+            )
+    return {
+        "schema_id": "qwen-mm-d4-capture-failures-v1",
+        "schema_version": 1,
+        "build_label": build_label,
+        "status": "pass" if not failures else "miss",
+        "failure_count": len(failures),
+        "failures": failures,
+    }
+
+
 def validate_d4_result_contract(
     result: Mapping[str, Any],
     *,
@@ -1842,6 +1890,7 @@ def read_capture_archive(
         pre_created = datetime.fromisoformat(phase_c_reports["pre_created_at"])
         post_created = datetime.fromisoformat(phase_c_reports["post_created_at"])
         previous_result_created: datetime | None = None
+        noise_by_budget: dict[int, Mapping[str, Any]] = {}
         name = f"captures/{build_label}/repeat24_cached-unsupported.json"
         try:
             unsupported = json.loads(files[name])
@@ -1939,15 +1988,16 @@ def read_capture_archive(
                 raise D4CaptureError("raw benchmark is not bound to its archived pre-Phase C run")
             if noise != result_noise_assessment(result):
                 raise D4CaptureError("raw capture noise assessment differs from raw medians")
+            noise_by_budget[budget] = noise
             assessments = noise.get("assessments")
             if (
                 noise.get("sample_pruning") != "forbidden"
-                or noise.get("pass") is not True
+                or not isinstance(noise.get("pass"), bool)
                 or not isinstance(assessments, list)
                 or not assessments
                 or any(
                     not isinstance(assessment, Mapping)
-                    or assessment.get("pass") is not True
+                    or not isinstance(assessment.get("pass"), bool)
                     or assessment.get("observation_count")
                     != assessment.get("retained_observation_count")
                     or assessment.get("pruned_observation_count") != 0
@@ -1961,6 +2011,18 @@ def read_capture_archive(
                 for pair in pairs
             ):
                 raise D4CaptureError("repeat24_cached was timed in a raw benchmark result")
+        failure_name = f"builds/{build_label}/failures.json"
+        try:
+            observed_failures = json.loads(files[failure_name])
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise D4CaptureError(f"{build_label}: capture failure report is invalid") from error
+        expected_failures = capture_failure_report(
+            build_label=build_label, noise_by_budget=noise_by_budget
+        )
+        if observed_failures != expected_failures:
+            raise D4CaptureError(
+                f"{build_label}: capture failure report differs from raw noise evidence"
+            )
     return files
 
 

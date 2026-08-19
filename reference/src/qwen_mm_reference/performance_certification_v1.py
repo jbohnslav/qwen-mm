@@ -1359,6 +1359,48 @@ def _gate(gate_id: str, passed: bool, reason: str) -> dict[str, str]:
     return {"gate_id": gate_id, "status": "pass" if passed else "miss", "reason": reason}
 
 
+def _noise_gates(captures: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
+    """Recompute the frozen no-pruning CV gate from every process median."""
+
+    gates: list[dict[str, str]] = []
+    for capture in sorted(
+        captures, key=lambda item: (item["architecture"], item["build"]["label"])
+    ):
+        architecture = capture["architecture"]
+        build = capture["build"]["label"]
+        for observation in sorted(
+            capture["observations"],
+            key=lambda item: (item["profile"], item["case_id"], item["thread_budget"]),
+        ):
+            if observation["support_status"] != "supported":
+                continue
+            for implementation in ("candidate", "reference"):
+                medians = [
+                    _percentile(
+                        [
+                            float(sample["wall_ms"])
+                            for sample in pair["implementations"][implementation]["samples"]
+                        ],
+                        0.50,
+                    )
+                    for pair in observation["pairs"]
+                ]
+                mean = statistics.fmean(medians)
+                cv = statistics.stdev(medians) / mean
+                gates.append(
+                    _gate(
+                        (
+                            f"noise/{architecture}/{build}/{observation['profile']}/"
+                            f"{observation['case_id']}/t{observation['thread_budget']}/"
+                            f"{implementation}"
+                        ),
+                        cv <= 0.05,
+                        f"all five process medians retained; CV={cv:.6f}; required <=0.050000",
+                    )
+                )
+    return gates
+
+
 def _gates(summaries: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
     by_key = {
         (
@@ -1542,7 +1584,7 @@ def build_certification(
     if parsed_timestamp.tzinfo is None:
         _fail("created_at must include an explicit timezone")
     summaries = _summaries(captures)
-    gates = _gates(summaries)
+    gates = [*_noise_gates(captures), *_gates(summaries)]
     passed = all(gate["status"] == "pass" for gate in gates)
     artifact = {
         "schema_id": SCHEMA_ID,

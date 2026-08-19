@@ -146,6 +146,16 @@ needed. `D4_HOST_LABEL` changes only the descriptive ARM host label.
 capture; an empty allocation ID defaults to the container hostname. Archive
 writes are validated before atomically replacing the destination.
 
+A measured gate miss does not truncate the matrix. In particular, a failed
+5% no-pruning CV assessment is written to the build's structured
+`failures.json`; the runner continues through every remaining thread budget,
+the other build variant, and post-capture Phase C. The final certification
+report recomputes those noise gates together with speed, regression, scaling,
+and memory gates and lists every miss. A command failure, malformed result,
+conformance failure, input/provenance inconsistency, private-environment drift,
+or unsafe host-control change still aborts immediately because the remaining
+measurements could not be authenticated as one complete capture window.
+
 On a local Linux failure, the runner prints and retains its exact
 `/tmp/qwen-mm-d4-linux-*` workspace, including partial result, noise, build,
 and log evidence. That workspace is diagnostic and not a certifiable raw ZIP.
@@ -215,9 +225,10 @@ both files atomically. Validation reopens both bounded ZIPs, verifies their
 manifests and member hashes, extracts and re-hashes the archived wheels,
 reconciles build and runtime identities, validates the archived Phase C reports
 against the pinned assets, and revalidates every raw benchmark and no-pruning
-noise assessment. It then rebuilds the canonical artifact from the raw archives
-using the artifact's original timestamp and requires exact canonical JSON and
-rendered-report equality.
+noise assessment. It also requires each structured failure list to equal the
+misses recomputed from the unpruned raw medians. It then rebuilds the canonical
+artifact from the raw archives using the artifact's original timestamp and
+requires exact canonical JSON and rendered-report equality.
 
 The provenance check binds the result to the exact 40-character source
 revision; source-tree, workload, schema, model registry, profile asset, wheel,

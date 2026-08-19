@@ -24,6 +24,7 @@ from d4_capture_support import (  # noqa: E402
     PRODUCTION_THREAD_BUDGET,
     THREAD_BUDGETS,
     D4CaptureError,
+    capture_failure_report,
     initialize_private_environment_integrity,
     installed_build_identity,
     normalized_capture_environment,
@@ -328,6 +329,7 @@ def run_capture(
     matrix_log = output_root / "logs" / build_label / "matrix.log"
     environment = normalized_capture_environment(os.environ)
     cached_unsupported: list[dict[str, Any]] = []
+    noise_by_budget: dict[int, dict[str, Any]] = {}
     integrity_path = build_root / "environment-integrity.json"
     if execute:
         initialize_private_environment_integrity(
@@ -393,13 +395,10 @@ def run_capture(
             )
             result = json.loads(result_path.read_text(encoding="utf-8"))
             noise = result_noise_assessment(result)
+            noise_by_budget[int(coordinate["thread_budget"])] = noise
             result_path.with_name("noise.json").write_text(
                 json.dumps(noise, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            if not noise["pass"]:
-                raise D4CaptureError(
-                    f"{build_label}/t{coordinate['thread_budget']}: predeclared noise CV rule failed"
-                )
             cached_unsupported.extend(
                 _cached_unsupported_attestations(
                     result,
@@ -466,6 +465,12 @@ def run_capture(
             )
             + "\n",
             encoding="utf-8",
+        )
+        failure_report = capture_failure_report(
+            build_label=build_label, noise_by_budget=noise_by_budget
+        )
+        (build_root / "failures.json").write_text(
+            json.dumps(failure_report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
     completed = {
         "schema_id": "qwen-mm-d4-build-capture-v1",

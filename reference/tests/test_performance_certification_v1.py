@@ -429,6 +429,50 @@ class PerformanceCertificationTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["resamples"], 20_000)
 
+    def test_noise_miss_is_reported_after_the_complete_matrix(self) -> None:
+        noisy_captures = captures(self.identity)
+        native = next(
+            capture for capture in noisy_captures if capture["capture_id"] == "arm64-native"
+        )
+        measured = next(
+            observation
+            for observation in native["observations"]
+            if observation["profile"] == "qwen3-vl-8b"
+            and observation["case_id"] == "text_short"
+            and observation["thread_budget"] == 1
+        )
+        for pair, wall in zip(measured["pairs"], [160.0, 180.0, 200.0, 220.0, 240.0], strict=True):
+            implementation = pair["implementations"]["reference"]
+            cpu = wall * 0.8
+            for sample in implementation["samples"]:
+                sample.update(wall_ms=wall, cpu_ms=cpu)
+            raw_elapsed = len(implementation["samples"]) * wall
+            supplemental_iterations = max(0, int((5_000 - raw_elapsed + wall - 1) // wall))
+            implementation["timing_floor"].update(
+                raw_sample_elapsed_wall_ms=raw_elapsed,
+                supplemental_iteration_count=supplemental_iterations,
+                supplemental_elapsed_wall_ms=supplemental_iterations * wall,
+                supplemental_elapsed_cpu_ms=supplemental_iterations * cpu,
+                total_iteration_count=len(implementation["samples"]) + supplemental_iterations,
+                total_elapsed_wall_ms=raw_elapsed + supplemental_iterations * wall,
+            )
+
+        artifact = build_certification(
+            noisy_captures,
+            current_identity=self.identity,
+            created_at="2026-08-03T00:00:00Z",
+        )
+        validate_certification(artifact, current_identity=self.identity)
+        gate = next(
+            gate
+            for gate in artifact["gates"]
+            if gate["gate_id"] == "noise/arm64/native/qwen3-vl-8b/text_short/t1/reference"
+        )
+        self.assertEqual(gate["status"], "miss")
+        self.assertEqual(artifact["certification_status"], "miss")
+        self.assertFalse(artifact["releasable"])
+        self.assertIn(gate["gate_id"], render_report(artifact, current_identity=self.identity))
+
     def test_rejects_nonfinite_bool_missing_and_forged_values(self) -> None:
         mutations = {
             "nan": lambda value: value["captures"][0]["observations"][0]["pairs"][0][

@@ -45,6 +45,7 @@ def _base_files() -> dict[str, bytes]:
         + "\n"
     ).encode()
     for label in support.BUILD_LABELS:
+        noise_by_budget = {}
         files[f"captures/{label}/repeat24_cached-unsupported.json"] = (
             json.dumps(
                 {
@@ -104,7 +105,14 @@ def _base_files() -> dict[str, bytes]:
             files[f"captures/{label}/t{budget}/noise.json"] = (
                 json.dumps(support.result_noise_assessment(result)) + "\n"
             ).encode()
+            noise_by_budget[budget] = support.result_noise_assessment(result)
             files[f"captures/{label}/t{budget}/result.json"] = (json.dumps(result) + "\n").encode()
+        files[f"builds/{label}/failures.json"] = (
+            json.dumps(
+                support.capture_failure_report(build_label=label, noise_by_budget=noise_by_budget)
+            )
+            + "\n"
+        ).encode()
     index["files"] = sorted(set(files) - {"capture-index.json"})
     files["capture-index.json"] = (json.dumps(index) + "\n").encode()
     return files
@@ -703,6 +711,45 @@ class D4CaptureSupportTests(unittest.TestCase):
             files = _base_files()
             archive = support.create_capture_archive(files)
             self.assertEqual(support.read_capture_archive(archive), files)
+
+            noisy = _base_files()
+            result_name = "captures/shipping/t1/result.json"
+            noisy_result = json.loads(noisy[result_name])
+            for pair, median in zip(
+                noisy_result["pairs"], [80.0, 90.0, 100.0, 110.0, 120.0], strict=True
+            ):
+                for implementation in ("reference", "candidate"):
+                    pair["implementations"][implementation]["summary"]["wall_ms"]["p50"] = median
+            noisy[result_name] = (json.dumps(noisy_result) + "\n").encode()
+            noisy["captures/shipping/t1/noise.json"] = (
+                json.dumps(support.result_noise_assessment(noisy_result)) + "\n"
+            ).encode()
+            shipping_noise = {
+                budget: json.loads(noisy[f"captures/shipping/t{budget}/noise.json"])
+                for budget in support.THREAD_BUDGETS
+            }
+            noisy["builds/shipping/failures.json"] = (
+                json.dumps(
+                    support.capture_failure_report(
+                        build_label="shipping", noise_by_budget=shipping_noise
+                    )
+                )
+                + "\n"
+            ).encode()
+            self.assertEqual(
+                support.read_capture_archive(support.create_capture_archive(noisy)), noisy
+            )
+            forged_failures = dict(noisy)
+            report = json.loads(forged_failures["builds/shipping/failures.json"])
+            report["failures"] = []
+            report["failure_count"] = 0
+            report["status"] = "pass"
+            forged_failures["builds/shipping/failures.json"] = (json.dumps(report) + "\n").encode()
+            with self.assertRaisesRegex(
+                support.D4CaptureError, "failure report differs from raw noise"
+            ):
+                support.read_capture_archive(support.create_capture_archive(forged_failures))
+
             malformed = dict(files)
             index = json.loads(malformed["capture-index.json"])
             index["thread_budgets"] = [1, 8]
@@ -756,6 +803,98 @@ class D4CaptureSupportTests(unittest.TestCase):
             self.assertIn("30", coordinate["command"])
             seed_index = coordinate["command"].index("--seed")
             self.assertEqual(coordinate["command"][seed_index + 1], str(support.D4_RANDOM_SEED))
+
+    def test_worker_collects_noise_failures_and_finishes_capture_window(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            coordinates = []
+            for budget in support.THREAD_BUDGETS:
+                result_path = root / "captures" / "shipping" / f"t{budget}" / "result.json"
+                result_path.parent.mkdir(parents=True, exist_ok=True)
+                medians = (
+                    [80.0, 90.0, 100.0, 110.0, 120.0]
+                    if budget in {1, 4}
+                    else [99.0, 100.0, 101.0, 100.5, 99.5]
+                )
+                result_path.write_text(
+                    json.dumps(
+                        {
+                            "pairs": [
+                                {
+                                    "profile_alias": "qwen3-vl-8b",
+                                    "case_id": "image24",
+                                    "implementations": {
+                                        implementation: {"summary": {"wall_ms": {"p50": median}}}
+                                        for implementation in ("reference", "candidate")
+                                    },
+                                }
+                                for median in medians
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                coordinates.append(
+                    {
+                        "thread_budget": budget,
+                        "command": [f"benchmark-t{budget}"],
+                        "output": str(result_path),
+                    }
+                )
+            plan = {
+                "pre_conformance": ["pre-conformance"],
+                "timed_matrix": coordinates,
+                "post_conformance": ["post-conformance"],
+            }
+            commands: list[list[str]] = []
+
+            def run_logged(command: list[str], **_kwargs: object) -> None:
+                commands.append(list(command))
+
+            with (
+                mock.patch.object(d4_worker, "capture_plan", return_value=plan),
+                mock.patch.object(d4_worker, "installed_build_identity", return_value={}),
+                mock.patch.object(d4_worker, "normalized_capture_environment", return_value={}),
+                mock.patch.object(d4_worker, "initialize_private_environment_integrity"),
+                mock.patch.object(d4_worker, "verify_private_environment_integrity"),
+                mock.patch.object(
+                    d4_worker,
+                    "phase_c_overlay_validation_command",
+                    return_value=["validate-phase-c"],
+                ),
+                mock.patch.object(
+                    d4_worker, "benchmark_validation_command", return_value=["validate-benchmark"]
+                ),
+                mock.patch.object(d4_worker, "_cached_unsupported_attestations", return_value=[]),
+                mock.patch.object(d4_worker, "_run_logged", side_effect=run_logged),
+            ):
+                d4_worker.run_capture(
+                    python=root / "venv/bin/python",
+                    wheel=root / "qwen_mm.whl",
+                    build_label="shipping",
+                    assets_root=root / "assets",
+                    output_root=root,
+                    affinity_masks={budget: None for budget in support.THREAD_BUDGETS},
+                    execute=True,
+                )
+
+            for budget in support.THREAD_BUDGETS:
+                self.assertIn([f"benchmark-t{budget}"], commands)
+            self.assertIn(["post-conformance"], commands)
+            failures = json.loads(
+                (root / "builds/shipping/failures.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(failures["status"], "miss")
+            self.assertEqual(failures["failure_count"], 4)
+            self.assertEqual(
+                [failure["gate_id"] for failure in failures["failures"]],
+                [
+                    "noise/shipping/qwen3-vl-8b/image24/t1/candidate",
+                    "noise/shipping/qwen3-vl-8b/image24/t1/reference",
+                    "noise/shipping/qwen3-vl-8b/image24/t4/candidate",
+                    "noise/shipping/qwen3-vl-8b/image24/t4/reference",
+                ],
+            )
 
 
 if __name__ == "__main__":
