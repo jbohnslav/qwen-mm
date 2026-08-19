@@ -119,6 +119,7 @@ CAPTURE_INPUT_PATHS = (
     "benchmarks/workload-schema-v2.json",
     "benchmarks/workloads-v2.json",
     "docs/image-resize-contract-v2.md",
+    "docs/performance-certification-v1.md",
     "reference/models.json",
     "reference/phase-c/v1/report.json",
     "reference/phase-c/v1/schema-v1.json",
@@ -128,6 +129,7 @@ CAPTURE_INPUT_PATHS = (
     "reference/resize/v2/manifest.json",
     "reference/resize/v2/pillow-image-rgb8.bin",
     "reference/resize/v2/sources.rgb8.bin",
+    "reference/src/qwen_mm_reference/phase_c_conformance.py",
     "reference/src/qwen_mm_reference/phase_c_overlay_v2.py",
     "reference/src/qwen_mm_reference/resize_quality_v2.py",
     "rust-toolchain.toml",
@@ -1644,20 +1646,31 @@ def validate_archived_phase_c(
             from qwen_mm_reference.benchmark_v2 import _validate_phase_c_report
             from qwen_mm_reference.phase_c_overlay_v2 import validate_overlay
 
-            with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-phase-c-wheel-") as temporary:
-                wheel_path = Path(temporary) / wheel_name
+            with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-phase-c-") as temporary:
+                temporary_root = Path(temporary)
+                wheel_path = temporary_root / wheel_name
                 wheel_path.write_bytes(wheel_bytes)
-                validate_overlay(report, wheel_path=wheel_path)
-            _validate_phase_c_report(
-                report,
-                root=repository_root,
-                assets_root=(
-                    assets_root
-                    if assets_root is not None
-                    else repository_root / "reference/.cache/huggingface"
-                ),
-                candidate_identity={"resolved": True, "runtime_identity": expected_runtime},
-            )
+                evidence_root = temporary_root / "evidence"
+                prefix = f"phase-c/{build_label}/{position}/"
+                for member_name, member_data in files.items():
+                    if not member_name.startswith(prefix):
+                        continue
+                    relative = Path(member_name.removeprefix(prefix))
+                    destination = evidence_root / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(member_data)
+                validate_overlay(report, wheel_path=wheel_path, evidence_root=evidence_root)
+                _validate_phase_c_report(
+                    report,
+                    root=repository_root,
+                    assets_root=(
+                        assets_root
+                        if assets_root is not None
+                        else repository_root / "reference/.cache/huggingface"
+                    ),
+                    candidate_identity={"resolved": True, "runtime_identity": expected_runtime},
+                    report_evidence_root=evidence_root,
+                )
         except (ImportError, OSError, RuntimeError, TypeError, ValueError) as error:
             raise D4CaptureError(
                 f"{build_label}: Phase C {position} failed full resize-v2 validation"

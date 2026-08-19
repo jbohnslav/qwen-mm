@@ -668,6 +668,7 @@ def _run_candidate(
     completed = subprocess.run(
         [
             str(candidate_python),
+            "-B",
             "-I",
             str(Path(__file__).resolve()),
             "_candidate",

@@ -337,6 +337,7 @@ def _validate_phase_c_report(
     root: Path,
     assets_root: Path,
     candidate_identity: Mapping[str, Any],
+    report_evidence_root: Path | None = None,
 ) -> dict[str, Any]:
     if _phase_c_has_performance_claim(report):
         raise PhaseCGateError(
@@ -347,7 +348,7 @@ def _validate_phase_c_report(
     is_resize_v2_overlay = report.get("schema_id") == PHASE_C_OVERLAY_SCHEMA_ID
     try:
         if is_resize_v2_overlay:
-            validate_phase_c_overlay(report)
+            validate_phase_c_overlay(report, evidence_root=report_evidence_root)
         else:
             validate_phase_c_report(report, assets_root=assets_root)
     except (AttributeError, KeyError, OSError, TypeError, ValueError) as error:
@@ -478,6 +479,7 @@ def evaluate_image_release_gate(
             root=effective_root,
             assets_root=assets_root,
             candidate_identity=candidate_identity,
+            report_evidence_root=report_path.parent,
         )
     except (json.JSONDecodeError, OSError) as error:
         phase_c.update(status="invalid", reason_codes=["report_unreadable"], detail=str(error))

@@ -568,12 +568,14 @@ class D4CaptureSupportTests(unittest.TestCase):
             "source_revision": revision,
         }
         with (
-            mock.patch("qwen_mm_reference.phase_c_overlay_v2.validate_overlay"),
-            mock.patch("qwen_mm_reference.benchmark_v2._validate_phase_c_report"),
+            mock.patch("qwen_mm_reference.phase_c_overlay_v2.validate_overlay") as validate,
+            mock.patch("qwen_mm_reference.benchmark_v2._validate_phase_c_report") as validate_gate,
         ):
             support.validate_archived_phase_c(
                 files, provenance, "shipping", build, assets_root=None
             )
+        self.assertIsNotNone(validate.call_args.kwargs["evidence_root"])
+        self.assertIsNotNone(validate_gate.call_args.kwargs["report_evidence_root"])
         v1_files = dict(files)
         v1_report = {
             "schema_id": "qwen-mm-phase-c-conformance-report-v1",

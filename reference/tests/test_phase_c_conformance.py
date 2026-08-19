@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+from qwen_mm_reference import phase_c_conformance as phase_c
 from qwen_mm_reference.phase_c_conformance import (
     CANONICAL_COMPARATOR,
     PHASE_E_EXCLUSIONS,
@@ -153,6 +154,17 @@ def _schema_report() -> dict:
 
 
 class PhaseCConformanceTests(unittest.TestCase):
+    def test_isolated_candidate_process_disables_bytecode_writes_explicitly(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            completed = subprocess.CompletedProcess([], 1, stdout="", stderr="failed")
+            with (
+                patch.object(phase_c.subprocess, "run", return_value=completed) as run,
+                self.assertRaisesRegex(RuntimeError, "candidate process failed"),
+            ):
+                phase_c._run_candidate(Path("/venv/bin/python"), {"profile": "test"}, directory)
+        self.assertEqual(run.call_args.args[0][:3], ["/venv/bin/python", "-B", "-I"])
+
     @staticmethod
     @contextmanager
     def _validator_patches(report: dict):

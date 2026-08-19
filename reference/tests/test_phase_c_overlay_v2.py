@@ -67,6 +67,16 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "isolation"):
             validate_overlay(hostile)
 
+    def test_architecture_local_public_outputs_replace_only_their_frozen_slices(self) -> None:
+        cases = [
+            {"id": "direct", "pillow_image_rgb8": {"offset": 0, "byte_length": 3}},
+            {"id": "public", "pillow_image_rgb8": {"offset": 3, "byte_length": 3}},
+        ]
+        merged = overlay._merge_public_processor_outputs(b"abcdef", [(cases[1], b"XYZ")])
+        self.assertEqual(merged, b"abcXYZ")
+        with self.assertRaisesRegex(RuntimeError, "RGB length differs"):
+            overlay._merge_public_processor_outputs(b"abcdef", [(cases[1], b"too-long")])
+
     def test_controlled_capture_reuses_production_evidence_without_rewriting_it(self) -> None:
         root = repository_root()
         blob_path = root / overlay.PRODUCTION_BLOB_PATH

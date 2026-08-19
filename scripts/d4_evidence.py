@@ -149,6 +149,27 @@ def _json_member(files: Mapping[str, bytes], name: str) -> Mapping[str, Any]:
     return value
 
 
+def _materialize_phase_c_evidence(
+    files: Mapping[str, bytes],
+    *,
+    build_label: str,
+    position: str,
+    destination: Path,
+) -> Path:
+    prefix = f"phase-c/{build_label}/{position}/"
+    for member_name, member_data in files.items():
+        if not member_name.startswith(prefix):
+            continue
+        relative = Path(member_name.removeprefix(prefix))
+        path = destination / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(member_data)
+    report = destination / "report.json"
+    if not report.is_file():
+        _fail(f"{build_label}/{position} Phase C report was not materialized")
+    return report
+
+
 def _command(value: Any, name: str) -> str:
     values = _list(value, name)
     if not values or not all(isinstance(item, str) and item for item in values):
@@ -1137,16 +1158,22 @@ def _capture(
     post_name = f"phase-c/{build_label}/post/report.json"
     post_report = _json_member(files, post_name)
     with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-evidence-") as temporary:
+        temporary_root = Path(temporary)
         wheel_contents = _retained_wheel(
             files,
             raw_build,
             build,
             architecture=architecture,
             build_label=build_label,
-            temporary=Path(temporary),
+            temporary=temporary_root,
         )
-        pre_path = Path(temporary) / "phase-c-pre.json"
-        pre_path.write_bytes(files[pre_name])
+        pre_root = temporary_root / "phase-c-pre"
+        pre_path = _materialize_phase_c_evidence(
+            files,
+            build_label=build_label,
+            position="pre",
+            destination=pre_root,
+        )
         for budget in THREAD_BUDGETS:
             result = _json_member(files, f"captures/{build_label}/t{budget}/result.json")
             _assert_raw_protocol(
@@ -1197,15 +1224,24 @@ def _capture(
             results[budget] = result
     if expected_runtime is None:
         _fail(f"{architecture}/{build_label} has no authenticated runtime")
-    try:
-        _validate_phase_c_report(
-            post_report,
-            root=REPOSITORY_ROOT,
-            assets_root=ASSETS_ROOT,
-            candidate_identity={"resolved": True, "runtime_identity": dict(expected_runtime)},
+    with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-post-phase-c-") as temporary:
+        post_root = Path(temporary)
+        _materialize_phase_c_evidence(
+            files,
+            build_label=build_label,
+            position="post",
+            destination=post_root,
         )
-    except (RuntimeError, TypeError, ValueError) as error:
-        raise D4EvidenceError(f"{architecture}/{build_label} post Phase C failed") from error
+        try:
+            _validate_phase_c_report(
+                post_report,
+                root=REPOSITORY_ROOT,
+                assets_root=ASSETS_ROOT,
+                candidate_identity={"resolved": True, "runtime_identity": dict(expected_runtime)},
+                report_evidence_root=post_root,
+            )
+        except (RuntimeError, TypeError, ValueError) as error:
+            raise D4EvidenceError(f"{architecture}/{build_label} post Phase C failed") from error
     toolchain = _toolchain(raw_build)
     commands = [
         _command(value, f"builds.{build_label}.commands.{name}")

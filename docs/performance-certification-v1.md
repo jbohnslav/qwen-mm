@@ -165,6 +165,14 @@ Every build/capture lane enforces the frozen controls below:
   code-generation difference, and their equal hashes remain explicit evidence;
 - a complete fresh Phase C run before and after each build's timed matrix, with
   both pinned profiles, no failures or skips, and distinct pre/post reports;
+- architecture-local Phase C resize-v2 evidence reconstructed from the exact
+  installed wheel's archived `pixel_values` and grid arrays for all 43 legal
+  processor geometries. Each host's reconstructed RGB8 bytes must pass the
+  unchanged candidate-independent max-error, RMSE, p99, bias, SSIM, and exact
+  invariant gates; the two direct-core-only slices remain authenticated from
+  the committed selection evidence. Cross-architecture SIMD output is not
+  required to be byte-identical inside that frozen envelope, while repeated
+  execution of one build/input/thread budget remains byte-exact;
 - the same input, messages, output keys/order, values, dtypes, profile, warm
   state, tolerance policy, and total thread budget for each official/candidate
   pair, with no fallback or cache work;

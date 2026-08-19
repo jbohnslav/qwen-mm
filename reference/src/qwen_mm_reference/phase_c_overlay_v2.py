@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -45,6 +46,8 @@ BASE_REPORT_PATH = Path("reference/phase-c/v1/report.json")
 RESIZE_DIRECTORY = Path("reference/resize/v2")
 PRODUCTION_BLOB_PATH = Path("reference/phase-c/v2/production-resize.rgb8.bin")
 PRODUCTION_RESULT_PATH = Path("reference/phase-c/v2/production-resize-result.json")
+PLATFORM_CAPTURE_MODE = "architecture-local-installed-wheel-v1"
+PLATFORM_BLOB_NAME = "installed-wheel-resize.rgb8.bin"
 
 # These are the only package-tree files permitted to differ from the exact
 # Phase C v1 candidate revision. The examples and conformance test module are
@@ -87,11 +90,15 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n")
 
 
-def _portable_quality_result(value: Mapping[str, Any], candidate_path: Path) -> dict[str, Any]:
+def _portable_quality_result(
+    value: Mapping[str, Any], candidate_path: Path, *, display_path: Path | None = None
+) -> dict[str, Any]:
     result = json.loads(json.dumps(value))
     root = repository_root()
     result["candidate"]["path"] = (
-        candidate_path.relative_to(root).as_posix()
+        display_path.as_posix()
+        if display_path is not None
+        else candidate_path.relative_to(root).as_posix()
         if candidate_path.is_relative_to(root)
         else str(candidate_path)
     )
@@ -105,6 +112,25 @@ def _record(root: Path, path: Path) -> dict[str, Any]:
         "byte_length": absolute.stat().st_size,
         "sha256": _sha256_file(absolute),
     }
+
+
+def _merge_public_processor_outputs(
+    production_blob: bytes, outputs: Sequence[tuple[Mapping[str, Any], bytes]]
+) -> bytes:
+    """Overlay same-host Processor output while retaining direct-core-only slices."""
+
+    merged = bytearray(production_blob)
+    for case, packed in outputs:
+        record = case["pillow_image_rgb8"]
+        expected_length = record["byte_length"]
+        if len(packed) != expected_length:
+            raise RuntimeError(f"{case['id']}: installed-wheel RGB length differs")
+        start = record["offset"]
+        end = start + expected_length
+        if start < 0 or end > len(merged):
+            raise RuntimeError(f"{case['id']}: installed-wheel RGB slice is invalid")
+        merged[start:end] = packed
+    return bytes(merged)
 
 
 def _read_record(root: Path, value: Any, *, label: str) -> bytes:
@@ -204,6 +230,8 @@ def capture_installed_wheel_resize(
     output_directory: Path,
     production_blob_source: Path,
     candidate_blob_path: Path,
+    evidence_root: Path,
+    platform_blob_path: Path,
     write_candidate_blob: bool = True,
 ) -> dict[str, Any]:
     """Bind direct production output to an isolated installed-wheel sample.
@@ -211,9 +239,12 @@ def capture_installed_wheel_resize(
     The low-level holdout intentionally includes arbitrary one-axis dimensions
     that are not legal final Qwen patch geometry.  Such cases cannot be routed
     through ``Processor`` without the public planner rounding them.  The full
-    blob therefore comes from the selected production core backend; every
+    blob therefore starts from the selected production core backend. Every
     holdout case whose destination is legal public geometry is independently
-    rerun through the installed wheel and must be byte-identical to that blob.
+    rerun through the installed wheel and replaces its slice in a same-host
+    evidence blob. This preserves the two direct-core-only cases without
+    incorrectly requiring SIMD implementations on different architectures to
+    be byte-identical inside the frozen quality envelope.
     """
 
     root = repository_root()
@@ -295,6 +326,7 @@ def capture_installed_wheel_resize(
     expected_total = manifest["artifacts"]["pillow-image-rgb8.bin"]["byte_length"]
     if len(production_blob) != expected_total:
         raise RuntimeError("direct production resize blob length differs from the frozen holdout")
+    public_outputs: list[tuple[Mapping[str, Any], bytes]] = []
     for index, (case, metadata) in enumerate(zip(public_cases, image_metadata, strict=True)):
         destination = case["destination"]
         expected_grid = [1, destination["height"] // 16, destination["width"] // 16]
@@ -311,17 +343,25 @@ def capture_installed_wheel_resize(
         packed = np.ascontiguousarray(prepared).tobytes(order="C")
         if len(packed) != expected_length:
             raise RuntimeError(f"{case['id']}: installed-wheel RGB length differs")
-        record = case["pillow_image_rgb8"]
-        expected = production_blob[record["offset"] : record["offset"] + record["byte_length"]]
-        if packed != expected:
-            raise RuntimeError(f"{case['id']}: installed wheel differs from production core blob")
+        public_outputs.append((case, packed))
+    platform_blob = _merge_public_processor_outputs(production_blob, public_outputs)
+    evidence_root = evidence_root.resolve()
+    platform_blob_path = platform_blob_path.resolve()
+    if not platform_blob_path.is_relative_to(evidence_root):
+        raise RuntimeError("installed-wheel RGB evidence escapes its Phase C directory")
+    platform_blob_path.parent.mkdir(parents=True, exist_ok=True)
+    platform_blob_path.write_bytes(platform_blob)
     if write_candidate_blob:
+        if platform_blob != production_blob:
+            raise RuntimeError("same-host installed wheel differs from production core blob")
         candidate_blob_path.parent.mkdir(parents=True, exist_ok=True)
         candidate_blob_path.write_bytes(production_blob)
     elif not candidate_blob_path.is_file() or candidate_blob_path.read_bytes() != production_blob:
         raise RuntimeError("committed production RGB8 evidence differs from capture input")
     quality = _portable_quality_result(
-        compare_candidate(candidate_blob_path, root / RESIZE_DIRECTORY), candidate_blob_path
+        compare_candidate(platform_blob_path, root / RESIZE_DIRECTORY),
+        platform_blob_path,
+        display_path=platform_blob_path.relative_to(evidence_root),
     )
     if quality.get("passed") is not True:
         raise RuntimeError("installed-wheel output failed the frozen resize-v2 contract")
@@ -329,12 +369,31 @@ def capture_installed_wheel_resize(
     _assert_wheel_runtime_binding(wheel_path, actual["runtime_identity"])
     if wheel_runtime != actual["runtime_identity"]:
         raise RuntimeError("installed-wheel capture runtime is not bound to the supplied wheel")
+    pixel_values_path = actual_root / actual["arrays"]["pixel_values"]["path"]
+    image_grid_path = actual_root / actual["arrays"]["image_grid_thw"]["path"]
+    evidence_paths = {
+        "candidate_case": output_directory / "case.json",
+        "candidate_result": actual_root / "result.json",
+        "pixel_values": pixel_values_path,
+        "image_grid_thw": image_grid_path,
+        "rgb8": platform_blob_path,
+    }
+    if any(not path.resolve().is_relative_to(evidence_root) for path in evidence_paths.values()):
+        raise RuntimeError("installed-wheel evidence escapes its Phase C directory")
+    evidence = {
+        name: _record(evidence_root, path.resolve().relative_to(evidence_root))
+        for name, path in evidence_paths.items()
+    }
+    public_ids = [case["id"] for case in public_cases]
+    direct_core_ids = [case["id"] for case in manifest["cases"] if case["id"] not in public_ids]
     return {
         "profile": profile,
         "case_count": len(manifest["cases"]),
         "public_processor_case_count": len(public_cases),
-        "public_processor_case_ids": [case["id"] for case in public_cases],
-        "public_processor_matches_production_blob": True,
+        "public_processor_case_ids": public_ids,
+        "direct_core_case_ids": direct_core_ids,
+        "public_processor_matches_installed_wheel_evidence": True,
+        "installed_wheel_evidence": {"mode": PLATFORM_CAPTURE_MODE, **evidence},
         "runtime_identity": actual["runtime_identity"],
         "candidate_environment": actual["candidate_environment"],
         "isolation": actual["isolation"],
@@ -349,12 +408,175 @@ def capture_installed_wheel_resize(
     }
 
 
+def _load_evidence_array(
+    evidence_root: Path,
+    record: Any,
+    descriptor: Mapping[str, Any],
+    *,
+    label: str,
+) -> np.ndarray[Any, Any]:
+    data = _read_record(evidence_root, record, label=label)
+    try:
+        array = np.load(io.BytesIO(data), allow_pickle=False)
+    except (OSError, ValueError) as error:
+        raise ValueError(f"{label} is not a valid NumPy array") from error
+    if not isinstance(array, np.ndarray):
+        raise ValueError(f"{label} is not an ndarray")
+    raw = np.ascontiguousarray(array).tobytes(order="C")
+    if descriptor.get("path") != Path(record["path"]).name and not str(record["path"]).endswith(
+        "/" + str(descriptor.get("path"))
+    ):
+        raise ValueError(f"{label} path differs from the candidate descriptor")
+    if (
+        descriptor.get("shape") != list(array.shape)
+        or descriptor.get("dtype") != array.dtype.name
+        or descriptor.get("nbytes") != array.nbytes
+        or descriptor.get("sha256") != _sha256_bytes(raw)
+        or descriptor.get("c_contiguous") is not True
+        or not array.flags.c_contiguous
+    ):
+        raise ValueError(f"{label} differs from the candidate descriptor")
+    return array
+
+
+def _validate_architecture_local_capture(
+    capture: Mapping[str, Any],
+    *,
+    evidence_root: Path,
+    manifest: Mapping[str, Any],
+    committed_production_blob: bytes,
+) -> dict[str, Any]:
+    evidence = capture.get("installed_wheel_evidence")
+    expected_evidence_fields = {
+        "mode",
+        "candidate_case",
+        "candidate_result",
+        "pixel_values",
+        "image_grid_thw",
+        "rgb8",
+    }
+    if (
+        not isinstance(evidence, Mapping)
+        or set(evidence) != expected_evidence_fields
+        or evidence.get("mode") != PLATFORM_CAPTURE_MODE
+        or capture.get("public_processor_matches_installed_wheel_evidence") is not True
+    ):
+        raise ValueError("architecture-local installed-wheel evidence is incomplete")
+    expected_public = [
+        case
+        for case in manifest["cases"]
+        if case["destination"]["height"] % 32 == 0 and case["destination"]["width"] % 32 == 0
+    ]
+    expected_public_ids = [case["id"] for case in expected_public]
+    expected_direct_ids = [
+        case["id"] for case in manifest["cases"] if case["id"] not in expected_public_ids
+    ]
+    if (
+        capture.get("public_processor_case_ids") != expected_public_ids
+        or capture.get("direct_core_case_ids") != expected_direct_ids
+    ):
+        raise ValueError("architecture-local installed-wheel case inventory differs")
+
+    try:
+        candidate_case = json.loads(
+            _read_record(evidence_root, evidence["candidate_case"], label="candidate case")
+        )
+        candidate_result = json.loads(
+            _read_record(evidence_root, evidence["candidate_result"], label="candidate result")
+        )
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ValueError("architecture-local candidate evidence is not valid JSON") from error
+    requests = candidate_case.get("requests")
+    try:
+        observed_case_ids = [
+            request["messages"][0]["content"][1]["text"].removeprefix("resize-v2:")
+            for request in requests
+        ]
+    except (KeyError, TypeError) as error:
+        raise ValueError("architecture-local candidate requests are invalid") from error
+    if (
+        candidate_case.get("profile") != PROFILES[0]
+        or observed_case_ids != expected_public_ids
+        or candidate_result.get("status") != "success"
+        or candidate_result.get("runtime_identity") != capture.get("runtime_identity")
+        or candidate_result.get("isolation") != capture.get("isolation")
+    ):
+        raise ValueError("architecture-local candidate execution binding differs")
+    arrays = candidate_result.get("arrays")
+    if not isinstance(arrays, Mapping):
+        raise ValueError("architecture-local candidate arrays are missing")
+    try:
+        pixels = _load_evidence_array(
+            evidence_root,
+            evidence["pixel_values"],
+            arrays["pixel_values"],
+            label="candidate pixel_values",
+        )
+        grids = _load_evidence_array(
+            evidence_root,
+            evidence["image_grid_thw"],
+            arrays["image_grid_thw"],
+            label="candidate image_grid_thw",
+        )
+    except KeyError as error:
+        raise ValueError("architecture-local candidate array descriptor is missing") from error
+    image_metadata = candidate_result.get("metadata", {}).get("images")
+    if not isinstance(image_metadata, list) or len(image_metadata) != len(expected_public):
+        raise ValueError("architecture-local candidate occurrence inventory differs")
+    if grids.shape != (len(expected_public), 3):
+        raise ValueError("architecture-local candidate grid inventory differs")
+
+    platform_blob = _read_record(evidence_root, evidence["rgb8"], label="installed-wheel RGB8")
+    expected_total = manifest["artifacts"]["pillow-image-rgb8.bin"]["byte_length"]
+    if len(platform_blob) != expected_total or len(committed_production_blob) != expected_total:
+        raise ValueError("architecture-local RGB8 blob length differs from the frozen holdout")
+    public_ids = set(expected_public_ids)
+    metadata_by_id = dict(zip(expected_public_ids, image_metadata, strict=True))
+    grid_by_id = dict(zip(expected_public_ids, grids, strict=True))
+    for case in manifest["cases"]:
+        record = case["pillow_image_rgb8"]
+        start = record["offset"]
+        end = start + record["byte_length"]
+        if case["id"] not in public_ids:
+            if platform_blob[start:end] != committed_production_blob[start:end]:
+                raise ValueError(f"{case['id']}: direct-core evidence differs from selection")
+            continue
+        metadata = metadata_by_id[case["id"]]
+        destination = case["destination"]
+        expected_grid = [1, destination["height"] // 16, destination["width"] // 16]
+        if grid_by_id[case["id"]].tolist() != expected_grid:
+            raise ValueError(f"{case['id']}: architecture-local grid differs")
+        if (
+            metadata.get("geometry", {}).get("height") != destination["height"]
+            or metadata.get("geometry", {}).get("width") != destination["width"]
+        ):
+            raise ValueError(f"{case['id']}: architecture-local geometry differs")
+        row_start, row_end = metadata["pixel_rows"]
+        prepared = unpatchify_image(
+            pixels[row_start:row_end], destination["height"], destination["width"]
+        )
+        packed = np.ascontiguousarray(prepared).tobytes(order="C")
+        if packed != platform_blob[start:end]:
+            raise ValueError(f"{case['id']}: archived RGB8 differs from installed wheel")
+
+    rgb8_path = evidence_root / evidence["rgb8"]["path"]
+    local_quality = _portable_quality_result(
+        compare_candidate(rgb8_path, repository_root() / RESIZE_DIRECTORY),
+        rgb8_path,
+        display_path=Path(evidence["rgb8"]["path"]),
+    )
+    if local_quality.get("passed") is not True or capture.get("quality_result") != local_quality:
+        raise ValueError("architecture-local installed-wheel output failed resize-v2")
+    return local_quality
+
+
 def build_overlay(
     *,
     wheel_path: Path,
     capture: Mapping[str, Any],
     candidate_blob_path: Path,
     current_revision: str | None = None,
+    capture_evidence_root: Path | None = None,
 ) -> dict[str, Any]:
     root = repository_root()
     base = _json(root / BASE_REPORT_PATH)
@@ -406,11 +628,16 @@ def build_overlay(
             ),
         },
     }
-    validate_overlay(report, wheel_path=wheel_path)
+    validate_overlay(report, wheel_path=wheel_path, evidence_root=capture_evidence_root)
     return report
 
 
-def validate_overlay(report: Mapping[str, Any], *, wheel_path: Path | None = None) -> None:
+def validate_overlay(
+    report: Mapping[str, Any],
+    *,
+    wheel_path: Path | None = None,
+    evidence_root: Path | None = None,
+) -> None:
     root = repository_root()
     errors = sorted(
         Draft202012Validator(_json(root / SCHEMA_PATH)).iter_errors(report),
@@ -531,8 +758,8 @@ def validate_overlay(report: Mapping[str, Any], *, wheel_path: Path | None = Non
         raise ValueError("production installed-wheel output does not pass resize-v2")
 
     capture = current.get("capture")
-    if not isinstance(capture, Mapping) or capture.get("quality_result") != recomputed_quality:
-        raise ValueError("installed-wheel quality result is missing or stale")
+    if not isinstance(capture, Mapping):
+        raise ValueError("installed-wheel capture is missing")
     serialized_quality = json.loads(
         _read_record(
             root,
@@ -552,9 +779,22 @@ def validate_overlay(report: Mapping[str, Any], *, wheel_path: Path | None = Non
         or capture.get("profile") != PROFILES[0]
         or capture.get("public_processor_case_count") != len(expected_public_ids)
         or capture.get("public_processor_case_ids") != expected_public_ids
-        or capture.get("public_processor_matches_production_blob") is not True
     ):
         raise ValueError("installed-wheel capture scope is incomplete")
+    if "installed_wheel_evidence" in capture:
+        if evidence_root is None:
+            raise ValueError("architecture-local Phase C evidence root is required")
+        _validate_architecture_local_capture(
+            capture,
+            evidence_root=evidence_root.resolve(),
+            manifest=manifest,
+            committed_production_blob=production_path.read_bytes(),
+        )
+    elif (
+        capture.get("public_processor_matches_production_blob") is not True
+        or capture.get("quality_result") != recomputed_quality
+    ):
+        raise ValueError("legacy installed-wheel quality result is missing or stale")
     isolation = capture.get("isolation")
     if (
         not isinstance(isolation, Mapping)
@@ -637,13 +877,20 @@ def main() -> None:
     args = parser.parse_args()
     root = repository_root()
     if args.command == "validate":
-        validate_overlay(_json(root / args.report), wheel_path=args.wheel)
-        print(f"valid Phase C v2 overlay: {root / args.report}")
+        report_path = root / args.report
+        validate_overlay(
+            _json(report_path),
+            wheel_path=args.wheel,
+            evidence_root=report_path.parent.resolve(),
+        )
+        print(f"valid Phase C v2 overlay: {report_path}")
         return
     wheel = args.wheel.resolve()
     report_path = root / args.report
     summary_path = root / args.summary
     output = args.output or Path(tempfile.mkdtemp(prefix="phase-c-v2-capture-"))
+    evidence_root = report_path.parent.resolve()
+    platform_blob_path = evidence_root / "outputs" / PLATFORM_BLOB_NAME
     capture = capture_installed_wheel_resize(
         candidate_python=Path(os.path.abspath(args.candidate_python)),
         wheel_path=wheel,
@@ -651,17 +898,28 @@ def main() -> None:
         output_directory=output,
         production_blob_source=args.production_blob.resolve(),
         candidate_blob_path=root / PRODUCTION_BLOB_PATH,
+        evidence_root=evidence_root,
+        platform_blob_path=platform_blob_path,
         write_candidate_blob=not args.reuse_committed_production_evidence,
     )
     if args.reuse_committed_production_evidence:
-        if _json(root / PRODUCTION_RESULT_PATH) != capture["quality_result"]:
-            raise RuntimeError("committed production quality result differs from fresh capture")
+        committed_quality = _portable_quality_result(
+            compare_candidate(root / PRODUCTION_BLOB_PATH, root / RESIZE_DIRECTORY),
+            root / PRODUCTION_BLOB_PATH,
+        )
+        if _json(root / PRODUCTION_RESULT_PATH) != committed_quality:
+            raise RuntimeError("committed production quality result is stale")
     else:
-        _write_json(root / PRODUCTION_RESULT_PATH, capture["quality_result"])
+        committed_quality = _portable_quality_result(
+            compare_candidate(root / PRODUCTION_BLOB_PATH, root / RESIZE_DIRECTORY),
+            root / PRODUCTION_BLOB_PATH,
+        )
+        _write_json(root / PRODUCTION_RESULT_PATH, committed_quality)
     report = build_overlay(
         wheel_path=wheel,
         capture=capture,
         candidate_blob_path=root / PRODUCTION_BLOB_PATH,
+        capture_evidence_root=evidence_root,
     )
     _write_json(report_path, report)
     _write_summary(summary_path, report)
