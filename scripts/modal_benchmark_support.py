@@ -34,6 +34,7 @@ REQUIRED_ARTIFACT_FILES = frozenset(
 
 _IGNORED_PARTS = frozenset(
     {
+        ".cache",
         ".git",
         ".kd",
         ".mypy_cache",

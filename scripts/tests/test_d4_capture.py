@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -119,6 +120,43 @@ def _base_files() -> dict[str, bytes]:
 
 
 class D4CaptureSupportTests(unittest.TestCase):
+    def test_source_payload_must_match_immutable_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "--quiet"], cwd=root, check=True)
+            (root / ".gitignore").write_text(".DS_Store\n", encoding="utf-8")
+            (root / "source.txt").write_text("recorded\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=D4 Test",
+                    "-c",
+                    "user.email=d4@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "recorded",
+                ],
+                cwd=root,
+                check=True,
+            )
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            source = support.source_payload_identity(root)
+            support.assert_source_payload_matches_revision(root, revision, source)
+
+            (root / ".DS_Store").write_bytes(b"generated metadata")
+            contaminated = support.source_payload_identity(root)
+            with self.assertRaisesRegex(support.D4CaptureError, "immutable Git revision"):
+                support.assert_source_payload_matches_revision(root, revision, contaminated)
+
     def test_clean_venv_uses_exact_locked_reference_sync(self) -> None:
         venv = Path("/working/venvs/shipping")
         command = support.reference_sync_command(venv=venv)

@@ -44,6 +44,7 @@ from d4_capture_support import (  # noqa: E402
     assert_assets_identity,
     assert_build_invariants,
     assert_build_variant_artifacts,
+    assert_source_payload_matches_revision,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -67,7 +68,7 @@ APP_NAME = "qwen-mm-d4-controlled-capture"
 SANDBOX_RUNTIME = "modal-vm-sandbox-v1"
 SANDBOX_CPU = (MODAL_CPU, MODAL_CPU)
 SANDBOX_MEMORY_MIB = (MODAL_MEMORY_MIB, MODAL_MEMORY_MIB)
-SANDBOX_TIMEOUT_SECONDS = 43_200
+SANDBOX_TIMEOUT_SECONDS = 86_400
 SANDBOX_IDLE_TIMEOUT_SECONDS = 600
 SANDBOX_CONTROL_PATH = "/tmp/qwen-mm-d4-control.json"
 SANDBOX_OUTPUT_PATH = "/tmp/qwen-mm-d4-output.bin"
@@ -841,6 +842,8 @@ def main(
         return
     if dirty and not short_probe:
         raise D4CaptureError("D4 Modal capture requires a clean checkout")
+    if not short_probe:
+        assert_source_payload_matches_revision(LOCAL_ROOT, revision, source)
     destination = Path(probe_output if short_probe else output).expanduser().resolve()
     lifecycle_path = destination.with_suffix(
         destination.suffix + (".lifecycle.json" if short_probe else ".modal-lifecycle.json")

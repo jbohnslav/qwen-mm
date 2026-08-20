@@ -32,6 +32,7 @@ from d4_capture_support import (  # noqa: E402
     D4CaptureError,
     assert_build_invariants,
     assert_build_variant_artifacts,
+    assert_source_payload_matches_revision,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -536,6 +537,7 @@ def execute_capture(
 
     source = source_payload_identity(REPOSITORY_ROOT)
     source_revision = _git("rev-parse", "HEAD")
+    assert_source_payload_matches_revision(REPOSITORY_ROOT, source_revision, source)
     assets = assets_identity(ASSETS_ROOT)
     environment = normalized_capture_environment(os.environ)
     cargo_bin = _capture(

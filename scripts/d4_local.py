@@ -29,6 +29,7 @@ from d4_capture_support import (  # noqa: E402
     D4CaptureError,
     assert_build_invariants,
     assert_build_variant_artifacts,
+    assert_source_payload_matches_revision,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
@@ -209,7 +210,9 @@ def execute_capture(*, output: Path, host_label: str) -> None:
     if not BASE_PYTHON.is_file():
         raise D4CaptureError(f"locked base environment is missing: {BASE_PYTHON}")
 
+    source_revision = _git("rev-parse", "HEAD")
     source = source_payload_identity(REPOSITORY_ROOT)
+    assert_source_payload_matches_revision(REPOSITORY_ROOT, source_revision, source)
     assets = assets_identity(ASSETS_ROOT)
     environment = normalized_capture_environment(os.environ)
     cpu_model = _sysctl("machdep.cpu.brand_string", environment=environment)
@@ -362,7 +365,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             "host_label": host_label,
             "started_at": started.isoformat(),
             "completed_at": completed.isoformat(),
-            "source_revision": _git("rev-parse", "HEAD"),
+            "source_revision": source_revision,
             "source": source,
             "assets": assets,
             "capture_inputs": capture_input_identities(REPOSITORY_ROOT),

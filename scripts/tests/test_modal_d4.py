@@ -112,9 +112,17 @@ class ModalD4VmSandboxTests(unittest.TestCase):
         self.assertEqual(plan["resources"]["memory_request_and_hard_limit_mib"], [32768, 32768])
         self.assertTrue(plan["resources"]["vm_runtime"])
         self.assertTrue(plan["resources"]["nonpreemptible"])
+        self.assertEqual(plan["resources"]["timeout_seconds"], 86_400)
         self.assertEqual(plan["pricing_snapshot"]["nonpreemptible_multiplier"], 1.0)
         self.assertAlmostEqual(
             plan["pricing_snapshot"]["requested_resource_usd_per_hour"], 3.039, places=3
+        )
+        self.assertAlmostEqual(
+            plan["pricing_snapshot"]["requested_resource_usd_per_hour"]
+            * plan["resources"]["timeout_seconds"]
+            / 3600,
+            72.94,
+            places=2,
         )
 
     def test_vm_attestation_requires_exact_kvm_cpuset_and_smt_free_topology(self) -> None:
@@ -246,6 +254,7 @@ class ModalD4VmSandboxTests(unittest.TestCase):
             with (
                 mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
                 mock.patch.object(modal_d4, "assets_identity", return_value={}),
+                mock.patch.object(modal_d4, "assert_source_payload_matches_revision"),
                 mock.patch.object(modal_d4, "_git", side_effect=git),
                 mock.patch.object(modal_d4, "_sandbox_plan", return_value={}),
                 mock.patch.object(
@@ -279,6 +288,7 @@ class ModalD4VmSandboxTests(unittest.TestCase):
             with (
                 mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
                 mock.patch.object(modal_d4, "assets_identity", return_value={}),
+                mock.patch.object(modal_d4, "assert_source_payload_matches_revision"),
                 mock.patch.object(modal_d4, "_git", side_effect=git),
                 mock.patch.object(modal_d4, "_sandbox_plan", return_value={}),
                 mock.patch.object(

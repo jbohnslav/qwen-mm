@@ -52,8 +52,9 @@ The local capture rejects anything except native macOS ARM on the current M4
 baseline. The Modal path uses a CPU-only [VM Sandbox][modal-vm], not a Modal
 Function or gVisor container. It supplies `(request, hard limit)` tuples of
 `(16.0, 16.0)` physical CPU cores and `(32768, 32768)` MiB, enables
-`experimental_options={"vm_runtime": True}`, and sets a 12-hour lifetime plus a
-10-minute idle timeout. CPU-only [Modal Sandboxes are not subject to
+`experimental_options={"vm_runtime": True}`, and sets Modal's supported
+24-hour maximum lifetime plus a 10-minute idle timeout. CPU-only
+[Modal Sandboxes are not subject to
 preemption][modal-preemption]. Each invocation resolves the source-built image,
 re-opens it by immutable `im-...` identity, creates exactly one named Sandbox,
 and records the `im-...` and `sb-...` IDs. The controller always calls
@@ -72,8 +73,8 @@ pre/post affinity controls and still guarantees termination; it cannot produce
 performance evidence.
 
 The dry-run includes the explicit resource-price calculation. At the repository
-price snapshot it is about $3.04 per requested-resource hour (about $36.47 for
-the 12-hour ceiling), before image-build
+price snapshot it is about $3.04 per requested-resource hour (about $72.94 for
+the 24-hour ceiling), before image-build
 or provider adjustments; unlike non-preemptible Functions, CPU-only Sandboxes
 do not add the Function 3x non-preemptibility multiplier. The base image remains
 pinned by digest and installs the locked uv and Rust toolchains. The earlier

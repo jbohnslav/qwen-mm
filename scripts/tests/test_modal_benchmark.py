@@ -100,6 +100,8 @@ class ModalBenchmarkSupportTests(unittest.TestCase):
             (root / "reference/.venv/secret").write_text("ignored", encoding="utf-8")
             (root / "nested/.ruff_cache").mkdir(parents=True)
             (root / "nested/.ruff_cache/cache").write_text("ignored", encoding="utf-8")
+            (root / ".cache/uv/interpreter-v4").mkdir(parents=True)
+            (root / ".cache/uv/interpreter-v4/metadata.msgpack").write_bytes(b"generated uv cache")
             self.assertEqual(first, support.source_tree_digest(root))
             (root / "src/lib.rs").write_text("two", encoding="utf-8")
             self.assertNotEqual(first, support.source_tree_digest(root))

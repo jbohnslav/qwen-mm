@@ -20,7 +20,11 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from modal_benchmark_support import is_ignored_source_path, source_tree_digest
+from modal_benchmark_support import (
+    committed_source_tree_digest,
+    is_ignored_source_path,
+    source_tree_digest,
+)
 from modal_d3_support import (
     BASE_IMAGE,
     CGROUP_ATTESTATION_MODE,
@@ -201,6 +205,20 @@ def source_payload_identity(root: Path) -> dict[str, Any]:
 
     digest, file_count, byte_count = source_tree_digest(root)
     return {"sha256": digest, "file_count": file_count, "bytes": byte_count}
+
+
+def assert_source_payload_matches_revision(
+    root: Path, revision: str, source: Mapping[str, Any]
+) -> None:
+    """Reject worktree payloads that cannot pass final immutable-source validation."""
+
+    digest, file_count, byte_count = committed_source_tree_digest(root, revision)
+    expected = {"sha256": digest, "file_count": file_count, "bytes": byte_count}
+    if dict(source) != expected:
+        raise D4CaptureError(
+            "D4 source payload differs from its immutable Git revision; remove generated "
+            "or ignored worktree inputs before capture"
+        )
 
 
 def assets_identity(root: Path) -> dict[str, Any]:
