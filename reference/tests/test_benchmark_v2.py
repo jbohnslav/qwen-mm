@@ -399,6 +399,60 @@ class WorkloadTests(unittest.TestCase):
                             tampered, expected_runtime_identity=foreign_runtime
                         )
 
+    def test_archived_overlay_validation_receives_its_materialized_evidence_root(self) -> None:
+        result = run_benchmark(
+            workload_path=WORKLOAD_PATH,
+            mode="smoke",
+            reference_adapter="synthetic",
+            candidate_adapter="synthetic",
+            profiles=["qwen3-vl-8b"],
+            case_ids=["image1"],
+            process_repetitions=1,
+            warmups=0,
+            minimum_samples=1,
+            minimum_seconds=0.0,
+            thread_regimes=["one"],
+            build_labels=["profiled-release"],
+            seed=47,
+        )
+        result, foreign_runtime = self._foreign_candidate_result(result)
+        with tempfile.TemporaryDirectory() as directory:
+            evidence_root = Path(directory)
+            report = evidence_root / "report.json"
+            report.write_text('{"schema_id":"qwen-mm-phase-c-overlay-v2"}\n', encoding="utf-8")
+            report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+            evidence = {"candidate_runtime_identity": foreign_runtime}
+            fingerprint = hashlib.sha256(
+                json.dumps(
+                    {"report_sha256": report_sha256, "evidence": evidence},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+            result["release_eligibility"]["phase_c"] = {
+                "status": "pass",
+                "reason_codes": [],
+                "report_path": "phase-c/report.json",
+                "assets_root": "reference/.cache/huggingface",
+                "mode_note": "smoke measurement is never release evidence",
+                "report_sha256": report_sha256,
+                "gate_fingerprint": fingerprint,
+                "evidence": evidence,
+            }
+            with mock.patch.object(
+                benchmark_v2, "_validate_phase_c_report", return_value=evidence
+            ) as validate_phase_c:
+                validate_result_authenticated_portable(
+                    result,
+                    expected_runtime_identity=foreign_runtime,
+                    phase_c_report_override=report,
+                    phase_c_assets_root_override=repository_root() / "reference/.cache/huggingface",
+                )
+
+            self.assertEqual(
+                validate_phase_c.call_args.kwargs["report_evidence_root"], evidence_root.resolve()
+            )
+
     def test_generated_encoded_portability_keeps_exact_and_logical_bindings(self) -> None:
         workload = load_workload(WORKLOAD_PATH)
         case = select_cases(workload, case_ids=["ragged24"])[0]

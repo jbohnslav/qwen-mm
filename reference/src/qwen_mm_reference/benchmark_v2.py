@@ -1829,6 +1829,7 @@ def validate_result_authenticated_portable(
                         "resolved": True,
                         "runtime_identity": dict(expected_runtime),
                     },
+                    report_evidence_root=durable_report.parent,
                 )
             except (json.JSONDecodeError, OSError, PhaseCGateError) as error:
                 raise BenchmarkProtocolError(
