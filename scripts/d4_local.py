@@ -194,8 +194,6 @@ def _collect_files(artifact_root: Path) -> dict[str, bytes]:
         if not path.is_file():
             continue
         relative = path.relative_to(artifact_root)
-        if "outputs" in relative.parts and relative.parts[0] == "phase-c":
-            continue
         files[relative.as_posix()] = path.read_bytes()
     return files
 

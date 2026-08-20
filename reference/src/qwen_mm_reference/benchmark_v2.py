@@ -1921,6 +1921,14 @@ def run_benchmark(
         or not math.isfinite(effective_seconds)
         or effective_seconds < 0
         or repetitions <= 0
+        or (
+            production_thread_budget is not None
+            and (
+                isinstance(production_thread_budget, bool)
+                or not isinstance(production_thread_budget, int)
+                or production_thread_budget <= 0
+            )
+        )
         or len(effective_regimes) != len(set(effective_regimes))
         or len(effective_builds) != len(set(effective_builds))
     ):
@@ -2058,6 +2066,7 @@ def run_benchmark(
             "thread_budget_mapping": {
                 regime: thread_budget_mapping[regime] for regime in effective_regimes
             },
+            "production_thread_budget": production_thread_budget,
             "affinity_cpu_mapping": affinity_mapping,
             "build_labels": effective_builds,
             "timing_protocol": "instrumentation-free-v1",

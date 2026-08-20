@@ -145,6 +145,22 @@ class D4CaptureSupportTests(unittest.TestCase):
                 build["sync"], support.reference_sync_command(venv=Path(build["venv"]))
             )
 
+    def test_raw_inventory_keeps_every_referenced_phase_c_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "phase-c/shipping/pre/outputs/case.json"
+            output.parent.mkdir(parents=True)
+            output.write_text("{}\n", encoding="utf-8")
+            files = d4_local._collect_files(root)
+        self.assertEqual(files["phase-c/shipping/pre/outputs/case.json"], b"{}\n")
+        for build_label in support.BUILD_LABELS:
+            for position in ("pre", "post"):
+                for relative in support.PHASE_C_OUTPUT_MEMBERS:
+                    self.assertIn(
+                        f"phase-c/{build_label}/{position}/outputs/{relative}",
+                        support.REQUIRED_BASE_MEMBERS,
+                    )
+
     def test_capture_environment_normalizes_package_indexes(self) -> None:
         base = {
             "HOME": "/home/capture",

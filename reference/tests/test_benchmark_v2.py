@@ -1089,6 +1089,7 @@ class ProtocolTests(unittest.TestCase):
             minimum_seconds=0.0,
             thread_regimes=["t1", "t2", "t4", "t8"],
             build_labels=["shipping"],
+            production_thread_budget=8,
             seed=53,
         )
 
@@ -1096,6 +1097,7 @@ class ProtocolTests(unittest.TestCase):
             result["protocol"]["thread_budget_mapping"],
             {"t1": 1, "t2": 2, "t4": 4, "t8": 8},
         )
+        self.assertEqual(result["protocol"]["production_thread_budget"], 8)
         for pair in result["pairs"]:
             for implementation in pair["implementations"].values():
                 model = implementation["thread_settings"]["total_budget_model"]

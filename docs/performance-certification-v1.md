@@ -144,7 +144,17 @@ The default raw archive paths are `/tmp/qwen-mm-d4-arm64.zip` and
 needed. `D4_HOST_LABEL` changes only the descriptive ARM host label.
 `D4_LINUX_HOST_LABEL` and `D4_LINUX_ALLOCATION_ID` identify a local Linux
 capture; an empty allocation ID defaults to the container hostname. Archive
-writes are validated before atomically replacing the destination.
+writes are validated before atomically replacing the destination. Every raw
+archive includes the complete Phase-C `outputs/` trees referenced by its four
+pre/post reports, including the reconstructed resize bytes and exact NumPy
+arrays used for semantic validation.
+
+The Modal launcher first atomically saves a retrieved full-run payload beside
+the requested destination as `<stem>.unvalidated<suffix>`. It removes that
+diagnostic copy only after local archive, source, asset, Phase-C, and benchmark
+validation succeeds. If validation fails after the VM has terminated, the
+launcher prints and retains the unvalidated path so the completed remote run
+can be inspected or repackaged without launching another worker.
 
 A measured gate miss does not truncate the matrix. In particular, a failed
 5% no-pruning CV assessment is written to the build's structured

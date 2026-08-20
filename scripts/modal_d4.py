@@ -184,6 +184,26 @@ def _pricing_snapshot() -> dict[str, Any]:
     }
 
 
+def _write_bytes_atomically(value: bytes, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(value)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary_name, destination)
+    except BaseException:
+        Path(temporary_name).unlink(missing_ok=True)
+        raise
+
+
+def _unvalidated_capture_path(destination: Path) -> Path:
+    return destination.with_name(f"{destination.stem}.unvalidated{destination.suffix}")
+
+
 def _sandbox_plan(
     *, source: dict[str, Any], assets: dict[str, Any], source_revision: str
 ) -> dict[str, Any]:
@@ -837,13 +857,23 @@ def main(
         destination.write_bytes(payload)
         print(f"wrote terminated Modal VM Sandbox probe: {destination}")
         return
-    write_capture_archive(
-        payload,
-        destination,
-        expected_source=source,
-        expected_assets=assets,
-        phase_c_assets_root=LOCAL_ASSETS_ROOT,
-    )
+    diagnostic = _unvalidated_capture_path(destination)
+    _write_bytes_atomically(payload, diagnostic)
+    try:
+        write_capture_archive(
+            payload,
+            destination,
+            expected_source=source,
+            expected_assets=assets,
+            phase_c_assets_root=LOCAL_ASSETS_ROOT,
+        )
+    except BaseException:
+        print(
+            f"D4 x86_64 archive validation failed; retained raw payload: {diagnostic}",
+            file=sys.stderr,
+        )
+        raise
+    diagnostic.unlink()
     print(f"wrote validated D4 x86_64 raw capture: {destination}")
 
 

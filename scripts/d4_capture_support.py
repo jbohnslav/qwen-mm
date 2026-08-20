@@ -25,10 +25,6 @@ from modal_d3_support import (
     BASE_IMAGE,
     CGROUP_ATTESTATION_MODE,
     GVISOR_ATTESTATION_MODE,
-    MAX_ARCHIVE_COMPRESSED_BYTES,
-    MAX_ARCHIVE_MEMBER_BYTES,
-    MAX_ARCHIVE_MEMBERS,
-    MAX_ARCHIVE_UNCOMPRESSED_BYTES,
     MODAL_CPU,
     MODAL_MEMORY_MIB,
     RESOURCE_BINDING,
@@ -136,6 +132,24 @@ CAPTURE_INPUT_PATHS = (
     "uv.lock",
 )
 
+PHASE_C_OUTPUT_MEMBERS = (
+    "case.json",
+    "installed-wheel-resize.rgb8.bin",
+    "actual/result.json",
+    "actual/arrays/attention_mask.npy",
+    "actual/arrays/image_grid_thw.npy",
+    "actual/arrays/input_ids.npy",
+    "actual/arrays/mm_token_type_ids.npy",
+    "actual/arrays/pixel_values.npy",
+)
+# D4 carries four complete Phase-C resize witnesses in addition to the raw
+# benchmark matrix.  Keep explicit D4 bounds rather than silently inheriting
+# D3's smaller 64-member/256-MiB envelope.
+MAX_ARCHIVE_COMPRESSED_BYTES = 384 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 128
+MAX_ARCHIVE_MEMBER_BYTES = 64 * 1024 * 1024
+MAX_ARCHIVE_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
+
 REQUIRED_BASE_MEMBERS = frozenset(
     {
         "capture-index.json",
@@ -168,6 +182,12 @@ REQUIRED_BASE_MEMBERS = frozenset(
         for build_label in BUILD_LABELS
         for position in ("pre", "post")
         for name in ("report.json", "summary.md")
+    }
+    | {
+        f"phase-c/{build_label}/{position}/outputs/{name}"
+        for build_label in BUILD_LABELS
+        for position in ("pre", "post")
+        for name in PHASE_C_OUTPUT_MEMBERS
     }
 )
 

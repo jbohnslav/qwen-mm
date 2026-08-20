@@ -232,6 +232,67 @@ class ModalD4VmSandboxTests(unittest.TestCase):
         self.assertTrue(sandbox.terminated)
         self.assertTrue(sandbox.detached)
 
+    def test_main_retains_retrieved_payload_before_local_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "x86.zip"
+
+            def git(*arguments: str) -> str:
+                if arguments == ("rev-parse", "HEAD"):
+                    return "a" * 40
+                if arguments == ("status", "--short", "--untracked-files=all"):
+                    return ""
+                raise AssertionError(arguments)
+
+            with (
+                mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
+                mock.patch.object(modal_d4, "assets_identity", return_value={}),
+                mock.patch.object(modal_d4, "_git", side_effect=git),
+                mock.patch.object(modal_d4, "_sandbox_plan", return_value={}),
+                mock.patch.object(
+                    modal_d4,
+                    "_execute_in_vm_sandbox",
+                    return_value=(b"raw-zip", {"terminated": True}),
+                ),
+                mock.patch.object(
+                    modal_d4,
+                    "write_capture_archive",
+                    side_effect=modal_d4.D4CaptureError("invalid archive"),
+                ),
+                self.assertRaisesRegex(modal_d4.D4CaptureError, "invalid archive"),
+            ):
+                modal_d4.main(output=str(destination))
+
+            diagnostic = destination.with_name("x86.unvalidated.zip")
+            self.assertEqual(diagnostic.read_bytes(), b"raw-zip")
+
+    def test_main_removes_unvalidated_payload_after_successful_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "x86.zip"
+
+            def git(*arguments: str) -> str:
+                if arguments == ("rev-parse", "HEAD"):
+                    return "a" * 40
+                if arguments == ("status", "--short", "--untracked-files=all"):
+                    return ""
+                raise AssertionError(arguments)
+
+            with (
+                mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
+                mock.patch.object(modal_d4, "assets_identity", return_value={}),
+                mock.patch.object(modal_d4, "_git", side_effect=git),
+                mock.patch.object(modal_d4, "_sandbox_plan", return_value={}),
+                mock.patch.object(
+                    modal_d4,
+                    "_execute_in_vm_sandbox",
+                    return_value=(b"raw-zip", {"terminated": True}),
+                ),
+                mock.patch.object(modal_d4, "write_capture_archive") as validate,
+            ):
+                modal_d4.main(output=str(destination))
+
+            validate.assert_called_once()
+            self.assertFalse(destination.with_name("x86.unvalidated.zip").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
