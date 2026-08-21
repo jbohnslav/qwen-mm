@@ -171,6 +171,14 @@ class D4LocalLinuxTests(unittest.TestCase):
         self.assertEqual(plan["provider"], "local_linux")
         self.assertEqual(plan["affinity_masks"]["t8"], list(range(8)))
 
+    def test_compact_build_plan_uses_shipping_t1_t8_only(self) -> None:
+        masks = {budget: tuple(range(budget)) for budget in (1, 8)}
+        plan = d4_linux.compact_build_plan(Path("/capture"), affinity_masks=masks)
+        self.assertEqual(list(plan["builds"]), ["shipping"])
+        self.assertEqual(plan["thread_budgets"], [1, 8])
+        self.assertEqual(plan["subprocess_count"], 84)
+        self.assertEqual(plan["affinity_masks"], {"t1": [0], "t8": list(range(8))})
+
     def test_failed_workspace_is_retained_and_successful_workspace_is_removed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             failure = Path(temporary) / "failed"

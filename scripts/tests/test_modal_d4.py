@@ -29,7 +29,7 @@ def _control() -> dict[str, object]:
 
 
 def _topology() -> str:
-    return "# CPU,Core,Socket,Online\n" + "\n".join(f"{cpu},{cpu},0,Y" for cpu in range(16))
+    return "# CPU,Core,Socket,Online\n" + "\n".join(f"{cpu},{cpu},0,Y" for cpu in range(8))
 
 
 class _Stream:
@@ -108,29 +108,51 @@ class ModalD4VmSandboxTests(unittest.TestCase):
     def test_plan_fixes_request_limits_runtime_lifecycle_and_pricing(self) -> None:
         plan = modal_d4._sandbox_plan(source={}, assets={}, source_revision="a" * 40)
         self.assertEqual(plan["runner"], modal_d4.SANDBOX_RUNTIME)
-        self.assertEqual(plan["resources"]["cpu_request_and_hard_limit"], [16.0, 16.0])
-        self.assertEqual(plan["resources"]["memory_request_and_hard_limit_mib"], [32768, 32768])
+        self.assertEqual(plan["resources"]["cpu_request_and_hard_limit"], [8.0, 8.0])
+        self.assertEqual(plan["resources"]["memory_request_and_hard_limit_mib"], [16384, 16384])
         self.assertTrue(plan["resources"]["vm_runtime"])
         self.assertTrue(plan["resources"]["nonpreemptible"])
-        self.assertEqual(plan["resources"]["timeout_seconds"], 86_400)
+        self.assertEqual(plan["resources"]["timeout_seconds"], 14_400)
+        self.assertEqual(plan["build_labels"], ["shipping"])
+        self.assertEqual(plan["thread_budgets"], [1, 8])
+        self.assertEqual(plan["subprocess_count"], 84)
         self.assertEqual(plan["pricing_snapshot"]["nonpreemptible_multiplier"], 1.0)
         self.assertAlmostEqual(
-            plan["pricing_snapshot"]["requested_resource_usd_per_hour"], 3.039, places=3
+            plan["pricing_snapshot"]["requested_resource_usd_per_hour"], 1.52, places=2
         )
-        self.assertAlmostEqual(
-            plan["pricing_snapshot"]["requested_resource_usd_per_hour"]
-            * plan["resources"]["timeout_seconds"]
-            / 3600,
-            72.94,
-            places=2,
+        self.assertLessEqual(
+            plan["pricing_snapshot"]["hard_cost_ceiling_usd"],
+            6.08,
         )
+
+    def test_dry_run_prints_exact_plan_without_worker_creation_or_approval(self) -> None:
+        def git(*arguments: str) -> str:
+            if arguments == ("rev-parse", "HEAD"):
+                return "a" * 40
+            if arguments == ("status", "--short", "--untracked-files=all"):
+                return "dirty-is-safe-for-dry-run"
+            raise AssertionError(arguments)
+
+        with (
+            mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
+            mock.patch.object(modal_d4, "assets_identity", return_value={}),
+            mock.patch.object(modal_d4, "_git", side_effect=git),
+            mock.patch.object(modal_d4, "_execute_in_vm_sandbox") as execute,
+            mock.patch("builtins.print") as output,
+        ):
+            modal_d4.main(dry_run=True)
+
+        execute.assert_not_called()
+        rendered = output.call_args.args[0]
+        self.assertIn('"subprocess_count": 84', rendered)
+        self.assertIn('"hard_cost_ceiling_usd": 6.077952', rendered)
 
     def test_vm_attestation_requires_exact_kvm_cpuset_and_smt_free_topology(self) -> None:
         masks = {budget: tuple(range(budget)) for budget in modal_d4.THREAD_BUDGETS}
         result = modal_d4._vm_resource_attestation(
-            cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"},
+            cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"},
             virtualization="kvm",
-            visible_affinity=list(range(16)),
+            visible_affinity=list(range(8)),
             masks=masks,
             topology=_topology(),
             control=_control(),
@@ -139,9 +161,9 @@ class ModalD4VmSandboxTests(unittest.TestCase):
         self.assertEqual(result["mode"], modal_d4.SANDBOX_RUNTIME)
         self.assertEqual(result["resolved_modal_image_id"], "im-pinned")
         without_runtime_env = modal_d4._vm_resource_attestation(
-            cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"},
+            cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"},
             virtualization="kvm",
-            visible_affinity=list(range(16)),
+            visible_affinity=list(range(8)),
             masks=masks,
             topology=_topology(),
             control=_control(),
@@ -150,9 +172,9 @@ class ModalD4VmSandboxTests(unittest.TestCase):
         self.assertEqual(without_runtime_env["resolved_modal_image_id"], "im-pinned")
         with self.assertRaisesRegex(modal_d4.D4CaptureError, "runtime image"):
             modal_d4._vm_resource_attestation(
-                cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"},
+                cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"},
                 virtualization="kvm",
-                visible_affinity=list(range(16)),
+                visible_affinity=list(range(8)),
                 masks=masks,
                 topology=_topology(),
                 control=_control(),
@@ -160,9 +182,9 @@ class ModalD4VmSandboxTests(unittest.TestCase):
             )
 
         cases = (
-            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-14"}, "kvm", list(range(16))),
-            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"}, "none", list(range(16))),
-            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"}, "kvm", list(range(15))),
+            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-6"}, "kvm", list(range(8))),
+            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"}, "none", list(range(8))),
+            ({"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"}, "kvm", list(range(7))),
         )
         for cgroups, virtualization, affinity in cases:
             with self.subTest(cgroups=cgroups, virtualization=virtualization, affinity=affinity):
@@ -177,14 +199,16 @@ class ModalD4VmSandboxTests(unittest.TestCase):
                         observed_image_id="im-pinned",
                     )
         smt_topology = "# CPU,Core,Socket,Online\n" + "\n".join(
-            f"{cpu},{cpu % 8},0,Y" for cpu in range(16)
+            f"{cpu},{cpu % 4},0,Y" for cpu in range(8)
         )
-        smt_masks = modal_d4.physical_core_masks(smt_topology, allowed_cpus=list(range(16)))
+        smt_masks = modal_d4.physical_core_masks(
+            smt_topology, allowed_cpus=list(range(8)), budgets=(1, 4)
+        )
         with self.assertRaisesRegex(modal_d4.D4CaptureError, "SMT-free"):
             modal_d4._vm_resource_attestation(
-                cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-15"},
+                cgroup_limits={"/sys/fs/cgroup/cpuset.cpus.effective": "0-7"},
                 virtualization="kvm",
-                visible_affinity=list(range(16)),
+                visible_affinity=list(range(8)),
                 masks=smt_masks,
                 topology=smt_topology,
                 control=_control(),
@@ -211,9 +235,20 @@ class ModalD4VmSandboxTests(unittest.TestCase):
         self.assertTrue(sandbox.detached)
         self.assertTrue(lifecycle["terminated"])
         kwargs = create.call_args.kwargs
-        self.assertEqual(kwargs["cpu"], (16.0, 16.0))
-        self.assertEqual(kwargs["memory"], (32768, 32768))
+        self.assertEqual(kwargs["cpu"], (8.0, 8.0))
+        self.assertEqual(kwargs["memory"], (16384, 16384))
         self.assertEqual(kwargs["experimental_options"], {"vm_runtime": True})
+
+    def test_main_refuses_worker_creation_without_paid_compute_approval(self) -> None:
+        with (
+            mock.patch.object(modal_d4, "source_payload_identity", return_value={}),
+            mock.patch.object(modal_d4, "assets_identity", return_value={}),
+            mock.patch.object(modal_d4, "_git", return_value="a" * 40),
+            mock.patch.object(modal_d4, "_execute_in_vm_sandbox") as execute,
+            self.assertRaisesRegex(modal_d4.D4CaptureError, "approve-paid-compute"),
+        ):
+            modal_d4.main()
+        execute.assert_not_called()
 
     def test_worker_failure_still_terminates_and_detaches(self) -> None:
         sandbox = _Sandbox(exit_code=12)
@@ -269,7 +304,7 @@ class ModalD4VmSandboxTests(unittest.TestCase):
                 ),
                 self.assertRaisesRegex(modal_d4.D4CaptureError, "invalid archive"),
             ):
-                modal_d4.main(output=str(destination))
+                modal_d4.main(output=str(destination), approve_paid_compute=True)
 
             diagnostic = destination.with_name("x86.unvalidated.zip")
             self.assertEqual(diagnostic.read_bytes(), b"raw-zip")
@@ -298,7 +333,7 @@ class ModalD4VmSandboxTests(unittest.TestCase):
                 ),
                 mock.patch.object(modal_d4, "write_capture_archive") as validate,
             ):
-                modal_d4.main(output=str(destination))
+                modal_d4.main(output=str(destination), approve_paid_compute=True)
 
             validate.assert_called_once()
             self.assertFalse(destination.with_name("x86.unvalidated.zip").exists())

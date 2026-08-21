@@ -32,24 +32,22 @@ SUPPORT_ROOT = REMOTE_ROOT if REMOTE_ROOT.is_dir() else LOCAL_ROOT
 sys.path.insert(0, str(SUPPORT_ROOT / "scripts"))
 from d4_capture_support import (  # noqa: E402
     BASE_IMAGE,
-    BUILD_LABELS,
-    MODAL_CPU,
-    MODAL_MEMORY_MIB,
+    COMPACT_BUILD_LABELS,
+    COMPACT_CASES_BY_THREAD_BUDGET,
+    COMPACT_SUBPROCESS_COUNT,
+    COMPACT_THREAD_BUDGETS,
     PYPI_INDEX,
     PYPI_OVERRIDE_ENVIRONMENT_NAMES,
     RUST_VERSION,
-    THREAD_BUDGETS,
     UV_VERSION,
     D4CaptureError,
     assert_assets_identity,
-    assert_build_invariants,
     assert_build_variant_artifacts,
     assert_source_payload_matches_revision,
     assets_identity,
     build_environment_evidence,
     capture_input_identities,
     create_capture_archive,
-    normalize_build_artifact_paths,
     normalized_capture_environment,
     physical_core_masks,
     physical_core_representatives,
@@ -66,9 +64,10 @@ from d4_capture_support import (  # noqa: E402
 
 APP_NAME = "qwen-mm-d4-controlled-capture"
 SANDBOX_RUNTIME = "modal-vm-sandbox-v1"
-SANDBOX_CPU = (MODAL_CPU, MODAL_CPU)
-SANDBOX_MEMORY_MIB = (MODAL_MEMORY_MIB, MODAL_MEMORY_MIB)
-SANDBOX_TIMEOUT_SECONDS = 86_400
+THREAD_BUDGETS = COMPACT_THREAD_BUDGETS
+SANDBOX_CPU = (8.0, 8.0)
+SANDBOX_MEMORY_MIB = (16_384, 16_384)
+SANDBOX_TIMEOUT_SECONDS = 14_400
 SANDBOX_IDLE_TIMEOUT_SECONDS = 600
 SANDBOX_CONTROL_PATH = "/tmp/qwen-mm-d4-control.json"
 SANDBOX_OUTPUT_PATH = "/tmp/qwen-mm-d4-output.bin"
@@ -172,14 +171,16 @@ def _memory_total_bytes() -> int:
 
 def _pricing_snapshot() -> dict[str, Any]:
     hourly = 3600 * (
-        MODAL_CPU * SANDBOX_CPU_USD_PER_PHYSICAL_CORE_SECOND
-        + (MODAL_MEMORY_MIB / 1024) * SANDBOX_MEMORY_USD_PER_GIB_SECOND
+        SANDBOX_CPU[1] * SANDBOX_CPU_USD_PER_PHYSICAL_CORE_SECOND
+        + (SANDBOX_MEMORY_MIB[1] / 1024) * SANDBOX_MEMORY_USD_PER_GIB_SECOND
     )
     return {
         "source": MODAL_PRICING_URL,
         "cpu_usd_per_physical_core_second": SANDBOX_CPU_USD_PER_PHYSICAL_CORE_SECOND,
         "memory_usd_per_gib_second": SANDBOX_MEMORY_USD_PER_GIB_SECOND,
         "requested_resource_usd_per_hour": hourly,
+        "hard_time_ceiling_seconds": SANDBOX_TIMEOUT_SECONDS,
+        "hard_cost_ceiling_usd": hourly * SANDBOX_TIMEOUT_SECONDS / 3600,
         "nonpreemptible_multiplier": 1.0,
         "note": "CPU-only Modal Sandboxes are not subject to preemption",
     }
@@ -234,8 +235,12 @@ def _sandbox_plan(
             "detach_in_finally": True,
         },
         "pricing_snapshot": _pricing_snapshot(),
-        "build_labels": list(BUILD_LABELS),
+        "build_labels": list(COMPACT_BUILD_LABELS),
         "thread_budgets": list(THREAD_BUDGETS),
+        "cases_by_thread_budget": {
+            f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget]) for budget in THREAD_BUDGETS
+        },
+        "subprocess_count": COMPACT_SUBPROCESS_COUNT,
     }
 
 
@@ -251,7 +256,7 @@ def _vm_resource_attestation(
 ) -> dict[str, Any]:
     """Authenticate the fixed VM allocation without inventing absent cgroup files."""
 
-    expected_cpus = list(range(int(MODAL_CPU)))
+    expected_cpus = list(range(int(SANDBOX_CPU[1])))
     if control.get("runner") != SANDBOX_RUNTIME:
         raise D4CaptureError("Modal D4 worker did not receive a VM Sandbox control record")
     resources = control.get("resources")
@@ -274,24 +279,24 @@ def _vm_resource_attestation(
     if virtualization.strip().lower() != "kvm":
         raise D4CaptureError(f"Modal VM Sandbox did not report KVM: {virtualization!r}")
     if visible_affinity != expected_cpus:
-        raise D4CaptureError("Modal VM Sandbox affinity is not exactly CPUs 0-15")
+        raise D4CaptureError("Modal VM Sandbox affinity is not exactly CPUs 0-7")
     cpuset_key = "/sys/fs/cgroup/cpuset.cpus.effective"
-    if cgroup_limits.get(cpuset_key) != "0-15":
-        raise D4CaptureError("Modal VM Sandbox effective cpuset is not exactly CPUs 0-15")
+    if cgroup_limits.get(cpuset_key) != "0-7":
+        raise D4CaptureError("Modal VM Sandbox effective cpuset is not exactly CPUs 0-7")
     expected_masks = {budget: tuple(range(budget)) for budget in THREAD_BUDGETS}
     if masks != expected_masks:
         raise D4CaptureError("Modal VM Sandbox physical-core topology is not exact or SMT-free")
     rows = [line for line in topology.splitlines() if line.strip() and not line.startswith("#")]
     if len(rows) != len(expected_cpus):
-        raise D4CaptureError("Modal VM Sandbox topology does not contain exactly 16 online CPUs")
+        raise D4CaptureError("Modal VM Sandbox topology does not contain exactly 8 online CPUs")
     representatives = physical_core_representatives(topology, allowed_cpus=visible_affinity)
     if representatives != tuple(expected_cpus):
-        raise D4CaptureError("Modal VM Sandbox does not expose 16 distinct SMT-free physical cores")
+        raise D4CaptureError("Modal VM Sandbox does not expose 8 distinct SMT-free physical cores")
     return {
         "mode": SANDBOX_RUNTIME,
         "requested_resources_bound_by": "Modal Sandbox.create request/limit tuples",
-        "requested_physical_cores": MODAL_CPU,
-        "requested_memory_mib": MODAL_MEMORY_MIB,
+        "requested_physical_cores": SANDBOX_CPU[1],
+        "requested_memory_mib": SANDBOX_MEMORY_MIB[1],
         "nonpreemptible": True,
         "nonpreemptible_basis": "Modal CPU-only Sandbox runtime semantics",
         "single_use_container": True,
@@ -321,7 +326,7 @@ def _run_d4_capture(
     from d4_local import _capture as capture_command
     from d4_local import _collect_files as collect_files
     from d4_local import _run_logged, _runtime_identity
-    from d4_worker import run_capture
+    from d4_worker import run_compact_capture
     from modal_benchmark_support import assert_native_linux_x86
     from profile_capture_support import install_wheel_command
 
@@ -346,7 +351,7 @@ def _run_d4_capture(
     )
     visible_affinity = sorted(os.sched_getaffinity(0))
     topology = _capture(["lscpu", "--parse=CPU,CORE,SOCKET,ONLINE"], environment=dict(os.environ))
-    masks = physical_core_masks(topology, allowed_cpus=visible_affinity)
+    masks = physical_core_masks(topology, allowed_cpus=visible_affinity, budgets=THREAD_BUDGETS)
     cgroups = _cgroup_limits()
     uname = _capture(["uname", "-a"], environment=dict(os.environ))
     virtualization = _capture(["systemd-detect-virt"], environment=dict(os.environ))
@@ -403,11 +408,10 @@ def _run_d4_capture(
         temporary_root = Path(temporary)
         working_root = temporary_root / "working"
         artifact_root = temporary_root / "artifact"
-        build_invariants: dict[str, dict[str, Any]] = {}
         native_hashes: dict[str, str] = {}
         wheel_hashes: dict[str, str] = {}
         variant_plan: dict[str, Any] = {"builds": {}}
-        for label in BUILD_LABELS:
+        for label in COMPACT_BUILD_LABELS:
             venv = working_root / "venvs" / label
             wheel_directory = working_root / "wheels" / label
             cargo_target = working_root / "cargo-target" / label
@@ -462,10 +466,9 @@ def _run_d4_capture(
             )
             native_hashes[label] = runtime["native_sha256"]
             wheel_hashes[label] = runtime_reconciliation["wheel_contents"]["wheel"]["sha256"]
-            run_capture(
+            run_compact_capture(
                 python=python,
                 wheel=retained_wheel,
-                build_label=label,
                 assets_root=REMOTE_ASSETS_ROOT,
                 output_root=artifact_root,
                 affinity_masks=masks,
@@ -526,27 +529,14 @@ def _run_d4_capture(
             build_path.write_text(
                 json.dumps(build, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            build_invariants[label] = {
-                "build_environment": normalized_build_environment,
-                "build_host": build_host,
-                "packages": [
-                    normalize_build_artifact_paths(
-                        package,
-                        {
-                            working_root / "venvs" / label: "<build-venv>",
-                            artifact_root / "builds" / label: "<retained-build>",
-                        },
-                    )
-                    for package in packages
-                ],
-                "toolchain": {name: value["output"] for name, value in toolchain.items()},
-            }
-        assert_build_invariants(build_invariants)
         assert_build_variant_artifacts(
-            variant_plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes
+            variant_plan,
+            native_hashes=native_hashes,
+            wheel_hashes=wheel_hashes,
+            build_labels=COMPACT_BUILD_LABELS,
         )
         assert_assets_identity(REMOTE_ASSETS_ROOT, expected_assets)
-        for label in BUILD_LABELS:
+        for label in COMPACT_BUILD_LABELS:
             verify_private_environment_integrity(
                 working_root / "venvs" / label,
                 evidence_path=artifact_root / "builds" / label / "environment-integrity.json",
@@ -557,7 +547,9 @@ def _run_d4_capture(
         final_topology = _capture(
             ["lscpu", "--parse=CPU,CORE,SOCKET,ONLINE"], environment=dict(os.environ)
         )
-        final_masks = physical_core_masks(final_topology, allowed_cpus=final_affinity)
+        final_masks = physical_core_masks(
+            final_topology, allowed_cpus=final_affinity, budgets=THREAD_BUDGETS
+        )
         final_attestation = _vm_resource_attestation(
             cgroup_limits=_cgroup_limits(),
             virtualization=_capture(["systemd-detect-virt"], environment=dict(os.environ)),
@@ -594,6 +586,7 @@ def _run_d4_capture(
         provenance = {
             "schema_id": "qwen-mm-d4-raw-capture-provenance-v1",
             "schema_version": 1,
+            "suite": "compact",
             "claim": "raw controlled-host input for the separate D4 certification evaluator",
             "architecture_family": "x86_64",
             "provider": "modal",
@@ -629,7 +622,7 @@ def _run_d4_capture(
             },
             "build_wheel_sha256": wheel_hashes,
             "build_native_sha256": native_hashes,
-            "toolchain_pins": toolchain_pins(),
+            "toolchain_pins": toolchain_pins(suite="compact"),
             "sample_pruning": "forbidden",
             "noise_cv_max": 0.05,
             "environment": {
@@ -645,9 +638,15 @@ def _run_d4_capture(
         index = {
             "schema_id": "qwen-mm-d4-raw-capture-index-v1",
             "schema_version": 1,
+            "suite": "compact",
             "architecture_family": "x86_64",
-            "build_labels": list(BUILD_LABELS),
+            "build_labels": list(COMPACT_BUILD_LABELS),
             "thread_budgets": list(THREAD_BUDGETS),
+            "cases_by_thread_budget": {
+                f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+                for budget in THREAD_BUDGETS
+            },
+            "subprocess_count": COMPACT_SUBPROCESS_COUNT,
             "files": sorted(files),
         }
         (artifact_root / "capture-index.json").write_text(
@@ -831,6 +830,7 @@ def main(
     dry_run: bool = False,
     short_probe: bool = False,
     probe_output: str = "/tmp/qwen-mm-d4-modal-vm-probe.json",
+    approve_paid_compute: bool = False,
 ) -> None:
     source = source_payload_identity(LOCAL_ROOT)
     assets = assets_identity(LOCAL_ASSETS_ROOT)
@@ -840,6 +840,22 @@ def main(
     if dry_run:
         print(json.dumps(plan, indent=2, sort_keys=True))
         return
+    pricing = plan.get("pricing_snapshot", _pricing_snapshot())
+    print(
+        json.dumps(
+            {
+                "paid_compute_approval_required": True,
+                "hard_time_ceiling_seconds": pricing["hard_time_ceiling_seconds"],
+                "hard_cost_ceiling_usd": pricing["hard_cost_ceiling_usd"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    if not approve_paid_compute:
+        raise D4CaptureError(
+            "paid Modal worker creation requires the separate --approve-paid-compute step"
+        )
     if dirty and not short_probe:
         raise D4CaptureError("D4 Modal capture requires a clean checkout")
     if not short_probe:

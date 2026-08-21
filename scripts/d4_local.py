@@ -24,10 +24,13 @@ if str(SCRIPT_DIRECTORY) not in sys.path:
 
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
+    COMPACT_BUILD_LABELS,
+    COMPACT_CASES_BY_THREAD_BUDGET,
+    COMPACT_SUBPROCESS_COUNT,
+    COMPACT_THREAD_BUDGETS,
     PYPI_OVERRIDE_ENVIRONMENT_NAMES,
     THREAD_BUDGETS,
     D4CaptureError,
-    assert_build_invariants,
     assert_build_variant_artifacts,
     assert_source_payload_matches_revision,
     assets_identity,
@@ -35,7 +38,6 @@ from d4_capture_support import (  # noqa: E402
     capture_input_identities,
     create_capture_archive,
     local_affinity_provenance,
-    normalize_build_artifact_paths,
     normalized_capture_environment,
     reconcile_installed_runtime,
     reference_sync_command,
@@ -46,7 +48,7 @@ from d4_capture_support import (  # noqa: E402
     wheel_build_command,
     write_capture_archive,
 )
-from d4_worker import run_capture  # noqa: E402
+from d4_worker import compact_capture_plan, run_compact_capture  # noqa: E402
 from profile_capture_support import install_wheel_command  # noqa: E402
 
 REPOSITORY_ROOT = SCRIPT_DIRECTORY.parent
@@ -189,6 +191,33 @@ def build_plan(working_root: Path) -> dict[str, Any]:
     }
 
 
+def compact_build_plan(working_root: Path) -> dict[str, Any]:
+    """Expose the complete shipping-only compact build and capture plan."""
+
+    shipping = build_plan(working_root)["builds"]["shipping"]
+    capture = compact_capture_plan(
+        python=Path(shipping["venv"]) / "bin/python",
+        wheel=working_root / "retained/shipping/qwen_mm.whl",
+        build_label="shipping",
+        assets_root=ASSETS_ROOT,
+        output_root=working_root / "artifact",
+        affinity_masks={budget: None for budget in COMPACT_THREAD_BUDGETS},
+    )
+    return {
+        "suite": "compact",
+        "architecture": "arm64",
+        "builds": {"shipping": shipping},
+        "capture": capture,
+        "affinity": local_affinity_provenance(),
+        "thread_budgets": list(COMPACT_THREAD_BUDGETS),
+        "cases_by_thread_budget": {
+            f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+            for budget in COMPACT_THREAD_BUDGETS
+        },
+        "subprocess_count": COMPACT_SUBPROCESS_COUNT,
+    }
+
+
 def _collect_files(artifact_root: Path) -> dict[str, bytes]:
     files: dict[str, bytes] = {}
     for path in sorted(artifact_root.rglob("*")):
@@ -237,11 +266,10 @@ def execute_capture(*, output: Path, host_label: str) -> None:
     with _capture_workspace() as temporary_root:
         working_root = temporary_root / "working"
         artifact_root = temporary_root / "artifact"
-        plan = build_plan(working_root)
-        build_invariants: dict[str, dict[str, Any]] = {}
+        plan = compact_build_plan(working_root)
         native_hashes: dict[str, str] = {}
         wheel_hashes: dict[str, str] = {}
-        for label in BUILD_LABELS:
+        for label in COMPACT_BUILD_LABELS:
             commands = plan["builds"][label]
             build_log = artifact_root / "logs" / label / "build.log"
             sync_log = artifact_root / "logs" / label / "sync.log"
@@ -268,13 +296,12 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             )
             native_hashes[label] = runtime["native_sha256"]
             wheel_hashes[label] = runtime_reconciliation["wheel_contents"]["wheel"]["sha256"]
-            run_capture(
+            run_compact_capture(
                 python=python,
                 wheel=retained_wheel,
-                build_label=label,
                 assets_root=ASSETS_ROOT,
                 output_root=artifact_root,
-                affinity_masks={budget: None for budget in THREAD_BUDGETS},
+                affinity_masks={budget: None for budget in COMPACT_THREAD_BUDGETS},
                 execute=True,
             )
             build_path = artifact_root / "builds" / label / "build.json"
@@ -332,24 +359,13 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             build_path.write_text(
                 json.dumps(build, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            build_invariants[label] = {
-                "build_environment": normalized_build_environment,
-                "build_host": build_host,
-                "packages": [
-                    normalize_build_artifact_paths(
-                        package,
-                        {
-                            working_root / "venvs" / label: "<build-venv>",
-                            artifact_root / "builds" / label: "<retained-build>",
-                        },
-                    )
-                    for package in packages
-                ],
-                "toolchain": {name: value["output"] for name, value in toolchain.items()},
-            }
-        assert_build_invariants(build_invariants)
-        assert_build_variant_artifacts(plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes)
-        for label in BUILD_LABELS:
+        assert_build_variant_artifacts(
+            {"builds": plan["builds"]},
+            native_hashes=native_hashes,
+            wheel_hashes=wheel_hashes,
+            build_labels=COMPACT_BUILD_LABELS,
+        )
+        for label in COMPACT_BUILD_LABELS:
             verify_private_environment_integrity(
                 working_root / "venvs" / label,
                 evidence_path=artifact_root / "builds" / label / "environment-integrity.json",
@@ -360,6 +376,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
         provenance = {
             "schema_id": "qwen-mm-d4-raw-capture-provenance-v1",
             "schema_version": 1,
+            "suite": "compact",
             "claim": "raw controlled-host input for the separate D4 certification evaluator",
             "architecture_family": "arm64",
             "host_label": host_label,
@@ -383,7 +400,7 @@ def execute_capture(*, output: Path, host_label: str) -> None:
             },
             "build_wheel_sha256": wheel_hashes,
             "build_native_sha256": native_hashes,
-            "toolchain_pins": toolchain_pins(),
+            "toolchain_pins": toolchain_pins(suite="compact"),
             "sample_pruning": "forbidden",
             "noise_cv_max": 0.05,
             "environment": {
@@ -399,9 +416,15 @@ def execute_capture(*, output: Path, host_label: str) -> None:
         index = {
             "schema_id": "qwen-mm-d4-raw-capture-index-v1",
             "schema_version": 1,
+            "suite": "compact",
             "architecture_family": "arm64",
-            "build_labels": list(BUILD_LABELS),
-            "thread_budgets": list(THREAD_BUDGETS),
+            "build_labels": list(COMPACT_BUILD_LABELS),
+            "thread_budgets": list(COMPACT_THREAD_BUDGETS),
+            "cases_by_thread_budget": {
+                f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+                for budget in COMPACT_THREAD_BUDGETS
+            },
+            "subprocess_count": COMPACT_SUBPROCESS_COUNT,
             "files": sorted(files),
         }
         (artifact_root / "capture-index.json").write_text(
@@ -425,7 +448,9 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     if not args.execute:
-        print(json.dumps(build_plan(Path("/tmp/qwen-mm-d4-plan")), indent=2, sort_keys=True))
+        print(
+            json.dumps(compact_build_plan(Path("/tmp/qwen-mm-d4-plan")), indent=2, sort_keys=True)
+        )
         return
     execute_capture(output=args.output.expanduser().resolve(), host_label=args.host_label)
     print(f"wrote validated D4 ARM raw capture: {args.output.expanduser().resolve()}")

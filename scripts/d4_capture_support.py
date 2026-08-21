@@ -48,6 +48,24 @@ ARTIFACT_SCHEMA_VERSION = 1
 BUILD_LABELS = ("shipping", "native")
 THREAD_BUDGETS = (1, 2, 4, 8)
 PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
+COMPACT_BUILD_LABELS = ("shipping",)
+COMPACT_THREAD_BUDGETS = (1, 8)
+COMPACT_CASES_BY_THREAD_BUDGET = {
+    1: ("image24", "image1", "rgb24", "text_long"),
+    8: ("image24", "ragged24", "images_16"),
+}
+COMPACT_PROCESS_REPETITIONS = 3
+COMPACT_WARMUPS = 3
+COMPACT_MINIMUM_SAMPLES = 30
+COMPACT_MINIMUM_SECONDS = 5.0
+COMPACT_SUBPROCESS_COUNT = (
+    sum(len(cases) for cases in COMPACT_CASES_BY_THREAD_BUDGET.values())
+    * len(PROFILES)
+    * COMPACT_PROCESS_REPETITIONS
+    * 2
+)
+COMPACT_MODAL_CPU = 8.0
+COMPACT_MODAL_MEMORY_MIB = 16_384
 D4_TIMED_CASES = (
     "text_short",
     "text_long",
@@ -170,6 +188,55 @@ REQUIRED_BASE_MEMBERS = frozenset(
         "captures/shipping/repeat24_cached-unsupported.json",
     }
 )
+
+
+def required_capture_members(index: Mapping[str, Any]) -> frozenset[str]:
+    """Return the closed required inventory for the declared capture suite."""
+
+    suite = index.get("suite")
+    if suite is None:
+        return REQUIRED_BASE_MEMBERS
+    expected_cases = {
+        f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+        for budget in COMPACT_THREAD_BUDGETS
+    }
+    if (
+        suite != "compact"
+        or index.get("build_labels") != list(COMPACT_BUILD_LABELS)
+        or index.get("thread_budgets") != list(COMPACT_THREAD_BUDGETS)
+        or index.get("cases_by_thread_budget") != expected_cases
+        or index.get("subprocess_count") != COMPACT_SUBPROCESS_COUNT
+    ):
+        raise D4CaptureError("compact capture index changed the selected matrix")
+    members = {
+        "capture-index.json",
+        "provenance.json",
+        "builds/shipping/build.json",
+        "builds/shipping/capture.json",
+        "builds/shipping/failures.json",
+        "builds/shipping/environment-integrity.json",
+        "logs/shipping/build.log",
+        "logs/shipping/matrix.log",
+        "logs/shipping/sync.log",
+        *{
+            f"captures/shipping/t{budget}/{name}"
+            for budget in COMPACT_THREAD_BUDGETS
+            for name in ("noise.json", "report.md", "result.json")
+        },
+        *{
+            f"phase-c/shipping/{position}/{name}"
+            for position in ("pre", "post")
+            for name in ("report.json", "summary.md")
+        },
+        *{
+            f"phase-c/shipping/{position}/outputs/{name}"
+            for position in ("pre", "post")
+            for name in PHASE_C_OUTPUT_MEMBERS
+        },
+    }
+    return frozenset(members)
+
+
 REQUIRED_BASE_MEMBERS = frozenset(
     set(REQUIRED_BASE_MEMBERS)
     | {f"builds/{build_label}/capture.json" for build_label in BUILD_LABELS}
@@ -441,7 +508,12 @@ def verify_private_environment_integrity(
         )
 
 
-def validate_private_environment_integrity(value: Mapping[str, Any], *, build_label: str) -> None:
+def validate_private_environment_integrity(
+    value: Mapping[str, Any],
+    *,
+    build_label: str,
+    thread_budgets: Sequence[int] = THREAD_BUDGETS,
+) -> None:
     """Validate archived checkpoint evidence without trusting omitted paths."""
 
     expected_fields = {
@@ -546,7 +618,7 @@ def validate_private_environment_integrity(value: Mapping[str, Any], *, build_la
         "before-post-phase-c-v2",
         "after-post-phase-c-v2",
         "before-archive",
-        *(f"{position}-t{budget}" for position in ("before", "after") for budget in THREAD_BUDGETS),
+        *(f"{position}-t{budget}" for position in ("before", "after") for budget in thread_budgets),
     }
     if len(names) != len(set(names)) or set(names) != required:
         raise D4CaptureError(f"{build_label}: private environment checkpoints are incomplete")
@@ -590,6 +662,7 @@ def assert_build_variant_artifacts(
     *,
     native_hashes: Mapping[str, str],
     wheel_hashes: Mapping[str, str],
+    build_labels: Sequence[str] = BUILD_LABELS,
 ) -> None:
     """Authenticate both build lanes without requiring their bytes to differ.
 
@@ -601,19 +674,26 @@ def assert_build_variant_artifacts(
     lanes were actually built.
     """
 
-    if set(native_hashes) != set(BUILD_LABELS) or set(wheel_hashes) != set(BUILD_LABELS):
-        raise D4CaptureError("build artifact identities must cover shipping and native")
+    labels = tuple(build_labels)
+    if (
+        not labels
+        or len(labels) != len(set(labels))
+        or any(label not in BUILD_LABELS for label in labels)
+        or set(native_hashes) != set(labels)
+        or set(wheel_hashes) != set(labels)
+    ):
+        raise D4CaptureError("build artifact identities do not cover the selected build lanes")
     try:
         builds = plan["builds"]
     except (KeyError, TypeError) as error:
         raise D4CaptureError("build plan is missing shipping/native lanes") from error
-    if not isinstance(builds, Mapping) or set(builds) != set(BUILD_LABELS):
-        raise D4CaptureError("build plan must contain exactly shipping and native lanes")
+    if not isinstance(builds, Mapping) or set(builds) != set(labels):
+        raise D4CaptureError("build plan does not contain exactly the selected build lanes")
 
     venvs: set[Path] = set()
     cargo_targets: set[Path] = set()
     wheel_outputs: set[Path] = set()
-    for label in BUILD_LABELS:
+    for label in labels:
         try:
             lane = builds[label]
             venv = Path(lane["venv"])
@@ -657,10 +737,10 @@ def assert_build_variant_artifacts(
         venvs.add(venv)
         cargo_targets.add(cargo_target)
         wheel_outputs.add(output)
-    if any(len(values) != len(BUILD_LABELS) for values in (venvs, cargo_targets, wheel_outputs)):
-        raise D4CaptureError("shipping/native build lanes must use distinct paths")
+    if any(len(values) != len(labels) for values in (venvs, cargo_targets, wheel_outputs)):
+        raise D4CaptureError("selected build lanes must use distinct paths")
 
-    for label in BUILD_LABELS:
+    for label in labels:
         for name, hashes in (("native", native_hashes), ("wheel", wheel_hashes)):
             value = hashes[label]
             if (
@@ -968,6 +1048,7 @@ def validate_modal_vm_sandbox_attestation(
     attestation: Mapping[str, Any],
     lscpu_parse: str,
     recomputed_masks: Mapping[int, Sequence[int]],
+    suite: str = "exhaustive",
 ) -> dict[str, Any]:
     """Rebuild a VM-Sandbox attestation from its authenticated API and host facts."""
 
@@ -991,11 +1072,21 @@ def validate_modal_vm_sandbox_attestation(
     }
     if set(attestation) != fields:
         raise D4CaptureError("Modal VM Sandbox attestation shape changed")
-    expected_visible = list(range(int(MODAL_CPU)))
-    expected_masks = {budget: tuple(range(budget)) for budget in THREAD_BUDGETS}
+    if suite == "compact":
+        requested_cpu = COMPACT_MODAL_CPU
+        requested_memory_mib = COMPACT_MODAL_MEMORY_MIB
+        budgets = COMPACT_THREAD_BUDGETS
+    elif suite == "exhaustive":
+        requested_cpu = MODAL_CPU
+        requested_memory_mib = MODAL_MEMORY_MIB
+        budgets = THREAD_BUDGETS
+    else:
+        raise D4CaptureError(f"unsupported Modal D4 suite: {suite!r}")
+    expected_visible = list(range(int(requested_cpu)))
+    expected_masks = {budget: tuple(range(budget)) for budget in budgets}
     api_request = {
-        "cpu_request_and_hard_limit": [MODAL_CPU, MODAL_CPU],
-        "memory_request_and_hard_limit_mib": [MODAL_MEMORY_MIB, MODAL_MEMORY_MIB],
+        "cpu_request_and_hard_limit": [requested_cpu, requested_cpu],
+        "memory_request_and_hard_limit_mib": [requested_memory_mib, requested_memory_mib],
         "vm_runtime": True,
         "nonpreemptible": True,
         "single_use": True,
@@ -1011,8 +1102,8 @@ def validate_modal_vm_sandbox_attestation(
         attestation.get("mode") != MODAL_VM_SANDBOX_ATTESTATION_MODE
         or attestation.get("requested_resources_bound_by")
         != "Modal Sandbox.create request/limit tuples"
-        or attestation.get("requested_physical_cores") != MODAL_CPU
-        or attestation.get("requested_memory_mib") != MODAL_MEMORY_MIB
+        or attestation.get("requested_physical_cores") != requested_cpu
+        or attestation.get("requested_memory_mib") != requested_memory_mib
         or attestation.get("nonpreemptible") is not True
         or attestation.get("nonpreemptible_basis") != "Modal CPU-only Sandbox runtime semantics"
         or attestation.get("single_use_container") is not True
@@ -1023,16 +1114,14 @@ def validate_modal_vm_sandbox_attestation(
         or not isinstance(image_id, str)
         or not image_id.startswith("im-")
         or visible != expected_visible
-        or cpuset != "0-15"
+        or cpuset != f"0-{int(requested_cpu) - 1}"
         or attestation.get("api_resource_request") != api_request
         or {budget: tuple(mask) for budget, mask in recomputed_masks.items()} != expected_masks
         or tuple(physical_core_representatives(lscpu_parse, allowed_cpus=expected_visible))
         != tuple(expected_visible)
     ):
         raise D4CaptureError("Modal VM Sandbox resource/topology attestation is invalid")
-    expected_physical_masks = {
-        f"t{budget}": list(expected_masks[budget]) for budget in THREAD_BUDGETS
-    }
+    expected_physical_masks = {f"t{budget}": list(expected_masks[budget]) for budget in budgets}
     if attestation.get("physical_core_masks") != expected_physical_masks:
         raise D4CaptureError("Modal VM Sandbox physical-core masks are invalid")
     validate_local_linux_affinity_enforcement(
@@ -1492,11 +1581,23 @@ def validate_d4_result_contract(
     build_label: str,
     budget: int,
     affinity_cpus: Sequence[int] | None,
+    suite: str = "exhaustive",
 ) -> None:
     """Require one raw benchmark to match its complete frozen D4 coordinate."""
 
     protocol = result.get("protocol")
-    expected_cases = ["image24"] if budget in {2, 4} else list(D4_TIMED_CASES)
+    if suite == "compact":
+        if build_label != "shipping" or budget not in COMPACT_THREAD_BUDGETS:
+            raise D4CaptureError("compact raw benchmark has an out-of-plan coordinate")
+        expected_cases = list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+        process_repetitions = COMPACT_PROCESS_REPETITIONS
+        warmups = COMPACT_WARMUPS
+    elif suite == "exhaustive":
+        expected_cases = ["image24"] if budget in {2, 4} else list(D4_TIMED_CASES)
+        process_repetitions = 5
+        warmups = 3
+    else:
+        raise D4CaptureError(f"unsupported raw capture suite: {suite!r}")
     expected_affinity = None if affinity_cpus is None else list(affinity_cpus)
     if not isinstance(protocol, Mapping):
         raise D4CaptureError("raw benchmark protocol is missing")
@@ -1505,10 +1606,10 @@ def validate_d4_result_contract(
         "candidate_adapter": "qwen_mm.benchmark:create_adapter",
         "profiles": list(PROFILES),
         "cases": expected_cases,
-        "process_repetitions": 5,
+        "process_repetitions": process_repetitions,
         "random_seed": D4_RANDOM_SEED,
         "order": "randomized AB/BA per process repetition",
-        "warmups": 3,
+        "warmups": warmups,
         "minimum_samples": 30,
         "minimum_seconds": 5.0,
         "thread_regimes": [f"t{budget}"],
@@ -1536,7 +1637,10 @@ def validate_d4_result_contract(
     ):
         raise D4CaptureError("raw benchmark changed the frozen D4 protocol or matrix")
     pairs = result.get("pairs")
-    if not isinstance(pairs, list) or len(pairs) != len(PROFILES) * len(expected_cases) * 5:
+    if (
+        not isinstance(pairs, list)
+        or len(pairs) != len(PROFILES) * len(expected_cases) * process_repetitions
+    ):
         raise D4CaptureError("raw benchmark pair inventory is incomplete")
     phase_c = result.get("release_eligibility", {}).get("phase_c", {})
     if not isinstance(phase_c, Mapping) or phase_c.get("status") != "pass":
@@ -1544,7 +1648,11 @@ def validate_d4_result_contract(
 
 
 def _provenance_affinity_masks(
-    provenance: Mapping[str, Any], architecture: str
+    provenance: Mapping[str, Any],
+    architecture: str,
+    *,
+    thread_budgets: Sequence[int] = THREAD_BUDGETS,
+    suite: str = "exhaustive",
 ) -> dict[int, list[int] | None]:
     try:
         if architecture == "arm64":
@@ -1555,13 +1663,17 @@ def _provenance_affinity_masks(
             raw_masks = attestation["physical_core_masks"]
     except (KeyError, TypeError) as error:
         raise D4CaptureError("raw capture lacks physical-core affinity provenance") from error
-    if not isinstance(raw_masks, Mapping) or set(raw_masks) != {
-        f"t{budget}" for budget in THREAD_BUDGETS
-    }:
+    budgets = tuple(thread_budgets)
+    required_mask_names = {f"t{budget}" for budget in budgets}
+    if (
+        not isinstance(raw_masks, Mapping)
+        or not required_mask_names.issubset(raw_masks)
+        or set(raw_masks) not in (required_mask_names, {f"t{budget}" for budget in THREAD_BUDGETS})
+    ):
         raise D4CaptureError("raw capture physical-core mask inventory is incomplete")
     masks: dict[int, list[int] | None] = {}
     prior: list[int] = []
-    for budget in THREAD_BUDGETS:
+    for budget in budgets:
         raw = raw_masks[f"t{budget}"]
         if architecture == "arm64":
             if raw is not None:
@@ -1581,8 +1693,9 @@ def _provenance_affinity_masks(
     if architecture == "x86_64":
         try:
             visible = attestation["visible_affinity"]
+            raw_budgets = tuple(int(name.removeprefix("t")) for name in raw_masks)
             recomputed = physical_core_masks(
-                host["lscpu_parse"], allowed_cpus=visible, budgets=THREAD_BUDGETS
+                host["lscpu_parse"], allowed_cpus=visible, budgets=tuple(sorted(raw_budgets))
             )
             provider = provenance["provider"]
             if provider == "modal":
@@ -1591,6 +1704,7 @@ def _provenance_affinity_masks(
                         attestation=attestation,
                         lscpu_parse=host["lscpu_parse"],
                         recomputed_masks=recomputed,
+                        suite=suite,
                     )
                 else:
                     rebuilt_attestation = modal_resource_attestation(
@@ -1625,14 +1739,18 @@ def _provenance_affinity_masks(
         except (KeyError, TypeError) as error:
             raise D4CaptureError("raw capture CPU topology attestation is incomplete") from error
         if {budget: list(mask) for budget, mask in recomputed.items()} != {
-            budget: masks[budget] for budget in THREAD_BUDGETS
+            budget: list(raw_masks[f"t{budget}"]) for budget in recomputed
         } or rebuilt_attestation != attestation:
             raise D4CaptureError("raw capture physical-core masks differ from CPU topology")
     return masks
 
 
 def validate_archived_build(
-    files: Mapping[str, bytes], provenance: Mapping[str, Any], build_label: str
+    files: Mapping[str, bytes],
+    provenance: Mapping[str, Any],
+    build_label: str,
+    *,
+    thread_budgets: Sequence[int] = THREAD_BUDGETS,
 ) -> dict[str, Any]:
     """Re-hash the retained wheel and reconcile every recorded build identity."""
 
@@ -1651,7 +1769,9 @@ def validate_archived_build(
         raise D4CaptureError(f"{build_label}: archived build metadata is invalid") from error
     except KeyError as error:
         raise D4CaptureError(f"{build_label}: archived build evidence is incomplete") from error
-    validate_private_environment_integrity(environment_integrity, build_label=build_label)
+    validate_private_environment_integrity(
+        environment_integrity, build_label=build_label, thread_budgets=thread_budgets
+    )
     wheel_name = wheel_names[0]
     wheel_bytes = files[wheel_name]
     with tempfile.TemporaryDirectory(prefix="qwen-mm-d4-wheel-verify-") as temporary:
@@ -1820,7 +1940,14 @@ def _check_archive_limits(files: Mapping[str, bytes]) -> None:
 def create_capture_archive(files: Mapping[str, bytes]) -> bytes:
     """Create a bounded deterministic archive with D3-strength integrity data."""
 
-    missing = sorted(REQUIRED_BASE_MEMBERS - files.keys())
+    try:
+        index = json.loads(files["capture-index.json"])
+    except (KeyError, json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise D4CaptureError("raw capture index is missing or invalid") from error
+    if not isinstance(index, Mapping):
+        raise D4CaptureError("raw capture index must be an object")
+    required = required_capture_members(index)
+    missing = sorted(required - files.keys())
     if missing:
         raise D4CaptureError(f"raw capture artifact is incomplete: {missing}")
     if "artifact-manifest.json" in files:
@@ -1891,13 +2018,24 @@ def read_capture_archive(
     for name, data in files.items():
         if manifest["files"].get(name) != {"bytes": len(data), "sha256": sha256_bytes(data)}:
             raise D4CaptureError(f"raw capture member identity mismatch: {name}")
-    missing = sorted(REQUIRED_BASE_MEMBERS - files.keys())
+    required = required_capture_members(index)
+    missing = sorted(required - files.keys())
     if missing:
         raise D4CaptureError(f"raw capture artifact is incomplete: {missing}")
-    if index.get("build_labels") != list(BUILD_LABELS) or index.get("thread_budgets") != list(
-        THREAD_BUDGETS
+    suite = "compact" if index.get("suite") == "compact" else "exhaustive"
+    if suite == "compact":
+        retained_wheels = {
+            name for name in files if name.startswith("builds/shipping/") and name.endswith(".whl")
+        }
+        expected_inventory = set(required) | retained_wheels
+        if len(retained_wheels) != 1 or set(files) != expected_inventory:
+            raise D4CaptureError("compact raw capture inventory contains an out-of-plan member")
+    build_labels = COMPACT_BUILD_LABELS if suite == "compact" else BUILD_LABELS
+    thread_budgets = COMPACT_THREAD_BUDGETS if suite == "compact" else THREAD_BUDGETS
+    if index.get("build_labels") != list(build_labels) or index.get("thread_budgets") != list(
+        thread_budgets
     ):
-        raise D4CaptureError("raw capture index changed the frozen build/thread matrix")
+        raise D4CaptureError("raw capture index changed the selected build/thread matrix")
     declared = index.get("files")
     if not isinstance(declared, list) or set(declared) != set(files) - {"capture-index.json"}:
         raise D4CaptureError("raw capture index inventory mismatch")
@@ -1910,10 +2048,18 @@ def read_capture_archive(
     architecture = provenance.get("architecture_family")
     if index.get("architecture_family") != architecture or architecture not in {"arm64", "x86_64"}:
         raise D4CaptureError("raw capture architecture provenance is inconsistent")
-    affinity_masks = _provenance_affinity_masks(provenance, architecture)
+    if suite == "compact" and provenance.get("suite") != "compact":
+        raise D4CaptureError("compact raw capture lacks compact provenance")
+    affinity_masks = _provenance_affinity_masks(
+        provenance, architecture, thread_budgets=thread_budgets, suite=suite
+    )
     archived_builds = {
-        build_label: validate_archived_build(files, provenance, build_label)
-        for build_label in BUILD_LABELS
+        build_label: (
+            validate_archived_build(files, provenance, build_label, thread_budgets=thread_budgets)
+            if suite == "compact"
+            else validate_archived_build(files, provenance, build_label)
+        )
+        for build_label in build_labels
     }
     try:
         archived_plan = {
@@ -1923,7 +2069,7 @@ def read_capture_archive(
                     "create_venv": archived_builds[build_label]["commands"]["create_venv"],
                     "build": archived_builds[build_label]["commands"]["build_wheel"],
                 }
-                for build_label in BUILD_LABELS
+                for build_label in build_labels
             }
         }
         archived_native_hashes = provenance["build_native_sha256"]
@@ -1934,8 +2080,9 @@ def read_capture_archive(
         archived_plan,
         native_hashes=archived_native_hashes,
         wheel_hashes=archived_wheel_hashes,
+        build_labels=build_labels,
     )
-    for build_label in BUILD_LABELS:
+    for build_label in build_labels:
         build = archived_builds[build_label]
         phase_c_reports = validate_archived_phase_c(
             files,
@@ -1948,41 +2095,44 @@ def read_capture_archive(
         post_created = datetime.fromisoformat(phase_c_reports["post_created_at"])
         previous_result_created: datetime | None = None
         noise_by_budget: dict[int, Mapping[str, Any]] = {}
-        name = f"captures/{build_label}/repeat24_cached-unsupported.json"
-        try:
-            unsupported = json.loads(files[name])
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise D4CaptureError("cached unsupported record is invalid") from error
-        expected_coordinates = {
-            (profile, budget) for profile in PROFILES for budget in (1, PRODUCTION_THREAD_BUDGET)
-        }
-        coordinates = unsupported.get("coordinates")
-        if (
-            unsupported.get("schema_id") != "qwen-mm-d4-cached-unsupported-v1"
-            or unsupported.get("build_label") != build_label
-            or unsupported.get("case_id") != "repeat24_cached"
-            or unsupported.get("cache_mode") != "enabled"
-            or unsupported.get("support_status") != "unsupported"
-            or unsupported.get("support_reason") != "adapter_cache_supported_false"
-            or unsupported.get("timing_kind") != "unsupported"
-            or unsupported.get("timed_pair_count") != 0
-            or unsupported.get("timed_sample_count") != 0
-            or not isinstance(coordinates, list)
-            or {
-                (coordinate.get("profile_alias"), coordinate.get("thread_budget"))
-                for coordinate in coordinates
-                if isinstance(coordinate, Mapping)
+        if suite == "exhaustive":
+            name = f"captures/{build_label}/repeat24_cached-unsupported.json"
+            try:
+                unsupported = json.loads(files[name])
+            except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                raise D4CaptureError("cached unsupported record is invalid") from error
+            expected_coordinates = {
+                (profile, budget)
+                for profile in PROFILES
+                for budget in (1, PRODUCTION_THREAD_BUDGET)
             }
-            != expected_coordinates
-            or any(
-                not isinstance(coordinate, Mapping)
-                or coordinate.get("reference_cache_supported") is not False
-                or coordinate.get("candidate_cache_supported") is not False
-                for coordinate in coordinates
-            )
-        ):
-            raise D4CaptureError("cached row is not proven unsupported with zero timing")
-        for budget in THREAD_BUDGETS:
+            coordinates = unsupported.get("coordinates")
+            if (
+                unsupported.get("schema_id") != "qwen-mm-d4-cached-unsupported-v1"
+                or unsupported.get("build_label") != build_label
+                or unsupported.get("case_id") != "repeat24_cached"
+                or unsupported.get("cache_mode") != "enabled"
+                or unsupported.get("support_status") != "unsupported"
+                or unsupported.get("support_reason") != "adapter_cache_supported_false"
+                or unsupported.get("timing_kind") != "unsupported"
+                or unsupported.get("timed_pair_count") != 0
+                or unsupported.get("timed_sample_count") != 0
+                or not isinstance(coordinates, list)
+                or {
+                    (coordinate.get("profile_alias"), coordinate.get("thread_budget"))
+                    for coordinate in coordinates
+                    if isinstance(coordinate, Mapping)
+                }
+                != expected_coordinates
+                or any(
+                    not isinstance(coordinate, Mapping)
+                    or coordinate.get("reference_cache_supported") is not False
+                    or coordinate.get("candidate_cache_supported") is not False
+                    for coordinate in coordinates
+                )
+            ):
+                raise D4CaptureError("cached row is not proven unsupported with zero timing")
+        for budget in thread_budgets:
             noise_name = f"captures/{build_label}/t{budget}/noise.json"
             result_name = f"captures/{build_label}/t{budget}/result.json"
             try:
@@ -2037,13 +2187,17 @@ def read_capture_archive(
                 build_label=build_label,
                 budget=budget,
                 affinity_cpus=affinity_masks[budget],
+                suite=suite,
             )
             if (
                 result.get("release_eligibility", {}).get("phase_c", {}).get("report_sha256")
                 != phase_c_reports["pre"]
             ):
                 raise D4CaptureError("raw benchmark is not bound to its archived pre-Phase C run")
-            if noise != result_noise_assessment(result):
+            minimum_observations = (
+                COMPACT_PROCESS_REPETITIONS if suite == "compact" else NOISE_MIN_OBSERVATIONS
+            )
+            if noise != result_noise_assessment(result, minimum_observations=minimum_observations):
                 raise D4CaptureError("raw capture noise assessment differs from raw medians")
             noise_by_budget[budget] = noise
             assessments = noise.get("assessments")
@@ -2074,7 +2228,9 @@ def read_capture_archive(
         except (json.JSONDecodeError, UnicodeDecodeError) as error:
             raise D4CaptureError(f"{build_label}: capture failure report is invalid") from error
         expected_failures = capture_failure_report(
-            build_label=build_label, noise_by_budget=noise_by_budget
+            build_label=build_label,
+            noise_by_budget=noise_by_budget,
+            budgets=thread_budgets,
         )
         if observed_failures != expected_failures:
             raise D4CaptureError(
@@ -2118,15 +2274,20 @@ def write_capture_archive(
         raise
 
 
-def toolchain_pins() -> dict[str, Any]:
-    """Return inherited D3 image/resource pins for provenance and tests."""
+def toolchain_pins(*, suite: str = "exhaustive") -> dict[str, Any]:
+    """Return the image/resource pins for the selected capture suite."""
+
+    if suite not in {"exhaustive", "compact"}:
+        raise D4CaptureError(f"unsupported D4 suite: {suite}")
+    modal_cpu = COMPACT_MODAL_CPU if suite == "compact" else MODAL_CPU
+    modal_memory_mib = COMPACT_MODAL_MEMORY_MIB if suite == "compact" else MODAL_MEMORY_MIB
 
     return {
         "base_image": BASE_IMAGE,
         "rust": RUST_VERSION,
         "uv": UV_VERSION,
-        "modal_cpu": MODAL_CPU,
-        "modal_memory_mib": MODAL_MEMORY_MIB,
+        "modal_cpu": modal_cpu,
+        "modal_memory_mib": modal_memory_mib,
     }
 
 

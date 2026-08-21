@@ -29,6 +29,10 @@ for import_path in (SCRIPT_DIRECTORY, REFERENCE_SOURCE):
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
     CAPTURE_INPUT_PATHS,
+    COMPACT_BUILD_LABELS,
+    COMPACT_CASES_BY_THREAD_BUDGET,
+    COMPACT_PROCESS_REPETITIONS,
+    COMPACT_THREAD_BUDGETS,
     MODAL_VM_SANDBOX_ATTESTATION_MODE,
     PROFILES,
     THREAD_BUDGETS,
@@ -66,7 +70,37 @@ TOLERANCE_POLICY = (
     "exact integers; exact timed stability; pixel per-occurrence lossless=1e-6 "
     "otherwise workload float_atol"
 )
+TIMING_FLOOR_POLICY = (
+    "minimum_samples one-operation latency samples; supplemental individually clocked "
+    "exact-stability operations aggregate only to minimum_seconds and are excluded from "
+    "latency distributions"
+)
 PROTOCOL = {
+    "mode": "dedicated",
+    "process_repetitions": COMPACT_PROCESS_REPETITIONS,
+    "random_seed": RANDOM_SEED,
+    "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
+    "order": "randomized AB/BA per process repetition",
+    "warmups": 3,
+    "minimum_samples": 30,
+    "minimum_seconds": 5.0,
+    "timing_instrumentation": "none",
+    "timing_floor_policy": TIMING_FLOOR_POLICY,
+    "memory_pass": "separate from timing",
+    "profiles": list(PROFILES),
+    "cases": [
+        "image24",
+        "image1",
+        "rgb24",
+        "text_long",
+        "ragged24",
+        "images_16",
+    ],
+    "thread_budgets": list(COMPACT_THREAD_BUDGETS),
+    "production_thread_budget": 8,
+    "cache_policy": "cache workloads not selected in compact matrix",
+}
+LEGACY_PROTOCOL = {
     "mode": "dedicated",
     "process_repetitions": 5,
     "random_seed": RANDOM_SEED,
@@ -76,6 +110,7 @@ PROTOCOL = {
     "minimum_samples": 30,
     "minimum_seconds": 5.0,
     "timing_instrumentation": "none",
+    "timing_floor_policy": TIMING_FLOOR_POLICY,
     "memory_pass": "separate from timing",
     "profiles": list(PROFILES),
     "cases": list(CASES),
@@ -83,6 +118,18 @@ PROTOCOL = {
     "production_thread_budget": 8,
     "cache_policy": "repeat24_cached unsupported/non-gating; uncached timing forbidden",
 }
+
+
+def _suite(provenance: Mapping[str, Any]) -> str:
+    return "compact" if provenance.get("suite") == "compact" else "exhaustive"
+
+
+def _budgets(provenance: Mapping[str, Any]) -> tuple[int, ...]:
+    return COMPACT_THREAD_BUDGETS if _suite(provenance) == "compact" else THREAD_BUDGETS
+
+
+def _build_labels(provenance: Mapping[str, Any]) -> tuple[str, ...]:
+    return COMPACT_BUILD_LABELS if _suite(provenance) == "compact" else BUILD_LABELS
 
 
 class D4EvidenceError(RuntimeError):
@@ -309,6 +356,9 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
         "noise_cv_max",
         "environment",
     }
+    compact = value.get("suite") == "compact"
+    if compact:
+        common.add("suite")
     if architecture == "arm64":
         fields = common | {"host_label"}
     else:
@@ -326,6 +376,7 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
         or provenance["claim"]
         != "raw controlled-host input for the separate D4 certification evaluator"
         or provenance["architecture_family"] != architecture
+        or (compact and provenance["suite"] != "compact")
         or provenance["sample_pruning"] != "forbidden"
         or provenance["noise_cv_max"] != 0.05
     ):
@@ -359,12 +410,20 @@ def _validate_provenance(value: Mapping[str, Any], architecture: str) -> Mapping
             _string(local["host_label"], "x86_64.local_linux.host_label")
             _string(local["allocation_id"], "x86_64.local_linux.allocation_id")
         expected_pins = (
-            toolchain_pins() if provenance["provider"] == "modal" else local_linux_toolchain_pins()
+            toolchain_pins(suite="compact" if compact else "exhaustive")
+            if provenance["provider"] == "modal"
+            else local_linux_toolchain_pins()
         )
         if provenance["toolchain_pins"] != expected_pins:
             _fail(f"x86_64 {provenance['provider']} toolchain/resource pins changed")
+    elif provenance["toolchain_pins"] != toolchain_pins(
+        suite="compact" if compact else "exhaustive"
+    ):
+        _fail("arm64 toolchain/resource pins changed")
     for field in ("build_wheel_sha256", "build_native_sha256"):
-        mapping = _object(provenance[field], f"{architecture}.{field}", set(BUILD_LABELS))
+        mapping = _object(
+            provenance[field], f"{architecture}.{field}", set(_build_labels(provenance))
+        )
         for label, raw_digest in mapping.items():
             _sha(raw_digest, f"{architecture}.{field}.{label}")
     _object(
@@ -414,6 +473,8 @@ def _archive(path: Path, expected_architecture: str) -> dict[str, Any]:
 
 
 def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
+    suite = _suite(provenance)
+    budgets = _budgets(provenance)
     if architecture == "arm64":
         raw = _object(
             provenance["host"],
@@ -432,9 +493,13 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
             },
         )
         affinity = _object(raw["affinity"], "arm64.host.affinity", {"mode", "reason", "masks"})
-        if affinity["mode"] != "unavailable" or affinity["masks"] != {
-            f"t{budget}": None for budget in THREAD_BUDGETS
-        }:
+        raw_masks = affinity["masks"]
+        expected_compact_masks = {f"t{budget}": None for budget in budgets}
+        expected_full_masks = {f"t{budget}": None for budget in THREAD_BUDGETS}
+        if affinity["mode"] != "unavailable" or raw_masks not in (
+            expected_compact_masks,
+            expected_full_masks,
+        ):
             _fail("ARM capture falsely claims process affinity")
         topology = {
             "cpu_model": raw["cpu_model"],
@@ -444,7 +509,7 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
         provider = "local"
         instance_type = _string(provenance["host_label"], "arm64.host_label")
         allocation_id = _string(raw["hostname"], "arm64.hostname")
-        masks = affinity["masks"]
+        masks = {f"t{budget}": None for budget in budgets}
         cgroup = {"mode": "not-applicable-native-macos"}
         allocated_cpu_count = _integer(raw["physical_cpu_count"], "arm64 physical CPUs", minimum=8)
         allocated_memory = _integer(raw["memory_bytes"], "arm64 memory", minimum=1)
@@ -516,8 +581,13 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
             "x86_64.host.resource_attestation",
             attestation_fields,
         )
-        recomputed_masks = _provenance_affinity_masks(provenance, architecture)
-        masks = {f"t{budget}": recomputed_masks[budget] for budget in THREAD_BUDGETS}
+        recomputed_masks = _provenance_affinity_masks(
+            provenance,
+            architecture,
+            thread_budgets=budgets,
+            suite=suite,
+        )
+        masks = {f"t{budget}": recomputed_masks[budget] for budget in budgets}
         topology = {"lscpu": raw["lscpu"], "lscpu_parse": raw["lscpu_parse"]}
         cgroup = {"mode": attestation["mode"], "limits": attestation["cgroup_limits"]}
         if provider == "modal":
@@ -526,9 +596,9 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
                 or attestation["single_use_container"] is not True
             ):
                 _fail("x86 capture lacks nonpreemptible single-use placement")
+            requested_cpu_count = int(attestation["requested_physical_cores"])
             instance_type = (
-                f"cpu-{attestation['requested_physical_cores']}-"
-                f"memory-{attestation['requested_memory_mib']}MiB"
+                f"cpu-{requested_cpu_count}-memory-{attestation['requested_memory_mib']}MiB"
             )
             modal = provenance["modal"]
             modal_environment = modal["environment"]
@@ -544,9 +614,7 @@ def _host(provenance: Mapping[str, Any], architecture: str) -> dict[str, Any]:
                     _string(raw["hostname"], "x86_64.hostname"),
                 )
             )
-            allocated_cpu_count = _integer(
-                attestation["requested_physical_cores"], "x86 allocated CPUs", minimum=8
-            )
+            allocated_cpu_count = requested_cpu_count
             allocated_memory = (
                 _integer(attestation["requested_memory_mib"], "x86 allocated memory", minimum=1)
                 * 1024
@@ -767,12 +835,19 @@ def _phase_c_record(
 
 
 def _assert_raw_protocol(
-    result: Mapping[str, Any], *, architecture: str, build: str, budget: int
+    result: Mapping[str, Any], *, architecture: str, build: str, budget: int, suite: str
 ) -> None:
     protocol = result.get("protocol")
-    expected_cases = (
-        ["image24"] if budget in {2, 4} else [case for case in CASES if case != "repeat24_cached"]
-    )
+    if suite == "compact":
+        expected_cases = list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+        expected_repetitions = COMPACT_PROCESS_REPETITIONS
+    else:
+        expected_cases = (
+            ["image24"]
+            if budget in {2, 4}
+            else [case for case in CASES if case != "repeat24_cached"]
+        )
+        expected_repetitions = 5
     if not isinstance(protocol, Mapping) or (
         result.get("mode") != "dedicated"
         or result.get("architecture_family") != architecture
@@ -780,7 +855,7 @@ def _assert_raw_protocol(
         or protocol.get("candidate_adapter") != "qwen_mm.benchmark:create_adapter"
         or protocol.get("profiles") != list(PROFILES)
         or protocol.get("cases") != expected_cases
-        or protocol.get("process_repetitions") != 5
+        or protocol.get("process_repetitions") != expected_repetitions
         or protocol.get("random_seed") != RANDOM_SEED
         or protocol.get("order") != "randomized AB/BA per process repetition"
         or protocol.get("warmups") != 3
@@ -1016,6 +1091,7 @@ def _observations(
     architecture: str,
     build: str,
     results: Mapping[int, Mapping[str, Any]],
+    suite: str = "exhaustive",
 ) -> list[dict[str, Any]]:
     observations: list[dict[str, Any]] = []
     by_coordinate: dict[tuple[str, str, int], list[Mapping[str, Any]]] = {}
@@ -1023,6 +1099,58 @@ def _observations(
         for raw_pair in result["pairs"]:
             coordinate = (raw_pair["profile_alias"], raw_pair["case_id"], budget)
             by_coordinate.setdefault(coordinate, []).append(raw_pair)
+    if suite == "compact":
+        expected = {
+            (profile, case_id, budget)
+            for profile in PROFILES
+            for budget in COMPACT_THREAD_BUDGETS
+            for case_id in COMPACT_CASES_BY_THREAD_BUDGET[budget]
+        }
+        if set(by_coordinate) != expected:
+            _fail(
+                "compact raw benchmark matrix is incomplete "
+                f"(missing={sorted(expected - set(by_coordinate))}, "
+                f"extra={sorted(set(by_coordinate) - expected)})"
+            )
+        for profile in PROFILES:
+            for budget in COMPACT_THREAD_BUDGETS:
+                for case_id in COMPACT_CASES_BY_THREAD_BUDGET[budget]:
+                    pairs = by_coordinate[(profile, case_id, budget)]
+                    if len(pairs) != COMPACT_PROCESS_REPETITIONS:
+                        _fail(
+                            f"{profile}/{case_id}/t{budget} does not contain "
+                            f"{COMPACT_PROCESS_REPETITIONS} pairs"
+                        )
+                    order_seeds = {pair["order_seed"] for pair in pairs}
+                    if len(order_seeds) != 1:
+                        _fail(f"{profile}/{case_id}/t{budget} changed its order seed")
+                    observations.append(
+                        {
+                            "profile": profile,
+                            "case_id": case_id,
+                            "cache_mode": "disabled",
+                            "thread_budget": budget,
+                            "order_seed": next(iter(order_seeds)),
+                            "work_units": WORK_UNITS[case_id],
+                            "support_status": "supported",
+                            "support_reason": None,
+                            "timing_kind": "uncached",
+                            "pairs": [
+                                _pair(
+                                    pair,
+                                    architecture=architecture,
+                                    build=build,
+                                    profile=profile,
+                                    case_id=case_id,
+                                    budget=budget,
+                                )
+                                for pair in sorted(pairs, key=lambda item: item["repetition"])
+                            ],
+                        }
+                    )
+        return observations
+    if suite != "exhaustive":
+        _fail(f"unsupported D4 evidence suite: {suite}")
     unsupported = _json_member(files, f"captures/{build}/repeat24_cached-unsupported.json")
     unsupported_coordinates = unsupported.get("coordinates")
     if not isinstance(unsupported_coordinates, list):
@@ -1125,24 +1253,35 @@ def _capture(
     files = archive["files"]
     provenance = archive["provenance"]
     architecture = provenance["architecture_family"]
+    suite = _suite(provenance)
+    budgets = _budgets(provenance)
     raw_build = _json_member(files, f"builds/{build_label}/build.json")
+    capture_fields = {
+        "schema_id",
+        "schema_version",
+        "build_label",
+        "executed",
+        "created_at",
+        "phase_c_pre_and_post",
+        "sample_pruning",
+        "plan",
+    }
+    if suite == "compact":
+        capture_fields.add("suite")
     capture_metadata = _object(
         _json_member(files, f"builds/{build_label}/capture.json"),
         f"builds.{build_label}.capture",
-        {
-            "schema_id",
-            "schema_version",
-            "build_label",
-            "executed",
-            "created_at",
-            "phase_c_pre_and_post",
-            "sample_pruning",
-            "plan",
-        },
+        capture_fields,
+    )
+    expected_capture_schema = (
+        "qwen-mm-d4-compact-build-capture-v1"
+        if suite == "compact"
+        else "qwen-mm-d4-build-capture-v1"
     )
     if (
-        capture_metadata["schema_id"] != "qwen-mm-d4-build-capture-v1"
+        capture_metadata["schema_id"] != expected_capture_schema
         or capture_metadata["schema_version"] != 1
+        or (suite == "compact" and capture_metadata["suite"] != "compact")
         or capture_metadata["build_label"] != build_label
         or capture_metadata["executed"] is not True
         or capture_metadata["phase_c_pre_and_post"] is not True
@@ -1174,10 +1313,14 @@ def _capture(
             position="pre",
             destination=pre_root,
         )
-        for budget in THREAD_BUDGETS:
+        for budget in budgets:
             result = _json_member(files, f"captures/{build_label}/t{budget}/result.json")
             _assert_raw_protocol(
-                result, architecture=architecture, build=build_label, budget=budget
+                result,
+                architecture=architecture,
+                build=build_label,
+                budget=budget,
+                suite=suite,
             )
             runtime = (
                 result.get("protocol", {}).get("candidate_identity", {}).get("runtime_identity")
@@ -1273,13 +1416,17 @@ def _capture(
         "raw_archive_bytes": archive["bytes"],
         "raw_manifest_sha256": archive["manifest_sha256"],
         "raw_provenance_sha256": archive["provenance_sha256"],
-        "protocol": dict(PROTOCOL),
+        "protocol": dict(PROTOCOL if suite == "compact" else LEGACY_PROTOCOL),
         "phase_c": {
             "before": _phase_c_record(pre_report, files[pre_name], identity, build),
             "after": _phase_c_record(post_report, files[post_name], identity, build),
         },
         "observations": _observations(
-            files, architecture=architecture, build=build_label, results=results
+            files,
+            architecture=architecture,
+            build=build_label,
+            results=results,
+            suite=suite,
         ),
     }
 
@@ -1290,10 +1437,15 @@ def rebuild_from_archives(arm64_zip: Path, x86_64_zip: Path, *, created_at: str)
         _archive(x86_64_zip.resolve(), "x86_64"),
     ]
     identity = _identity([archive["provenance"] for archive in archives])
+    suites = {_suite(archive["provenance"]) for archive in archives}
+    if len(suites) != 1:
+        _fail("cross-host capture suite drifted")
+    suite = next(iter(suites))
+    build_labels = COMPACT_BUILD_LABELS if suite == "compact" else BUILD_LABELS
     captures = [
         _capture(archive, build_label=build, identity=identity)
         for archive in archives
-        for build in BUILD_LABELS
+        for build in build_labels
     ]
     return build_certification(captures, current_identity=identity, created_at=created_at)
 

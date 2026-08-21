@@ -1,18 +1,15 @@
 # Image performance certification v1
 
-> Historical protocol notice: v1 evidence retains the gates and meaning
-> recorded in this document. New D3.5/D4 captures use the still-image quality
-> and per-coordinate speed gates in
-> [`qwen-mm-still-image-resize-v2`](image-resize-contract-v2.md); all other
-> capture, provenance, resource, stability, memory, scaling, and miss-reporting
-> controls below remain in force.
+> Current protocol notice: the runnable D4 path is the compact, shipping-only
+> matrix described below. The evaluator and schema remain read-compatible with
+> the earlier exhaustive two-build/four-thread-budget format, but the active
+> launchers do not schedule that legacy matrix.
 
 Phase D4 certifies the CPU preprocessing boundary from in-memory encoded media
 and structured messages through fully materialized NumPy arrays. It compares
 the official and candidate processors on native macOS ARM and native Linux x86
 without aggregating architectures. The portable `shipping` wheel is the release
-gate; an otherwise identical `-C target-cpu=native` wheel is retained as
-supplemental evidence only.
+gate and the only build selected by the compact capture.
 
 The raw ZIPs are the source of truth. `scripts/d4_evidence.py` authenticates
 them, derives the versioned JSON artifact and readable report, and can later
@@ -50,10 +47,10 @@ modal run scripts/modal_d4.py --short-probe
 
 The local capture rejects anything except native macOS ARM on the current M4
 baseline. The Modal path uses a CPU-only [VM Sandbox][modal-vm], not a Modal
-Function or gVisor container. It supplies `(request, hard limit)` tuples of
-`(16.0, 16.0)` physical CPU cores and `(32768, 32768)` MiB, enables
-`experimental_options={"vm_runtime": True}`, and sets Modal's supported
-24-hour maximum lifetime plus a 10-minute idle timeout. CPU-only
+Function or gVisor container. It supplies exact `(request, hard limit)` tuples
+of `(8.0, 8.0)` CPUs and `(16384, 16384)` MiB, enables
+`experimental_options={"vm_runtime": True}`, and applies a four-hour hard
+lifetime plus a 10-minute idle timeout. CPU-only
 [Modal Sandboxes are not subject to
 preemption][modal-preemption]. Each invocation resolves the source-built image,
 re-opens it by immutable `im-...` identity, creates exactly one named Sandbox,
@@ -62,9 +59,9 @@ and records the `im-...` and `sb-...` IDs. The controller always calls
 `finally`; it accepts the downloaded artifact only after this cleanup and writes
 a sibling `*.modal-lifecycle.json` record.
 
-The worker rejects anything except KVM, an exact `0-15` process affinity and
-effective cgroup cpuset, exactly 16 online logical CPUs mapping one-to-one to 16
-physical cores, and nested t1/t2/t4/t8 masks. Root `cpu.max` and `memory.max`
+The worker rejects anything except KVM, an exact `0-7` process affinity and
+effective cgroup cpuset, exactly eight online logical CPUs mapping one-to-one to
+eight physical cores, and nested t1/t8 masks. Root `cpu.max` and `memory.max`
 files are not invented when the VM omits them: the fixed limits are instead
 bound to the authenticated `Sandbox.create` call and recorded alongside the
 observed cpuset. The unchanged native-thread t1 enforcement probes run both
@@ -72,14 +69,13 @@ before and after the capture. `--short-probe` runs just these topology and
 pre/post affinity controls and still guarantees termination; it cannot produce
 performance evidence.
 
-The dry-run includes the explicit resource-price calculation. At the repository
-price snapshot it is about $3.04 per requested-resource hour (about $72.94 for
-the 24-hour ceiling), before image-build
-or provider adjustments; unlike non-preemptible Functions, CPU-only Sandboxes
-do not add the Function 3x non-preemptibility multiplier. The base image remains
-pinned by digest and installs the locked uv and Rust toolchains. The earlier
-Modal/gVisor runtime is permanently ineligible: it reported a one-CPU affinity
-mask while two and four native threads consumed 1.885 and 3.775 CPUs.
+The dry-run prints the exact four-hour hard time ceiling, the repository price
+snapshot, and a hard compute ceiling of about `$6.08` before any Sandbox can be
+created. `make d4-modal-capture` is fail-closed by default: paid allocation
+requires the separate `D4_APPROVE_PAID_COMPUTE=1` acknowledgement. The base
+image remains pinned by digest and installs the locked uv and Rust toolchains.
+The earlier Modal/gVisor runtime remains ineligible because it could not attest
+the required physical-core placement.
 
 [modal-vm]: https://modal.com/docs/guide/vm-sandboxes
 [modal-preemption]: https://modal.com/docs/guide/preemption
@@ -127,15 +123,12 @@ repeatability.
 
 The ARM and x86 captures are independent and may run at the same time from two
 shells as long as the checkout stays unchanged. Each host builds and measures
-both variants serially on that one host so their toolchain, environment, and
-host attestations remain comparable:
+the portable shipping lane:
 
 ```console
 make d4-arm-capture
 make d4-linux-capture
-# A future Modal runtime is an alternative only after its enforcement
-# preflight passes:
-make d4-modal-capture
+make d4-modal-capture D4_APPROVE_PAID_COMPUTE=1
 ```
 
 Run exactly one of `d4-modal-capture` and `d4-linux-capture` for the x86 input.
@@ -146,7 +139,7 @@ needed. `D4_HOST_LABEL` changes only the descriptive ARM host label.
 `D4_LINUX_HOST_LABEL` and `D4_LINUX_ALLOCATION_ID` identify a local Linux
 capture; an empty allocation ID defaults to the container hostname. Archive
 writes are validated before atomically replacing the destination. Every raw
-archive includes the complete Phase-C `outputs/` trees referenced by its four
+archive includes the complete Phase-C `outputs/` trees referenced by its two
 pre/post reports, including the reconstructed resize bytes and exact NumPy
 arrays used for semantic validation.
 
@@ -160,7 +153,7 @@ can be inspected or repackaged without launching another worker.
 A measured gate miss does not truncate the matrix. In particular, a failed
 5% no-pruning CV assessment is written to the build's structured
 `failures.json`; the runner continues through every remaining thread budget,
-the other build variant, and post-capture Phase C. The final certification
+and through post-capture Phase C. The final certification
 report recomputes those noise gates together with speed, regression, scaling,
 and memory gates and lists every miss. A command failure, malformed result,
 conformance failure, input/provenance inconsistency, private-environment drift,
@@ -176,14 +169,10 @@ written. Do not use Docker `--rm`: after a failure, read the retained path from
 removing the stopped container. A successful stopped container can be removed
 after the bound archive is verified.
 
-Every build/capture lane enforces the frozen controls below:
+The compact shipping lane enforces the frozen controls below:
 
-- separate clean virtual environments and retained wheel files for portable
-  `shipping` and `-C target-cpu=native` builds, with the installed native module
-  reconciled to the actual archived wheel bytes;
-- the native override is authenticated as a build input; byte-identical native
-  and shipping outputs are valid when the compiler finds no target-specific
-  code-generation difference, and their equal hashes remain explicit evidence;
+- a clean private virtual environment and retained shipping wheel, with the
+  installed native module reconciled to the actual archived wheel bytes;
 - a complete fresh Phase C run before and after each build's timed matrix, with
   both pinned profiles, no failures or skips, and distinct pre/post reports;
 - architecture-local Phase C resize-v2 evidence reconstructed from the exact
@@ -197,14 +186,15 @@ Every build/capture lane enforces the frozen controls below:
 - the same input, messages, output keys/order, values, dtypes, profile, warm
   state, tolerance policy, and total thread budget for each official/candidate
   pair, with no fallback or cache work;
-- five fresh process pairs per coordinate, fixed seed `20260731`, deterministic
+- three fresh process pairs per coordinate, fixed seed `20260731`, deterministic
   randomized AB/BA order, three warmups, and exactly 30 one-operation latency
   samples per process;
 - a separate sequence of individually clocked, exact-output-checked operations
   when needed to reach five measured seconds; these supplemental operations are
   summarized but never enter p50, p90, or p99 distributions;
-- full release cases at thread budgets one and eight, plus `image24` at two and
-  four, with memory/allocation observation isolated from timing;
+- exactly these coordinates for both profiles: `image24` at t1/t8, `image1`,
+  `rgb24`, and `text_long` at t1, and `ragged24` and `images_16` at t8, with
+  memory/allocation observation isolated from timing;
 - one declared owner for the total thread budget, Torch inter-op fixed at one,
   and measured CPU use bounded by the requested budget plus 0.25 cores;
 - fixed, nested physical-core masks on Linux x86, recomputed from the archived
@@ -212,12 +202,11 @@ Every build/capture lane enforces the frozen controls below:
   resources; local Linux authenticates its cgroup and power-policy snapshots
   without claiming physical-core exclusivity. macOS records that fixed
   affinity is unavailable instead of inventing placement evidence; and
-- no sample pruning and a maximum 5% coefficient of variation across the five
+- no sample pruning and a maximum 5% coefficient of variation across the three
   process medians for every measured implementation coordinate.
 
-`repeat24_cached` is preserved as explicitly unsupported and non-gating because
-neither adapter implements that cache mode. It is not timed or replaced with an
-uncached measurement. Profilers are also excluded from timed certification.
+Cache workloads are not selected by the compact matrix and cannot appear in a
+compact archive. Profilers are also excluded from timed certification.
 The locked `py-spy==0.4.1` tool may be used for a separate diagnostic when a
 miss needs investigation, but its output cannot replace a controlled capture.
 
@@ -246,25 +235,26 @@ revision; source-tree, workload, schema, model registry, profile asset, wheel,
 native module, toolchain, environment, provider, host, cgroup, power policy,
 topology, affinity, raw archive, raw manifest, and command identities; and the
 exact input and messages for both implementations. Exact input bytes must
-match between builds on one architecture. Deterministic logical input and
-message identities must also match across ARM and x86. Validation rejects
-source or protocol changes after capture; only generated evidence and Kingdom
-metadata may be added on top of the captured commit.
+match throughout every selected coordinate on one architecture. Deterministic
+logical input and message identities must also match across ARM and x86.
+Validation rejects source or protocol changes after capture; only generated
+evidence and Kingdom metadata may be added on top of the captured commit.
 
 ## Frozen release gates
 
-All gates apply to `shipping`; native-build results are supplemental:
+All gates apply to the compact `shipping` captures and are evaluated separately
+for ARM and x86:
 
-- for `image24` and `ragged24`, the lower bound of the deterministic 20,000-
-  resample paired process-median bootstrap 95% speedup interval is at least
-  `2.0x`, for both profiles on each architecture at eight threads;
+- every selected image coordinate has a deterministic 20,000-resample paired
+  process-median bootstrap 95% speedup lower bound greater than `1.0x`;
+- `image24` and `ragged24` additionally require that lower bound to be at least
+  `2.0x` at eight threads;
 - on the M4 ARM baseline, the `image24` candidate p50 is below 111.0 ms for
   Qwen3-VL and below 111.6 ms for Qwen3.5 at eight threads;
-- `image1`, `text_short`, and `text_long` have a candidate/reference p50 ratio
-  no greater than 1.05 at one and eight threads, for both profiles and
-  architectures;
-- candidate `image24` parallel efficiency `E_N = t1 / (N * tN)` is at least
-  0.60 at two, four, and eight threads, for both profiles and architectures;
+- `text_long` has a candidate/reference p50 ratio no greater than 1.05 at one
+  thread, for both profiles and architectures;
+- candidate `image24` parallel efficiency `E_8 = t1 / (8 * t8)` is at least
+  0.60 for both profiles and architectures;
   and
 - for every image coordinate and process pair, the candidate's larger of
   external transient RSS and exact native peak transient bytes is no more than

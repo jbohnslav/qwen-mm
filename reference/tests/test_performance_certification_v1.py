@@ -240,6 +240,8 @@ def observation(
     profile: str,
     case_id: str,
     thread_budget: int,
+    *,
+    process_repetitions: int = 5,
 ) -> dict[str, Any]:
     coordinate = f"{profile}/{case_id}/t{thread_budget}"
     cache_mode = (
@@ -266,8 +268,13 @@ def observation(
             timing_kind="unsupported",
         )
         return base
-    base["order_seed"] = certification._expected_order_seed(profile, case_id, thread_budget)
-    for repetition in range(5):
+    base["order_seed"] = certification._expected_order_seed(
+        profile,
+        case_id,
+        thread_budget,
+        process_repetitions=process_repetitions,
+    )
+    for repetition in range(process_repetitions):
         implementations = {
             name: implementation_record(
                 architecture,
@@ -285,7 +292,9 @@ def observation(
                     f"{architecture}/{build}/{profile}/{case_id}/t{thread_budget}/r{repetition}"
                 ),
                 "repetition": repetition,
-                "order": certification._randomized_orders(base["order_seed"])[repetition],
+                "order": certification._randomized_orders(
+                    base["order_seed"], repetitions=process_repetitions
+                )[repetition],
                 "input_sha256": digest(f"input/{coordinate}"),
                 "logical_input_sha256": digest(f"logical-input/{coordinate}"),
                 "messages_sha256": digest(f"messages/{coordinate}"),
@@ -388,6 +397,34 @@ def captures(identity: dict[str, str]) -> list[dict[str, Any]]:
     ]
 
 
+def compact_captures(identity: dict[str, str]) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    for architecture in certification.ARCHITECTURES:
+        value = capture(architecture, "shipping", identity)
+        value["protocol"] = {
+            **protocol(certification.RANDOM_SEED),
+            "process_repetitions": 3,
+            "cases": list(certification.COMPACT_CASES),
+            "thread_budgets": list(certification.COMPACT_THREAD_BUDGETS),
+            "cache_policy": "cache workloads not selected in compact matrix",
+        }
+        value["observations"] = [
+            observation(
+                architecture,
+                "shipping",
+                profile,
+                case_id,
+                thread_budget,
+                process_repetitions=3,
+            )
+            for profile, case_id, thread_budget in sorted(
+                certification._expected_coordinates(process_repetitions=3)
+            )
+        ]
+        output.append(value)
+    return output
+
+
 class PerformanceCertificationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -428,6 +465,29 @@ class PerformanceCertificationTests(unittest.TestCase):
         second = certification._bootstrap([1.9, 2.0, 2.1, 2.2, 2.3], seed=71)
         self.assertEqual(first, second)
         self.assertEqual(first["resamples"], 20_000)
+
+    def test_compact_shipping_archives_validate_and_report_every_selected_gate(self) -> None:
+        artifact = build_certification(
+            compact_captures(self.identity),
+            current_identity=self.identity,
+            created_at="2026-08-21T00:00:00Z",
+        )
+        validate_certification(artifact, current_identity=self.identity)
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        jsonschema.validate(artifact, schema)
+        self.assertEqual(
+            [capture["capture_id"] for capture in artifact["captures"]],
+            ["arm64-shipping", "x86_64-shipping"],
+        )
+        gate_ids = {gate["gate_id"] for gate in artifact["gates"]}
+        self.assertIn("speed/arm64/qwen3-vl-8b/image1/t1", gate_ids)
+        self.assertIn("regression/arm64/qwen3-vl-8b/text_long/t1", gate_ids)
+        self.assertIn("efficiency/x86_64/qwen3.5-9b/image24/t8", gate_ids)
+        self.assertIn("memory/x86_64/qwen3.5-9b/images_16/t8", gate_ids)
+        self.assertFalse(any("/native/" in gate_id for gate_id in gate_ids))
+        report = render_report(artifact, current_identity=self.identity)
+        self.assertIn("compact shipping-only matrix", report)
+        self.assertIn("Certification missed", report)
 
     def test_noise_miss_is_reported_after_the_complete_matrix(self) -> None:
         noisy_captures = captures(self.identity)

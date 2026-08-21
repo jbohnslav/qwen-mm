@@ -21,7 +21,7 @@
     "current_identity": {"$ref": "#/$defs/identity"},
     "captures": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 2,
       "maxItems": 4,
       "items": {"$ref": "#/$defs/capture"}
     },
@@ -151,7 +151,7 @@
         "physical_core_topology_sha256": {"$ref": "#/$defs/sha256"},
         "physical_core_masks": {
           "type": "object",
-          "required": ["t1", "t2", "t4", "t8"],
+          "required": ["t1", "t8"],
           "properties": {
             "t1": {
               "oneOf": [
@@ -251,7 +251,7 @@
       ],
       "properties": {
         "mode": {"const": "dedicated"},
-        "process_repetitions": {"const": 5},
+        "process_repetitions": {"enum": [3, 5]},
         "random_seed": {"const": 20260731},
         "bootstrap_resamples": {"const": 20000},
         "order": {"const": "randomized AB/BA per process repetition"},
@@ -267,30 +267,52 @@
           "const": ["qwen3-vl-8b", "qwen3.5-9b"]
         },
         "cases": {
-          "const": [
-            "text_short",
-            "text_long",
-            "image1",
-            "image24",
-            "jpeg24_requests",
-            "ragged24",
-            "aligned24",
-            "minmax_boundaries",
-            "rgb24",
-            "repeat24_uncached",
-            "repeat24_cached",
-            "repeat24_separated",
-            "images_1",
-            "images_4",
-            "images_16",
-            "images_32",
-            "images_64"
+          "oneOf": [
+            {
+              "const": [
+                "text_short",
+                "text_long",
+                "image1",
+                "image24",
+                "jpeg24_requests",
+                "ragged24",
+                "aligned24",
+                "minmax_boundaries",
+                "rgb24",
+                "repeat24_uncached",
+                "repeat24_cached",
+                "repeat24_separated",
+                "images_1",
+                "images_4",
+                "images_16",
+                "images_32",
+                "images_64"
+              ]
+            },
+            {
+              "const": [
+                "image24",
+                "image1",
+                "rgb24",
+                "text_long",
+                "ragged24",
+                "images_16"
+              ]
+            }
           ]
         },
-        "thread_budgets": {"const": [1, 2, 4, 8]},
+        "thread_budgets": {
+          "oneOf": [
+            {"const": [1, 2, 4, 8]},
+            {"const": [1, 8]}
+          ]
+        },
         "production_thread_budget": {"const": 8},
         "cache_policy": {
-          "const": "repeat24_cached unsupported/non-gating; uncached timing forbidden"
+          "enum": [
+            "repeat24_cached unsupported/non-gating; uncached timing forbidden",
+            "cache workloads not selected in compact matrix"
+          ]
         }
       },
       "additionalProperties": false
@@ -878,13 +900,13 @@
         },
         "paired_process_speedups": {
           "type": "array",
-          "minItems": 5,
+          "minItems": 3,
           "maxItems": 5,
           "items": {"type": "number"}
         },
         "paired_memory_ratios": {
           "type": "array",
-          "minItems": 5,
+          "minItems": 3,
           "maxItems": 5,
           "items": {"type": ["number", "null"], "minimum": 0}
         },

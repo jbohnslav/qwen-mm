@@ -20,6 +20,12 @@ if str(SCRIPT_DIRECTORY) not in sys.path:
 
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
+    COMPACT_CASES_BY_THREAD_BUDGET,
+    COMPACT_MINIMUM_SAMPLES,
+    COMPACT_MINIMUM_SECONDS,
+    COMPACT_PROCESS_REPETITIONS,
+    COMPACT_THREAD_BUDGETS,
+    COMPACT_WARMUPS,
     D4_RANDOM_SEED,
     PRODUCTION_THREAD_BUDGET,
     THREAD_BUDGETS,
@@ -42,12 +48,6 @@ WORKLOAD = REPOSITORY_ROOT / "benchmarks/workloads-v2.json"
 PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
 CACHED_CASE = "repeat24_cached"
 SMOKE_CASES = ("text_long", "image1", "image24")
-COMPACT_THREAD_BUDGETS = (1, 8)
-COMPACT_CASES_BY_THREAD_BUDGET = {
-    1: ("image24", "image1", "rgb24", "text_long"),
-    8: ("image24", "ragged24", "images_16"),
-}
-COMPACT_PROCESS_REPETITIONS = 3
 THREAD_ENVIRONMENT_NAMES = (
     "OMP_NUM_THREADS",
     "MKL_NUM_THREADS",
@@ -359,9 +359,9 @@ def compact_capture_plan(
             cases=COMPACT_CASES_BY_THREAD_BUDGET[budget],
             mode="dedicated",
             process_repetitions=COMPACT_PROCESS_REPETITIONS,
-            warmups=3,
-            minimum_samples=30,
-            minimum_seconds=5,
+            warmups=COMPACT_WARMUPS,
+            minimum_samples=COMPACT_MINIMUM_SAMPLES,
+            minimum_seconds=COMPACT_MINIMUM_SECONDS,
             phase_c_report=pre_report,
             assets_root=assets_root,
             output=capture_root / "result.json",

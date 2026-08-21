@@ -350,6 +350,11 @@ def worker(candidate: bool = True) -> dict[str, object]:
 
 
 class D4EvidenceTests(unittest.TestCase):
+    def test_compact_protocol_is_accepted_by_certification_evaluator(self) -> None:
+        validated = certification._validate_protocol(evidence.PROTOCOL, "compact.protocol")
+        self.assertEqual(validated["process_repetitions"], 3)
+        self.assertEqual(validated["thread_budgets"], [1, 8])
+
     def test_identity_authenticates_cross_host_contracts_and_rejects_drift(self) -> None:
         arm = provenance("arm64")
         x86 = provenance("x86_64")
@@ -581,6 +586,46 @@ class D4EvidenceTests(unittest.TestCase):
                 architecture="arm64",
                 build="shipping",
                 results=results,
+            )
+
+    def test_compact_observations_require_exact_selected_three_pair_matrix(self) -> None:
+        results: dict[int, dict[str, list[dict[str, object]]]] = {}
+        for budget in evidence.COMPACT_THREAD_BUDGETS:
+            pairs: list[dict[str, object]] = []
+            for profile in evidence.PROFILES:
+                for case_id in evidence.COMPACT_CASES_BY_THREAD_BUDGET[budget]:
+                    for repetition in range(evidence.COMPACT_PROCESS_REPETITIONS):
+                        pairs.append(
+                            {
+                                "profile_alias": profile,
+                                "case_id": case_id,
+                                "order_seed": 20260731,
+                                "repetition": repetition,
+                            }
+                        )
+            results[budget] = {"pairs": pairs}
+
+        with mock.patch.object(evidence, "_pair", side_effect=lambda pair, **_kwargs: pair):
+            observations = evidence._observations(
+                {},
+                architecture="arm64",
+                build="shipping",
+                results=results,
+                suite="compact",
+            )
+
+        self.assertEqual(len(observations), 14)
+        self.assertEqual(sum(len(item["pairs"]) for item in observations), 42)
+        self.assertTrue(all(item["support_status"] == "supported" for item in observations))
+
+        del results[1]["pairs"][-evidence.COMPACT_PROCESS_REPETITIONS :]
+        with self.assertRaisesRegex(evidence.D4EvidenceError, "compact raw benchmark matrix"):
+            evidence._observations(
+                {},
+                architecture="arm64",
+                build="shipping",
+                results=results,
+                suite="compact",
             )
 
     def test_validate_rebuilds_archives_and_rejects_forged_artifact(self) -> None:

@@ -50,6 +50,19 @@ WORK_UNITS = {case_id: 1 for case_id in CASES}
 WORK_UNITS.update({"jpeg24_requests": 24, "minmax_boundaries": 12})
 PRODUCTION_THREAD_BUDGET = 8
 THREAD_BUDGETS = (1, 2, 4, 8)
+COMPACT_THREAD_BUDGETS = (1, 8)
+COMPACT_CASES_BY_THREAD_BUDGET = {
+    1: ("image24", "image1", "rgb24", "text_long"),
+    8: ("image24", "ragged24", "images_16"),
+}
+COMPACT_CASES = tuple(
+    dict.fromkeys(
+        case_id
+        for budget in COMPACT_THREAD_BUDGETS
+        for case_id in COMPACT_CASES_BY_THREAD_BUDGET[budget]
+    )
+)
+COMPACT_PROCESS_REPETITIONS = 3
 IDENTITY_FIELDS = frozenset(
     {
         "source_revision",
@@ -252,7 +265,9 @@ def _validate_build(value: Any, architecture: str) -> Mapping[str, Any]:
     return build
 
 
-def _validate_host(value: Any, architecture: str) -> Mapping[str, Any]:
+def _validate_host(
+    value: Any, architecture: str, *, thread_budgets: Sequence[int] = THREAD_BUDGETS
+) -> Mapping[str, Any]:
     host = _object(
         value,
         f"{architecture}.host",
@@ -323,13 +338,15 @@ def _validate_host(value: Any, architecture: str) -> Mapping[str, Any]:
         host["physical_core_topology_sha256"],
         f"{architecture}.host.physical_core_topology_sha256",
     )
-    masks = _object(
-        host["physical_core_masks"],
-        f"{architecture}.host.physical_core_masks",
+    masks = host["physical_core_masks"]
+    expected_mask_names = {f"t{budget}" for budget in thread_budgets}
+    if not isinstance(masks, Mapping) or set(masks) not in (
+        expected_mask_names,
         {"t1", "t2", "t4", "t8"},
-    )
+    ):
+        _fail(f"{architecture}.host.physical_core_masks has the wrong inventory")
     prior: list[int] = []
-    for budget in THREAD_BUDGETS:
+    for budget in thread_budgets:
         raw_mask = masks[f"t{budget}"]
         if not available:
             if raw_mask is not None:
@@ -382,9 +399,20 @@ def _validate_protocol(value: Any, name: str) -> Mapping[str, Any]:
             "cache_policy",
         },
     )
+    repetitions = protocol["process_repetitions"]
+    if repetitions == COMPACT_PROCESS_REPETITIONS:
+        cases = list(COMPACT_CASES)
+        thread_budgets = list(COMPACT_THREAD_BUDGETS)
+        cache_policy = "cache workloads not selected in compact matrix"
+    elif repetitions == 5:
+        cases = list(CASES)
+        thread_budgets = list(THREAD_BUDGETS)
+        cache_policy = "repeat24_cached unsupported/non-gating; uncached timing forbidden"
+    else:
+        _fail(f"{name}.process_repetitions is not a supported D4 suite")
     expected = {
         "mode": "dedicated",
-        "process_repetitions": 5,
+        "process_repetitions": repetitions,
         "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
         "order": "randomized AB/BA per process repetition",
         "warmups": 3,
@@ -398,10 +426,10 @@ def _validate_protocol(value: Any, name: str) -> Mapping[str, Any]:
         ),
         "memory_pass": "separate from timing",
         "profiles": list(PROFILES),
-        "cases": list(CASES),
-        "thread_budgets": list(THREAD_BUDGETS),
+        "cases": cases,
+        "thread_budgets": thread_budgets,
         "production_thread_budget": PRODUCTION_THREAD_BUDGET,
-        "cache_policy": "repeat24_cached unsupported/non-gating; uncached timing forbidden",
+        "cache_policy": cache_policy,
     }
     for field, expected_value in expected.items():
         if protocol[field] != expected_value:
@@ -876,7 +904,16 @@ def _validate_implementation(
     return implementation
 
 
-def _expected_coordinates() -> set[tuple[str, str, int]]:
+def _expected_coordinates(*, process_repetitions: int = 5) -> set[tuple[str, str, int]]:
+    if process_repetitions == COMPACT_PROCESS_REPETITIONS:
+        return {
+            (profile, case_id, budget)
+            for profile in PROFILES
+            for budget in COMPACT_THREAD_BUDGETS
+            for case_id in COMPACT_CASES_BY_THREAD_BUDGET[budget]
+        }
+    if process_repetitions != 5:
+        _fail("unsupported D4 coordinate suite")
     coordinates = {
         (profile, case, thread)
         for profile in PROFILES
@@ -887,16 +924,34 @@ def _expected_coordinates() -> set[tuple[str, str, int]]:
     return coordinates
 
 
-def _timed_coordinates() -> list[tuple[str, str, int]]:
+def _timed_coordinates(*, process_repetitions: int = 5) -> list[tuple[str, str, int]]:
     return sorted(
-        coordinate for coordinate in _expected_coordinates() if coordinate[1] != CACHED_CASE
+        coordinate
+        for coordinate in _expected_coordinates(process_repetitions=process_repetitions)
+        if coordinate[1] != CACHED_CASE
     )
 
 
-def _expected_order_seed(profile: str, case_id: str, thread_budget: int) -> int:
+def _expected_order_seed(
+    profile: str,
+    case_id: str,
+    thread_budget: int,
+    *,
+    process_repetitions: int = 5,
+) -> int:
     """Mirror the four independently authenticated t1/t2/t4/t8 runner schedules."""
 
-    if thread_budget in (2, 4):
+    if process_repetitions == COMPACT_PROCESS_REPETITIONS:
+        try:
+            cases = COMPACT_CASES_BY_THREAD_BUDGET[thread_budget]
+            schedule_index = PROFILES.index(profile) * len(cases) + cases.index(case_id)
+        except (KeyError, ValueError) as error:
+            raise PerformanceCertificationError(
+                "coordinate is outside the compact capture schedule"
+            ) from error
+    elif process_repetitions != 5:
+        _fail("unsupported D4 randomized-order suite")
+    elif thread_budget in (2, 4):
         if case_id != "image24":
             _fail("intermediate thread budgets are only defined for image24")
         schedule_index = PROFILES.index(profile)
@@ -906,10 +961,10 @@ def _expected_order_seed(profile: str, case_id: str, thread_budget: int) -> int:
     return RANDOM_SEED + schedule_index
 
 
-def _randomized_orders(seed: int) -> list[list[str]]:
+def _randomized_orders(seed: int, *, repetitions: int = 5) -> list[list[str]]:
     generator = random.Random(seed)
     orders: list[list[str]] = []
-    for repetition in range(5):
+    for repetition in range(repetitions):
         order = ["reference", "candidate"]
         if generator.randrange(2):
             order.reverse()
@@ -928,6 +983,7 @@ def _validate_observation(
     affinity_available: bool,
     physical_core_masks: Mapping[str, Any],
     random_seed: int,
+    process_repetitions: int,
 ) -> tuple[str, str, int]:
     observation = _object(
         value,
@@ -977,18 +1033,23 @@ def _validate_observation(
         _fail(f"{name} has mislabeled cache timing")
     if random_seed != RANDOM_SEED:
         _fail(f"{name} does not use the frozen D4 random seed")
-    expected_order_seed = _expected_order_seed(profile, case_id, thread_budget)
+    expected_order_seed = _expected_order_seed(
+        profile,
+        case_id,
+        thread_budget,
+        process_repetitions=process_repetitions,
+    )
     if observation["order_seed"] != expected_order_seed:
         _fail(f"{name}.order_seed is not canonically derived from the capture schedule")
-    if len(pairs) != 5:
-        _fail(f"{name} requires five fresh process pairs")
+    if len(pairs) != process_repetitions:
+        _fail(f"{name} requires {process_repetitions} fresh process pairs")
     repetitions: set[int] = set()
     orders: set[tuple[str, str]] = set()
     coordinate_inputs: set[tuple[str, str, str]] = set()
     coordinate_affinities: set[tuple[int, ...]] = set()
     process_nonces: set[str] = set()
     process_pids: set[int] = set()
-    expected_orders = _randomized_orders(expected_order_seed)
+    expected_orders = _randomized_orders(expected_order_seed, repetitions=process_repetitions)
     for pair_index, raw_pair in enumerate(pairs):
         pair_name = f"{name}.pairs[{pair_index}]"
         pair = _object(
@@ -1071,8 +1132,8 @@ def _validate_observation(
         for field in ("output_keys", "dtypes", "float_atol", "tolerance_policy"):
             if reference_pre[field] != candidate_pre[field]:
                 _fail(f"{pair_name} reference/candidate {field} differs")
-    if repetitions != set(range(5)):
-        _fail(f"{name} repetitions must be exactly 0..4")
+    if repetitions != set(range(process_repetitions)):
+        _fail(f"{name} repetitions are not a complete canonical sequence")
     if len(orders) != 2:
         _fail(f"{name} must contain both AB and BA process order")
     if len(coordinate_inputs) != 1:
@@ -1115,7 +1176,9 @@ def _validate_capture(value: Any, index: int, expected_identity: Mapping[str, An
     label = build["label"]
     if capture["capture_id"] != f"{architecture}-{label}":
         _fail(f"{name}.capture_id is not canonical")
-    host = _validate_host(capture["host"], architecture)
+    protocol = _validate_protocol(capture["protocol"], f"{name}.protocol")
+    process_repetitions = int(protocol["process_repetitions"])
+    host = _validate_host(capture["host"], architecture, thread_budgets=protocol["thread_budgets"])
     _validate_toolchain(capture["toolchain"], f"{name}.toolchain")
     environment = _object(
         capture["environment"],
@@ -1130,7 +1193,6 @@ def _validate_capture(value: Any, index: int, expected_identity: Mapping[str, An
     for field in ("raw_archive_sha256", "raw_manifest_sha256", "raw_provenance_sha256"):
         _sha256(capture[field], f"{name}.{field}")
     _integer(capture["raw_archive_bytes"], f"{name}.raw_archive_bytes", minimum=1)
-    _validate_protocol(capture["protocol"], f"{name}.protocol")
     _validate_phase_c(
         capture["phase_c"],
         f"{name}.phase_c",
@@ -1146,15 +1208,17 @@ def _validate_capture(value: Any, index: int, expected_identity: Mapping[str, An
             build_label=label,
             affinity_available=host["affinity_available"],
             physical_core_masks=host["physical_core_masks"],
-            random_seed=capture["protocol"]["random_seed"],
+            random_seed=protocol["random_seed"],
+            process_repetitions=process_repetitions,
         )
         for observation_index, observation in enumerate(observations)
     }
     if len(coordinates) != len(observations):
         _fail(f"{name} has duplicate observation coordinates")
-    if coordinates != _expected_coordinates():
-        missing = sorted(_expected_coordinates() - coordinates)
-        extra = sorted(coordinates - _expected_coordinates())
+    expected_coordinates = _expected_coordinates(process_repetitions=process_repetitions)
+    if coordinates != expected_coordinates:
+        missing = sorted(expected_coordinates - coordinates)
+        extra = sorted(coordinates - expected_coordinates)
         _fail(f"{name} has an incomplete D4 matrix (missing={missing}, extra={extra})")
     capture_nonces = [
         implementation["process_nonce"]
@@ -1368,6 +1432,7 @@ def _noise_gates(captures: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
     ):
         architecture = capture["architecture"]
         build = capture["build"]["label"]
+        repetitions = capture["protocol"]["process_repetitions"]
         for observation in sorted(
             capture["observations"],
             key=lambda item: (item["profile"], item["case_id"], item["thread_budget"]),
@@ -1395,7 +1460,8 @@ def _noise_gates(captures: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
                             f"{implementation}"
                         ),
                         cv <= 0.05,
-                        f"all five process medians retained; CV={cv:.6f}; required <=0.050000",
+                        f"all {repetitions} process medians retained; CV={cv:.6f}; "
+                        "required <=0.050000",
                     )
                 )
     return gates
@@ -1498,6 +1564,99 @@ def _gates(summaries: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
     return gates
 
 
+def _compact_gates(summaries: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
+    """Evaluate every gate selected for the shipping-only compact matrix."""
+
+    by_key = {
+        (
+            summary["architecture"],
+            summary["profile"],
+            summary["case_id"],
+            summary["thread_budget"],
+        ): summary
+        for summary in summaries
+    }
+    gates: list[dict[str, str]] = []
+    for architecture in ARCHITECTURES:
+        for profile in PROFILES:
+            for budget in COMPACT_THREAD_BUDGETS:
+                for case_id in COMPACT_CASES_BY_THREAD_BUDGET[budget]:
+                    if case_id == "text_long":
+                        continue
+                    summary = by_key[(architecture, profile, case_id, budget)]
+                    lower = summary["speedup_bootstrap_95_ci"]["lower"]
+                    gates.append(
+                        _gate(
+                            f"speed/{architecture}/{profile}/{case_id}/t{budget}",
+                            lower > 1.0,
+                            f"shipping paired-bootstrap lower={lower:.3f}x; required >1.000x",
+                        )
+                    )
+            for case_id in ("image24", "ragged24"):
+                summary = by_key[(architecture, profile, case_id, 8)]
+                lower = summary["speedup_bootstrap_95_ci"]["lower"]
+                gates.append(
+                    _gate(
+                        f"headline/{architecture}/{profile}/{case_id}",
+                        lower >= 2.0,
+                        f"shipping t8 paired-bootstrap lower={lower:.3f}x; required >=2.000x",
+                    )
+                )
+            text = by_key[(architecture, profile, "text_long", 1)]
+            ratio = text["candidate"]["wall_ms"]["p50"] / text["reference"]["wall_ms"]["p50"]
+            gates.append(
+                _gate(
+                    f"regression/{architecture}/{profile}/text_long/t1",
+                    ratio <= 1.05,
+                    f"shipping candidate/reference p50={ratio:.4f}; required <=1.0500",
+                )
+            )
+            t1 = by_key[(architecture, profile, "image24", 1)]["candidate"]["wall_ms"]["p50"]
+            t8 = by_key[(architecture, profile, "image24", 8)]["candidate"]["wall_ms"]["p50"]
+            efficiency = t1 / (8 * t8)
+            gates.append(
+                _gate(
+                    f"efficiency/{architecture}/{profile}/image24/t8",
+                    efficiency >= 0.60,
+                    f"shipping E_8={efficiency:.4f}; required >=0.6000",
+                )
+            )
+    targets = {"qwen3-vl-8b": 111.0, "qwen3.5-9b": 111.6}
+    for profile, target in targets.items():
+        summary = by_key[("arm64", profile, "image24", 8)]
+        observed = summary["candidate"]["wall_ms"]["p50"]
+        gates.append(
+            _gate(
+                f"m4-point/{profile}/image24",
+                observed < target,
+                f"shipping t8 candidate p50={observed:.3f}ms; required <{target:.1f}ms",
+            )
+        )
+    for summary in summaries:
+        if summary["case_id"] == "text_long":
+            continue
+        ratios = summary["paired_memory_ratios"]
+        passed = all(ratio is not None and ratio <= 0.5 for ratio in ratios)
+        ratio_text = (
+            "unmeasurable"
+            if any(ratio is None for ratio in ratios)
+            else f"max-paired={max(ratios):.4f}"
+        )
+        gates.append(
+            _gate(
+                (
+                    f"memory/{summary['architecture']}/{summary['profile']}/"
+                    f"{summary['case_id']}/t{summary['thread_budget']}"
+                ),
+                passed,
+                "shipping per-process candidate max(external RSS, exact native peak)/official "
+                f"external RSS ratio={ratio_text}; every official must be >0 and every paired "
+                "ratio <=0.5000",
+            )
+        )
+    return gates
+
+
 def build_certification(
     captures: Sequence[Mapping[str, Any]],
     *,
@@ -1507,44 +1666,58 @@ def build_certification(
     identity = _validate_identity(current_identity, "current_identity")
     if not isinstance(captures, list):
         _fail("captures must be a list")
-    if len(captures) != 4:
-        _fail("certification requires exactly four ARM/x86 shipping/native captures")
+    if len(captures) not in {2, 4}:
+        _fail("certification requires two compact or four exhaustive host/build captures")
     for index, capture in enumerate(captures):
         _validate_capture(capture, index, identity)
     capture_keys = [(capture["architecture"], capture["build"]["label"]) for capture in captures]
-    expected_capture_keys = {
-        (architecture, build) for architecture in ARCHITECTURES for build in BUILDS
-    }
+    compact = all(
+        capture["protocol"]["process_repetitions"] == COMPACT_PROCESS_REPETITIONS
+        for capture in captures
+    )
+    expected_capture_keys = (
+        {(architecture, "shipping") for architecture in ARCHITECTURES}
+        if compact
+        else {(architecture, build) for architecture in ARCHITECTURES for build in BUILDS}
+    )
     if set(capture_keys) != expected_capture_keys:
         _fail("captures must contain each architecture/build exactly once")
-    if len(set(capture_keys)) != 4:
+    if len(set(capture_keys)) != len(expected_capture_keys):
         _fail("capture architecture/build pairs must be unique")
-    for architecture in ARCHITECTURES:
-        matching = [capture for capture in captures if capture["architecture"] == architecture]
-        shipping = next(capture for capture in matching if capture["build"]["label"] == "shipping")
-        native = next(capture for capture in matching if capture["build"]["label"] == "native")
-        if shipping["host"]["host_fingerprint"] != native["host"]["host_fingerprint"]:
-            _fail(f"{architecture} shipping/native captures used different hosts")
-        if shipping["host"] != native["host"]:
-            _fail(f"{architecture} shipping/native host attestations differ")
-        for field in (
-            "raw_archive_sha256",
-            "raw_archive_bytes",
-            "raw_manifest_sha256",
-            "raw_provenance_sha256",
-        ):
-            if shipping[field] != native[field]:
-                _fail(f"{architecture} shipping/native raw archive bindings differ")
-        if shipping["protocol"] != native["protocol"]:
-            _fail(f"{architecture} shipping/native captures used different protocols")
-        if shipping["toolchain"] != native["toolchain"]:
-            _fail(f"{architecture} shipping/native captures used different toolchains")
-        if shipping["environment"] != native["environment"]:
-            _fail(f"{architecture} shipping/native captures used different environments")
-        if shipping["build"]["wheel_sha256"] == native["build"]["wheel_sha256"]:
-            _fail(f"{architecture} shipping/native wheel artifacts are not distinct")
-        if shipping["build"]["native_sha256"] == native["build"]["native_sha256"]:
-            _fail(f"{architecture} shipping/native extension artifacts are not distinct")
+    if compact:
+        if len(captures) != 2:
+            _fail("compact certification requires exactly two shipping captures")
+    else:
+        if len(captures) != 4:
+            _fail("exhaustive certification requires four shipping/native captures")
+        for architecture in ARCHITECTURES:
+            matching = [capture for capture in captures if capture["architecture"] == architecture]
+            shipping = next(
+                capture for capture in matching if capture["build"]["label"] == "shipping"
+            )
+            native = next(capture for capture in matching if capture["build"]["label"] == "native")
+            if shipping["host"]["host_fingerprint"] != native["host"]["host_fingerprint"]:
+                _fail(f"{architecture} shipping/native captures used different hosts")
+            if shipping["host"] != native["host"]:
+                _fail(f"{architecture} shipping/native host attestations differ")
+            for field in (
+                "raw_archive_sha256",
+                "raw_archive_bytes",
+                "raw_manifest_sha256",
+                "raw_provenance_sha256",
+            ):
+                if shipping[field] != native[field]:
+                    _fail(f"{architecture} shipping/native raw archive bindings differ")
+            if shipping["protocol"] != native["protocol"]:
+                _fail(f"{architecture} shipping/native captures used different protocols")
+            if shipping["toolchain"] != native["toolchain"]:
+                _fail(f"{architecture} shipping/native captures used different toolchains")
+            if shipping["environment"] != native["environment"]:
+                _fail(f"{architecture} shipping/native captures used different environments")
+            if shipping["build"]["wheel_sha256"] == native["build"]["wheel_sha256"]:
+                _fail(f"{architecture} shipping/native wheel artifacts are not distinct")
+            if shipping["build"]["native_sha256"] == native["build"]["native_sha256"]:
+                _fail(f"{architecture} shipping/native extension artifacts are not distinct")
     protocols = [capture["protocol"] for capture in captures]
     if any(protocol != protocols[0] for protocol in protocols[1:]):
         _fail("ARM/x86 captures used different frozen protocols")
@@ -1584,7 +1757,10 @@ def build_certification(
     if parsed_timestamp.tzinfo is None:
         _fail("created_at must include an explicit timezone")
     summaries = _summaries(captures)
-    gates = [*_noise_gates(captures), *_gates(summaries)]
+    gates = [
+        *_noise_gates(captures),
+        *(_compact_gates(summaries) if compact else _gates(summaries)),
+    ]
     passed = all(gate["status"] == "pass" for gate in gates)
     artifact = {
         "schema_id": SCHEMA_ID,
@@ -1643,15 +1819,28 @@ def validate_certification(
 def render_report(artifact: Mapping[str, Any], *, current_identity: Mapping[str, Any]) -> str:
     validate_certification(artifact, current_identity=current_identity)
     status = artifact["certification_status"].upper()
+    compact = all(
+        capture["protocol"]["process_repetitions"] == COMPACT_PROCESS_REPETITIONS
+        for capture in artifact["captures"]
+    )
     lines = [
         "# qwen-mm image performance certification v1",
         "",
         f"- Status: `{status}`",
         f"- Releasable: `{str(artifact['releasable']).lower()}`",
-        "- Gating build: `shipping` (portable release); native results are supplemental.",
+        (
+            "- Matrix: compact shipping-only matrix; the deferred native/exhaustive lanes "
+            "are not claimed."
+            if compact
+            else "- Gating build: `shipping` (portable release); native results are supplemental."
+        ),
         "- Architectures: macOS ARM and Linux x86 are evaluated separately and never aggregated.",
         "- Scope: CPU preprocessing only; this report makes no video or vLLM production claim.",
-        "- `repeat24_cached`: unsupported/non-gating and deliberately not timed.",
+        (
+            "- Cache workloads are outside the selected compact matrix."
+            if compact
+            else "- `repeat24_cached`: unsupported/non-gating and deliberately not timed."
+        ),
         "",
         "## Gate conclusion",
         "",

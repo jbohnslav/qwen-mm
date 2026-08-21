@@ -120,6 +120,117 @@ def _base_files() -> dict[str, bytes]:
     return files
 
 
+def _compact_files() -> dict[str, bytes]:
+    index = {
+        "schema_id": "qwen-mm-d4-raw-capture-index-v1",
+        "schema_version": 1,
+        "suite": "compact",
+        "architecture_family": "arm64",
+        "build_labels": ["shipping"],
+        "thread_budgets": list(support.COMPACT_THREAD_BUDGETS),
+        "cases_by_thread_budget": {
+            f"t{budget}": list(support.COMPACT_CASES_BY_THREAD_BUDGET[budget])
+            for budget in support.COMPACT_THREAD_BUDGETS
+        },
+        "subprocess_count": support.COMPACT_SUBPROCESS_COUNT,
+        "files": [],
+    }
+    files = {
+        name: b"log\n" if name.endswith((".log", ".md")) else b"{}\n"
+        for name in support.required_capture_members(index)
+    }
+    files["builds/shipping/qwen_mm-test.whl"] = b"fixture-wheel"
+    files["provenance.json"] = (
+        json.dumps(
+            {
+                "suite": "compact",
+                "architecture_family": "arm64",
+                "build_wheel_sha256": {"shipping": "a" * 64},
+                "build_native_sha256": {"shipping": "b" * 64},
+                "host": {
+                    "affinity": {"masks": {f"t{budget}": None for budget in support.THREAD_BUDGETS}}
+                },
+            }
+        )
+        + "\n"
+    ).encode()
+    phase_c_digest = hashlib.sha256(files["phase-c/shipping/pre/report.json"]).hexdigest()
+    noise_by_budget = {}
+    for budget_index, budget in enumerate(support.COMPACT_THREAD_BUDGETS, start=1):
+        cases = list(support.COMPACT_CASES_BY_THREAD_BUDGET[budget])
+        protocol = {
+            "reference_adapter": "official",
+            "candidate_adapter": "qwen_mm.benchmark:create_adapter",
+            "profiles": list(support.PROFILES),
+            "cases": cases,
+            "process_repetitions": support.COMPACT_PROCESS_REPETITIONS,
+            "random_seed": support.D4_RANDOM_SEED,
+            "order": "randomized AB/BA per process repetition",
+            "warmups": support.COMPACT_WARMUPS,
+            "minimum_samples": support.COMPACT_MINIMUM_SAMPLES,
+            "minimum_seconds": support.COMPACT_MINIMUM_SECONDS,
+            "thread_regimes": [f"t{budget}"],
+            "thread_budget_mapping": {f"t{budget}": budget},
+            "affinity_cpu_mapping": {f"t{budget}": None},
+            "build_labels": ["shipping"],
+            "timing_protocol": "instrumentation-free-v1",
+            "timing_sample_fields": [
+                "sequence",
+                "wall_ms",
+                "cpu_ms",
+                "throughput_per_s",
+                "core_utilization",
+            ],
+            "timing_floor_policy": (
+                "minimum_samples one-operation latency samples; supplemental individually "
+                "clocked exact-stability operations aggregate only to minimum_seconds and are "
+                "excluded from latency distributions"
+            ),
+            "resource_census_position": "after_all_timed_samples",
+            "production_thread_budget": support.PRODUCTION_THREAD_BUDGET,
+            "candidate_identity": {"artifact_sha256": "c" * 64},
+        }
+        result = {
+            "mode": "dedicated",
+            "architecture_family": "arm64",
+            "created_at": f"2026-08-03T00:0{budget_index}:00+00:00",
+            "release_eligibility": {"phase_c": {"status": "pass", "report_sha256": phase_c_digest}},
+            "protocol": protocol,
+            "pairs": [
+                {
+                    "profile_alias": profile,
+                    "case_id": case_id,
+                    "implementations": {
+                        implementation: {"summary": {"wall_ms": {"p50": 100.0}}}
+                        for implementation in ("reference", "candidate")
+                    },
+                }
+                for profile in support.PROFILES
+                for case_id in cases
+                for _ in range(support.COMPACT_PROCESS_REPETITIONS)
+            ],
+        }
+        noise = support.result_noise_assessment(
+            result, minimum_observations=support.COMPACT_PROCESS_REPETITIONS
+        )
+        files[f"captures/shipping/t{budget}/result.json"] = (json.dumps(result) + "\n").encode()
+        files[f"captures/shipping/t{budget}/noise.json"] = (json.dumps(noise) + "\n").encode()
+        noise_by_budget[budget] = noise
+    files["builds/shipping/failures.json"] = (
+        json.dumps(
+            support.capture_failure_report(
+                build_label="shipping",
+                noise_by_budget=noise_by_budget,
+                budgets=support.COMPACT_THREAD_BUDGETS,
+            )
+        )
+        + "\n"
+    ).encode()
+    index["files"] = sorted(set(files) - {"capture-index.json"})
+    files["capture-index.json"] = (json.dumps(index) + "\n").encode()
+    return files
+
+
 class D4CaptureSupportTests(unittest.TestCase):
     def test_smoke_preserves_virtualenv_interpreter_path(self) -> None:
         interpreter = Path(".venv/bin/python")
@@ -226,6 +337,110 @@ class D4CaptureSupportTests(unittest.TestCase):
                         f"phase-c/{build_label}/{position}/outputs/{relative}",
                         support.REQUIRED_BASE_MEMBERS,
                     )
+
+    def test_local_compact_plan_exposes_shipping_only_84_subprocess_matrix(self) -> None:
+        plan = d4_local.compact_build_plan(Path("/working"))
+        self.assertEqual(list(plan["builds"]), ["shipping"])
+        self.assertEqual(plan["thread_budgets"], [1, 8])
+        self.assertEqual(plan["subprocess_count"], 84)
+        coordinates = plan["capture"]["timed_matrix"]
+        self.assertEqual(
+            [(item["thread_budget"], item["cases"]) for item in coordinates],
+            [
+                (1, ["image24", "image1", "rgb24", "text_long"]),
+                (8, ["image24", "ragged24", "images_16"]),
+            ],
+        )
+        for coordinate in coordinates:
+            command = coordinate["command"]
+            self.assertEqual(command[command.index("--build-labels") + 1], "shipping")
+            self.assertEqual(command[command.index("--process-repetitions") + 1], "3")
+            self.assertEqual(command[command.index("--minimum-samples") + 1], "30")
+            self.assertEqual(command[command.index("--minimum-seconds") + 1], "5.0")
+
+    def test_compact_archive_inventory_excludes_legacy_lanes_and_coordinates(self) -> None:
+        index = {
+            "schema_id": "qwen-mm-d4-raw-capture-index-v1",
+            "schema_version": 1,
+            "suite": "compact",
+            "architecture_family": "arm64",
+            "build_labels": ["shipping"],
+            "thread_budgets": [1, 8],
+            "cases_by_thread_budget": {
+                "t1": ["image24", "image1", "rgb24", "text_long"],
+                "t8": ["image24", "ragged24", "images_16"],
+            },
+            "subprocess_count": 84,
+            "files": [],
+        }
+        required = support.required_capture_members(index)
+        self.assertIn("captures/shipping/t1/result.json", required)
+        self.assertIn("captures/shipping/t8/result.json", required)
+        self.assertFalse(any("/native/" in name for name in required))
+        self.assertFalse(any("/t2/" in name or "/t4/" in name for name in required))
+        self.assertNotIn("captures/shipping/repeat24_cached-unsupported.json", required)
+
+    def test_compact_result_contract_rejects_out_of_plan_cases_and_repetitions(self) -> None:
+        protocol = {
+            "reference_adapter": "official",
+            "candidate_adapter": "qwen_mm.benchmark:create_adapter",
+            "profiles": list(support.PROFILES),
+            "cases": list(support.COMPACT_CASES_BY_THREAD_BUDGET[1]),
+            "process_repetitions": 3,
+            "random_seed": support.D4_RANDOM_SEED,
+            "order": "randomized AB/BA per process repetition",
+            "warmups": 3,
+            "minimum_samples": 30,
+            "minimum_seconds": 5.0,
+            "thread_regimes": ["t1"],
+            "thread_budget_mapping": {"t1": 1},
+            "affinity_cpu_mapping": {"t1": None},
+            "build_labels": ["shipping"],
+            "timing_protocol": "instrumentation-free-v1",
+            "timing_sample_fields": [
+                "sequence",
+                "wall_ms",
+                "cpu_ms",
+                "throughput_per_s",
+                "core_utilization",
+            ],
+            "timing_floor_policy": (
+                "minimum_samples one-operation latency samples; supplemental individually "
+                "clocked exact-stability operations aggregate only to minimum_seconds and are "
+                "excluded from latency distributions"
+            ),
+            "resource_census_position": "after_all_timed_samples",
+            "production_thread_budget": 8,
+        }
+        result = {
+            "mode": "dedicated",
+            "protocol": protocol,
+            "pairs": [
+                {}
+                for _ in range(
+                    len(support.PROFILES) * len(support.COMPACT_CASES_BY_THREAD_BUDGET[1]) * 3
+                )
+            ],
+            "release_eligibility": {"phase_c": {"status": "pass"}},
+        }
+        support.validate_d4_result_contract(
+            result,
+            architecture="arm64",
+            build_label="shipping",
+            budget=1,
+            affinity_cpus=None,
+            suite="compact",
+        )
+        protocol["cases"] = [*protocol["cases"], "text_short"]
+        with self.assertRaisesRegex(support.D4CaptureError, "protocol or matrix"):
+            support.validate_d4_result_contract(
+                result,
+                architecture="arm64",
+                build_label="shipping",
+                budget=1,
+                affinity_cpus=None,
+                suite="compact",
+            )
 
     def test_capture_environment_normalizes_package_indexes(self) -> None:
         base = {
@@ -855,6 +1070,62 @@ class D4CaptureSupportTests(unittest.TestCase):
             with self.assertRaisesRegex(support.D4CaptureError, "timestamps are stale"):
                 support.read_capture_archive(support.create_capture_archive(stale_timing))
 
+    def test_compact_capture_archive_round_trip_has_closed_inventory(self) -> None:
+        lane = d4_local.compact_build_plan(Path("/capture"))["builds"]["shipping"]
+
+        def archived_build(
+            _files: dict[str, bytes],
+            _provenance: dict[str, object],
+            _build_label: str,
+            *,
+            thread_budgets: tuple[int, ...],
+        ) -> dict[str, object]:
+            self.assertEqual(tuple(thread_budgets), support.COMPACT_THREAD_BUDGETS)
+            return {
+                "commands": {
+                    "create_venv": lane["create_venv"],
+                    "build_wheel": lane["build"],
+                },
+                "_retained_benchmark_artifact": {"sha256": "c" * 64},
+            }
+
+        def phase_c_hashes(
+            files: dict[str, bytes],
+            _provenance: dict[str, object],
+            build_label: str,
+            _build: dict[str, object],
+            *,
+            assets_root: Path | None,
+        ) -> dict[str, str]:
+            del assets_root
+            return {
+                position: hashlib.sha256(
+                    files[f"phase-c/{build_label}/{position}/report.json"]
+                ).hexdigest()
+                for position in ("pre", "post")
+            } | {
+                "pre_created_at": "2026-08-03T00:00:00+00:00",
+                "post_created_at": "2026-08-03T00:05:00+00:00",
+                "capture_created_at": "2026-08-03T00:06:00+00:00",
+            }
+
+        with (
+            mock.patch("qwen_mm_reference.benchmark_v2.validate_result_portable"),
+            mock.patch.object(support, "validate_archived_build", side_effect=archived_build),
+            mock.patch.object(support, "validate_archived_phase_c", side_effect=phase_c_hashes),
+        ):
+            files = _compact_files()
+            archive = support.create_capture_archive(files)
+            self.assertEqual(support.read_capture_archive(archive), files)
+
+            injected = dict(files)
+            injected["captures/shipping/t2/result.json"] = b"{}\n"
+            index = json.loads(injected["capture-index.json"])
+            index["files"] = sorted(set(injected) - {"capture-index.json"})
+            injected["capture-index.json"] = (json.dumps(index) + "\n").encode()
+            with self.assertRaisesRegex(support.D4CaptureError, "out-of-plan member"):
+                support.read_capture_archive(support.create_capture_archive(injected))
+
     def test_cpu_list_parser_fails_closed(self) -> None:
         self.assertEqual(support.parse_cpu_list("0-2,8,10-11"), {0, 1, 2, 8, 10, 11})
         with self.assertRaises(support.D4CaptureError):
@@ -918,7 +1189,7 @@ class D4CaptureSupportTests(unittest.TestCase):
             )
             self.assertEqual(
                 coordinate["command"][coordinate["command"].index("--minimum-seconds") + 1],
-                "5",
+                "5.0",
             )
             seed_index = coordinate["command"].index("--seed")
             self.assertEqual(coordinate["command"][seed_index + 1], str(support.D4_RANDOM_SEED))

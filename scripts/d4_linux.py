@@ -24,13 +24,16 @@ if str(SCRIPT_DIRECTORY) not in sys.path:
 
 from d4_capture_support import (  # noqa: E402
     BUILD_LABELS,
+    COMPACT_BUILD_LABELS,
+    COMPACT_CASES_BY_THREAD_BUDGET,
+    COMPACT_SUBPROCESS_COUNT,
+    COMPACT_THREAD_BUDGETS,
     LOCAL_LINUX_AFFINITY_PROBE_SECONDS,
     LOCAL_LINUX_AFFINITY_PROBE_THREADS,
     LOCAL_LINUX_CPU_WALL_RATIO_MAX,
     PYPI_OVERRIDE_ENVIRONMENT_NAMES,
     THREAD_BUDGETS,
     D4CaptureError,
-    assert_build_invariants,
     assert_build_variant_artifacts,
     assert_source_payload_matches_revision,
     assets_identity,
@@ -39,7 +42,6 @@ from d4_capture_support import (  # noqa: E402
     create_capture_archive,
     local_linux_resource_attestation,
     local_linux_toolchain_pins,
-    normalize_build_artifact_paths,
     normalized_capture_environment,
     parse_cpu_list,
     physical_core_masks,
@@ -58,7 +60,7 @@ from d4_local import (  # noqa: E402
     _run_logged,
     _runtime_identity,
 )
-from d4_worker import run_capture  # noqa: E402
+from d4_worker import compact_capture_plan, run_compact_capture  # noqa: E402
 from profile_capture_support import install_wheel_command  # noqa: E402
 
 REPOSITORY_ROOT = SCRIPT_DIRECTORY.parent
@@ -478,6 +480,43 @@ def build_plan(
     }
 
 
+def compact_build_plan(
+    working_root: Path, *, affinity_masks: Mapping[int, Sequence[int]]
+) -> dict[str, Any]:
+    """Return the shipping-only compact build and fixed-affinity capture plan."""
+
+    if set(affinity_masks) != set(COMPACT_THREAD_BUDGETS):
+        raise D4CaptureError("compact local Linux plan requires exact t1/t8 masks")
+    shipping = build_plan(
+        working_root,
+        affinity_masks={budget: tuple(range(budget)) for budget in THREAD_BUDGETS},
+    )["builds"]["shipping"]
+    capture = compact_capture_plan(
+        python=Path(shipping["venv"]) / "bin/python",
+        wheel=working_root / "retained/shipping/qwen_mm.whl",
+        build_label="shipping",
+        assets_root=ASSETS_ROOT,
+        output_root=working_root / "artifact",
+        affinity_masks=affinity_masks,
+    )
+    return {
+        "suite": "compact",
+        "architecture": "x86_64",
+        "provider": "local_linux",
+        "builds": {"shipping": shipping},
+        "capture": capture,
+        "affinity_masks": {
+            f"t{budget}": list(affinity_masks[budget]) for budget in COMPACT_THREAD_BUDGETS
+        },
+        "thread_budgets": list(COMPACT_THREAD_BUDGETS),
+        "cases_by_thread_budget": {
+            f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+            for budget in COMPACT_THREAD_BUDGETS
+        },
+        "subprocess_count": COMPACT_SUBPROCESS_COUNT,
+    }
+
+
 def _resource_snapshot(
     *, dedicated_capture: bool, stable: bool
 ) -> tuple[dict[str, Any], str, list[int], dict[int, tuple[int, ...]]]:
@@ -570,11 +609,11 @@ def execute_capture(
         (control_root / "affinity-pre.json").write_text(
             json.dumps(preflight, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        plan = build_plan(working_root, affinity_masks=masks)
-        build_invariants: dict[str, dict[str, Any]] = {}
+        compact_masks = {budget: masks[budget] for budget in COMPACT_THREAD_BUDGETS}
+        plan = compact_build_plan(working_root, affinity_masks=compact_masks)
         native_hashes: dict[str, str] = {}
         wheel_hashes: dict[str, str] = {}
-        for label in BUILD_LABELS:
+        for label in COMPACT_BUILD_LABELS:
             commands = plan["builds"][label]
             venv = Path(commands["venv"])
             wheel_directory = working_root / "wheels" / label
@@ -598,13 +637,12 @@ def execute_capture(
             )
             native_hashes[label] = runtime["native_sha256"]
             wheel_hashes[label] = runtime_reconciliation["wheel_contents"]["wheel"]["sha256"]
-            run_capture(
+            run_compact_capture(
                 python=python,
                 wheel=retained_wheel,
-                build_label=label,
                 assets_root=ASSETS_ROOT,
                 output_root=artifact_root,
-                affinity_masks=masks,
+                affinity_masks=compact_masks,
                 execute=True,
             )
             build_path = artifact_root / "builds" / label / "build.json"
@@ -659,23 +697,12 @@ def execute_capture(
             build_path.write_text(
                 json.dumps(build, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            build_invariants[label] = {
-                "build_environment": normalized_build_environment,
-                "build_host": build_host,
-                "packages": [
-                    normalize_build_artifact_paths(
-                        package,
-                        {
-                            working_root / "venvs" / label: "<build-venv>",
-                            artifact_root / "builds" / label: "<retained-build>",
-                        },
-                    )
-                    for package in packages
-                ],
-                "toolchain": {name: value["output"] for name, value in toolchain.items()},
-            }
-        assert_build_invariants(build_invariants)
-        assert_build_variant_artifacts(plan, native_hashes=native_hashes, wheel_hashes=wheel_hashes)
+        assert_build_variant_artifacts(
+            {"builds": plan["builds"]},
+            native_hashes=native_hashes,
+            wheel_hashes=wheel_hashes,
+            build_labels=COMPACT_BUILD_LABELS,
+        )
 
         postflight = _affinity_enforcement_phase(
             masks[1],
@@ -708,7 +735,7 @@ def execute_capture(
             dedicated_capture=dedicated_capture,
             stable=stable,
         )
-        for label in BUILD_LABELS:
+        for label in COMPACT_BUILD_LABELS:
             verify_private_environment_integrity(
                 working_root / "venvs" / label,
                 evidence_path=artifact_root / "builds" / label / "environment-integrity.json",
@@ -719,6 +746,7 @@ def execute_capture(
         provenance = {
             "schema_id": "qwen-mm-d4-raw-capture-provenance-v1",
             "schema_version": 1,
+            "suite": "compact",
             "claim": "raw controlled-host input for the separate D4 certification evaluator",
             "architecture_family": "x86_64",
             "provider": "local_linux",
@@ -751,9 +779,15 @@ def execute_capture(
         index = {
             "schema_id": "qwen-mm-d4-raw-capture-index-v1",
             "schema_version": 1,
+            "suite": "compact",
             "architecture_family": "x86_64",
-            "build_labels": list(BUILD_LABELS),
-            "thread_budgets": list(THREAD_BUDGETS),
+            "build_labels": list(COMPACT_BUILD_LABELS),
+            "thread_budgets": list(COMPACT_THREAD_BUDGETS),
+            "cases_by_thread_budget": {
+                f"t{budget}": list(COMPACT_CASES_BY_THREAD_BUDGET[budget])
+                for budget in COMPACT_THREAD_BUDGETS
+            },
+            "subprocess_count": COMPACT_SUBPROCESS_COUNT,
             "files": sorted(files),
         }
         (artifact_root / "capture-index.json").write_text(
@@ -792,10 +826,10 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     if not args.execute:
-        masks = {budget: tuple(range(budget)) for budget in THREAD_BUDGETS}
+        masks = {budget: tuple(range(budget)) for budget in COMPACT_THREAD_BUDGETS}
         print(
             json.dumps(
-                build_plan(Path("/tmp/qwen-mm-d4-linux-plan"), affinity_masks=masks),
+                compact_build_plan(Path("/tmp/qwen-mm-d4-linux-plan"), affinity_masks=masks),
                 indent=2,
                 sort_keys=True,
             )

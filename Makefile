@@ -4,7 +4,7 @@
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
 	phase-b-conformance phase-b-conformance-regenerate phase-c-binding-check \
 	phase-c-conformance phase-c-conformance-validate phase-c-v2-validate phase-c-release-check python-binding-test \
-	d4-arm-capture d4-certify d4-linux-capture d4-modal-capture d4-smoke d4-test d4-validate \
+	d4-arm-capture d4-certify d4-linux-capture d4-local d4-modal-capture d4-smoke d4-test d4-validate \
 	modal-benchmark-test profile-d1-arm-archive profile-d1-ingest profile-d1-ingest-arm \
 	profile-d1-ingest-x86 profile-d1-merge profile-d1-modal-archive profile-d1-test \
 	profile-d1-validate
@@ -34,6 +34,7 @@ D4_LINUX_HOST_LABEL ?= local-linux-x86
 D4_LINUX_ALLOCATION_ID ?=
 D4_SMOKE_OUTPUT ?= /tmp/qwen-mm-d4-smoke.json
 D4_SMOKE_REPORT ?= /tmp/qwen-mm-d4-smoke.md
+D4_APPROVE_PAID_COMPUTE ?= 0
 
 check: lint rust-check reference-smoke wheel-smoke
 
@@ -171,12 +172,14 @@ d4-smoke:
 	.venv/bin/python scripts/d4_smoke.py \
 		--output "$(D4_SMOKE_OUTPUT)" --report "$(D4_SMOKE_REPORT)"
 
-d4-arm-capture:
+d4-local:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_local.py \
 		--execute --host-label "$(D4_HOST_LABEL)" --output "$(D4_ARM_ARCHIVE)"
 
+d4-arm-capture: d4-local
+
 d4-modal-capture:
-	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)"
+	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)" $(if $(filter 1,$(D4_APPROVE_PAID_COMPUTE)),--approve-paid-compute,)
 
 d4-linux-capture:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_linux.py \
