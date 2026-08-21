@@ -684,9 +684,12 @@ def _build_record(
         "reference_sync",
         "packages",
     }
+    compact = provenance.get("suite") == "compact"
+    if compact:
+        fields.add("suite")
     build = _object(raw, f"builds.{label}", fields)
-    if build["build_label"] != label:
-        _fail(f"build JSON label differs from its archive path: {label}")
+    if build["build_label"] != label or (compact and build["suite"] != "compact"):
+        _fail(f"build JSON metadata differs from its archive path: {label}")
     commands = _object(
         build["commands"],
         f"builds.{label}.commands",

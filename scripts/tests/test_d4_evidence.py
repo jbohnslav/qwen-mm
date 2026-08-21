@@ -350,6 +350,60 @@ def worker(candidate: bool = True) -> dict[str, object]:
 
 
 class D4EvidenceTests(unittest.TestCase):
+    def test_compact_build_record_accepts_only_exact_suite_marker(self) -> None:
+        wheel_sha = digest("wheel")
+        native_sha = digest("native")
+        raw = {
+            "suite": "compact",
+            "build_label": "shipping",
+            "identity": {
+                "python": {},
+                "wheel": {
+                    "name": "qwen_mm.whl",
+                    "bytes": 1,
+                    "sha256": wheel_sha,
+                    "contents": {},
+                },
+            },
+            "plan": {},
+            "commands": {
+                "create_venv": ["uv", "venv"],
+                "sync_reference": ["uv", "sync"],
+                "build_wheel": ["maturin", "build"],
+                "install_retained_wheel": ["uv", "pip", "install"],
+            },
+            "build_environment": {},
+            "build_host": {},
+            "toolchain": {},
+            "runtime": {
+                "package_version": "0.1.0",
+                "package_origin": "/venv/qwen_mm/__init__.py",
+                "native_origin": "/venv/qwen_mm/_native.so",
+                "native_bytes": 1,
+                "native_sha256": native_sha,
+            },
+            "runtime_reconciliation": {},
+            "reference_sync": {},
+            "packages": [],
+        }
+        provenance = {
+            "suite": "compact",
+            "build_wheel_sha256": {"shipping": wheel_sha},
+            "build_native_sha256": {"shipping": native_sha},
+        }
+
+        build = evidence._build_record(raw, "shipping", provenance)
+        self.assertEqual(build["label"], "shipping")
+        for invalid in (None, "exhaustive"):
+            with self.subTest(suite=invalid):
+                forged = copy.deepcopy(raw)
+                if invalid is None:
+                    del forged["suite"]
+                else:
+                    forged["suite"] = invalid
+                with self.assertRaises(evidence.D4EvidenceError):
+                    evidence._build_record(forged, "shipping", provenance)
+
     def test_compact_protocol_is_accepted_by_certification_evaluator(self) -> None:
         validated = certification._validate_protocol(evidence.PROTOCOL, "compact.protocol")
         self.assertEqual(validated["process_repetitions"], 3)

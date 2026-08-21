@@ -9,7 +9,7 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -56,6 +56,12 @@ THREAD_ENVIRONMENT_NAMES = (
     "NUMEXPR_NUM_THREADS",
     "RAYON_NUM_THREADS",
 )
+ProgressCallback = Callable[[str, Mapping[str, object]], None]
+
+
+def _report_progress(progress: ProgressCallback | None, stage: str, **details: object) -> None:
+    if progress is not None:
+        progress(stage, details)
 
 
 def _run_logged(
@@ -451,6 +457,7 @@ def run_compact_capture(
     output_root: Path,
     affinity_masks: Mapping[int, Sequence[int] | None],
     execute: bool,
+    progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Run semantic conformance immediately around the compact timed matrix."""
 
@@ -495,6 +502,7 @@ def run_compact_capture(
             checkpoint="before-pre-phase-c-v2",
         )
 
+    _report_progress(progress, "pre_conformance_started", build_label=build_label)
     _run_logged(
         plan["pre_conformance"],
         log=matrix_log,
@@ -520,9 +528,16 @@ def run_compact_capture(
             evidence_path=integrity_path,
             checkpoint="after-pre-phase-c-v2",
         )
+    _report_progress(progress, "pre_conformance_completed", build_label=build_label)
 
     for coordinate in plan["timed_matrix"]:
         budget = int(coordinate["thread_budget"])
+        _report_progress(
+            progress,
+            "timed_budget_started",
+            build_label=build_label,
+            thread_budget=budget,
+        )
         if execute:
             verify_private_environment_integrity(
                 python.parent.parent,
@@ -558,7 +573,14 @@ def run_compact_capture(
                 evidence_path=integrity_path,
                 checkpoint=f"after-t{budget}",
             )
+        _report_progress(
+            progress,
+            "timed_budget_completed",
+            build_label=build_label,
+            thread_budget=budget,
+        )
 
+    _report_progress(progress, "post_conformance_started", build_label=build_label)
     if execute:
         verify_private_environment_integrity(
             python.parent.parent,
@@ -598,6 +620,7 @@ def run_compact_capture(
         (build_root / "failures.json").write_text(
             json.dumps(failure_report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
+    _report_progress(progress, "post_conformance_completed", build_label=build_label)
     completed = {
         "schema_id": "qwen-mm-d4-compact-build-capture-v1",
         "schema_version": 1,

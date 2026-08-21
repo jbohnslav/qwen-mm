@@ -179,7 +179,10 @@ d4-local:
 d4-arm-capture: d4-local
 
 d4-modal-capture:
-	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)" $(if $(filter 1,$(D4_APPROVE_PAID_COMPUTE)),--approve-paid-compute,)
+	modal run scripts/modal_d4.py --output "$(D4_X86_ARCHIVE)" --defer-validation \
+		$(if $(filter 1,$(D4_APPROVE_PAID_COMPUTE)),--approve-paid-compute,)
+	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/modal_d4.py \
+		--finalize --output "$(D4_X86_ARCHIVE)"
 
 d4-linux-capture:
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python scripts/d4_linux.py \

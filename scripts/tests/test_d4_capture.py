@@ -1326,6 +1326,7 @@ class D4CaptureSupportTests(unittest.TestCase):
                 "post_conformance": ["post-conformance"],
             }
             commands: list[list[str]] = []
+            progress: list[tuple[str, dict[str, object]]] = []
 
             def run_logged(command: list[str], **_kwargs: object) -> None:
                 commands.append(list(command))
@@ -1353,9 +1354,31 @@ class D4CaptureSupportTests(unittest.TestCase):
                     output_root=root,
                     affinity_masks={budget: None for budget in d4_worker.COMPACT_THREAD_BUDGETS},
                     execute=True,
+                    progress=lambda stage, details: progress.append((stage, dict(details))),
                 )
 
             self.assertIn(["post-conformance"], commands)
+            self.assertEqual(
+                [stage for stage, _details in progress],
+                [
+                    "pre_conformance_started",
+                    "pre_conformance_completed",
+                    "timed_budget_started",
+                    "timed_budget_completed",
+                    "timed_budget_started",
+                    "timed_budget_completed",
+                    "post_conformance_started",
+                    "post_conformance_completed",
+                ],
+            )
+            self.assertEqual(
+                [
+                    details["thread_budget"]
+                    for stage, details in progress
+                    if stage == "timed_budget_started"
+                ],
+                list(d4_worker.COMPACT_THREAD_BUDGETS),
+            )
             failures = json.loads(
                 (root / "builds/shipping/failures.json").read_text(encoding="utf-8")
             )

@@ -12,6 +12,8 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -73,6 +75,9 @@ SANDBOX_CONTROL_PATH = "/tmp/qwen-mm-d4-control.json"
 SANDBOX_OUTPUT_PATH = "/tmp/qwen-mm-d4-output.bin"
 SANDBOX_PROBE_PATH = "/tmp/qwen-mm-d4-probe.json"
 VM_EXPERIMENTAL_OPTIONS = {"vm_runtime": True}
+WORKER_PROGRESS_SCHEMA_ID = "qwen-mm-d4-worker-progress-v1"
+CONTROLLER_LOG_SCHEMA_ID = "qwen-mm-d4-modal-worker-log-v1"
+CONTROLLER_HEARTBEAT_SECONDS = 30.0
 MODAL_PRICING_URL = "https://modal.com/pricing"
 SANDBOX_CPU_USD_PER_PHYSICAL_CORE_SECOND = 0.00003942
 SANDBOX_MEMORY_USD_PER_GIB_SECOND = 0.00000667
@@ -200,6 +205,131 @@ def _write_bytes_atomically(value: bytes, destination: Path) -> None:
     except BaseException:
         Path(temporary_name).unlink(missing_ok=True)
         raise
+
+
+def _worker_progress(stage: str, **details: object) -> None:
+    print(
+        json.dumps(
+            {
+                "schema_id": WORKER_PROGRESS_SCHEMA_ID,
+                "schema_version": 1,
+                "at": datetime.now(UTC).isoformat(),
+                "stage": stage,
+            }
+            | details,
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+
+
+def _stream_worker_process(
+    process: Any,
+    *,
+    worker_log_path: Path | None,
+    heartbeat_seconds: float = CONTROLLER_HEARTBEAT_SECONDS,
+) -> tuple[int, str, str]:
+    """Tee both Modal process streams while wait() blocks in the caller thread."""
+
+    if heartbeat_seconds <= 0:
+        raise D4CaptureError("Modal worker heartbeat interval must be positive")
+    if worker_log_path is not None:
+        worker_log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_output = worker_log_path.open("w", encoding="utf-8", buffering=1)
+    else:
+        log_output = None
+    lock = threading.Lock()
+    stop_heartbeat = threading.Event()
+    stream_errors: list[BaseException] = []
+    chunks: dict[str, list[str]] = {"stdout": [], "stderr": []}
+    last_stage: list[str | None] = [None]
+    started = time.monotonic()
+
+    def record(event: str, **details: object) -> None:
+        value = {
+            "schema_id": CONTROLLER_LOG_SCHEMA_ID,
+            "schema_version": 1,
+            "at": datetime.now(UTC).isoformat(),
+            "event": event,
+        } | details
+        with lock:
+            if log_output is not None:
+                log_output.write(json.dumps(value, sort_keys=True) + "\n")
+
+    def drain(stream_name: str, stream: Any, console: Any) -> None:
+        try:
+            for raw_chunk in stream:
+                chunk = raw_chunk if isinstance(raw_chunk, str) else raw_chunk.decode()
+                chunks[stream_name].append(chunk)
+                if stream_name == "stdout":
+                    for line in chunk.splitlines():
+                        try:
+                            event = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        stage = event.get("stage") if isinstance(event, dict) else None
+                        if isinstance(stage, str):
+                            last_stage[0] = stage
+                record("worker_output", stream=stream_name, text=chunk)
+                with lock:
+                    console.write(chunk)
+                    console.flush()
+        except BaseException as error:
+            stream_errors.append(error)
+            record(
+                "stream_error",
+                stream=stream_name,
+                error_type=type(error).__name__,
+                message=str(error),
+            )
+
+    def heartbeat() -> None:
+        while not stop_heartbeat.wait(heartbeat_seconds):
+            elapsed = round(time.monotonic() - started, 3)
+            record(
+                "worker_heartbeat",
+                elapsed_seconds=elapsed,
+                last_stage=last_stage[0],
+            )
+            print(
+                f"Modal D4 worker heartbeat: elapsed={elapsed:.0f}s "
+                f"last_stage={last_stage[0] or 'awaiting-first-event'}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    record("controller_worker_started")
+    stdout_thread = threading.Thread(
+        target=drain, args=("stdout", process.stdout, sys.stdout), daemon=True
+    )
+    stderr_thread = threading.Thread(
+        target=drain, args=("stderr", process.stderr, sys.stderr), daemon=True
+    )
+    heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+    stdout_thread.start()
+    stderr_thread.start()
+    heartbeat_thread.start()
+    try:
+        exit_code = process.wait()
+        stdout_thread.join()
+        stderr_thread.join()
+    finally:
+        stop_heartbeat.set()
+        heartbeat_thread.join()
+    record(
+        "controller_worker_completed",
+        elapsed_seconds=round(time.monotonic() - started, 3),
+        exit_code=exit_code,
+        last_stage=last_stage[0],
+    )
+    if log_output is not None:
+        log_output.close()
+    if stream_errors:
+        error = stream_errors[0]
+        raise D4CaptureError(
+            f"Modal worker output stream failed: {type(error).__name__}: {error}"
+        ) from error
+    return exit_code, "".join(chunks["stdout"]), "".join(chunks["stderr"])
 
 
 def _unvalidated_capture_path(destination: Path) -> Path:
@@ -330,6 +460,7 @@ def _run_d4_capture(
     from modal_benchmark_support import assert_native_linux_x86
     from profile_capture_support import install_wheel_command
 
+    _worker_progress("capture_validation_started", probe_only=probe_only)
     observed_source = source_payload_identity(REMOTE_ROOT)
     if observed_source != expected_source:
         raise D4CaptureError(
@@ -364,6 +495,7 @@ def _run_d4_capture(
         control=sandbox_control,
         observed_image_id=os.environ.get("MODAL_IMAGE_ID"),
     )
+    _worker_progress("capture_validation_completed", probe_only=probe_only)
 
     environment = normalized_capture_environment(os.environ)
     # Reported taskset/sched_getaffinity state is insufficient under a virtual
@@ -394,7 +526,9 @@ def _run_d4_capture(
             },
             "sandbox_control": sandbox_control,
         }
-        return (json.dumps(probe, indent=2, sort_keys=True) + "\n").encode()
+        payload = (json.dumps(probe, indent=2, sort_keys=True) + "\n").encode()
+        _worker_progress("probe_completed", output_bytes=len(payload))
+        return payload
     normalized_build_environment = build_environment_evidence(environment)
     build_host = {
         "os_release": {
@@ -412,6 +546,7 @@ def _run_d4_capture(
         wheel_hashes: dict[str, str] = {}
         variant_plan: dict[str, Any] = {"builds": {}}
         for label in COMPACT_BUILD_LABELS:
+            _worker_progress("build_started", build_label=label)
             venv = working_root / "venvs" / label
             wheel_directory = working_root / "wheels" / label
             cargo_target = working_root / "cargo-target" / label
@@ -436,17 +571,23 @@ def _run_d4_capture(
                 "create_venv": create_venv,
                 "build": build_command,
             }
+            _worker_progress("venv_create_started", build_label=label)
             _run_logged(create_venv, log=build_log, environment=environment)
+            _worker_progress("venv_create_completed", build_label=label)
+            _worker_progress("reference_sync_started", build_label=label)
             _run_logged(
                 sync_command,
                 log=sync_log,
                 environment=environment,
             )
+            _worker_progress("reference_sync_completed", build_label=label)
+            _worker_progress("wheel_build_started", build_label=label)
             _run_logged(
                 build_command,
                 log=build_log,
                 environment=environment,
             )
+            _worker_progress("wheel_build_completed", build_label=label)
             wheels = sorted(wheel_directory.glob("*.whl"))
             if len(wheels) != 1:
                 raise D4CaptureError(f"{label}: expected exactly one wheel, got {len(wheels)}")
@@ -455,11 +596,13 @@ def _run_d4_capture(
             retained_wheel.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(wheels[0], retained_wheel)
             install_command = install_wheel_command(python=python, wheel=retained_wheel)
+            _worker_progress("wheel_install_started", build_label=label)
             _run_logged(
                 install_command,
                 log=build_log,
                 environment=environment,
             )
+            _worker_progress("wheel_install_completed", build_label=label)
             runtime = _runtime_identity(python, environment=environment)
             runtime_reconciliation = reconcile_installed_runtime(
                 wheel=retained_wheel, runtime=runtime
@@ -473,6 +616,7 @@ def _run_d4_capture(
                 output_root=artifact_root,
                 affinity_masks=masks,
                 execute=True,
+                progress=lambda stage, details: _worker_progress(stage, **details),
             )
             build_path = artifact_root / "builds" / label / "build.json"
             build = json.loads(build_path.read_text(encoding="utf-8"))
@@ -529,6 +673,8 @@ def _run_d4_capture(
             build_path.write_text(
                 json.dumps(build, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
+            _worker_progress("build_completed", build_label=label)
+        _worker_progress("archive_validation_started")
         assert_build_variant_artifacts(
             variant_plan,
             native_hashes=native_hashes,
@@ -653,7 +799,10 @@ def _run_d4_capture(
             json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         files["capture-index.json"] = (artifact_root / "capture-index.json").read_bytes()
-        return create_capture_archive(files)
+        _worker_progress("archive_started", file_count=len(files))
+        payload = create_capture_archive(files)
+        _worker_progress("archive_completed", file_count=len(files), output_bytes=len(payload))
+        return payload
 
 
 def _git(*arguments: str) -> str:
@@ -684,15 +833,25 @@ def _worker_main(*, control_path: Path, output_path: Path, probe_only: bool) -> 
     }
     if not isinstance(control, dict) or set(control) != required:
         raise D4CaptureError("Modal VM Sandbox control record has an invalid shape")
-    result = _run_d4_capture(
-        expected_source=control["expected_source"],
-        expected_assets=control["expected_assets"],
-        source_revision=control["source_revision"],
-        modal_client_version=control["modal_client_version"],
-        sandbox_control=control,
-        probe_only=probe_only,
-    )
-    output_path.write_bytes(result)
+    _worker_progress("worker_started", probe_only=probe_only)
+    try:
+        result = _run_d4_capture(
+            expected_source=control["expected_source"],
+            expected_assets=control["expected_assets"],
+            source_revision=control["source_revision"],
+            modal_client_version=control["modal_client_version"],
+            sandbox_control=control,
+            probe_only=probe_only,
+        )
+        output_path.write_bytes(result)
+    except BaseException as error:
+        _worker_progress(
+            "worker_failed",
+            error_type=type(error).__name__,
+            message=str(error),
+        )
+        raise
+    _worker_progress("worker_completed", output_bytes=len(result))
 
 
 def _sandbox_control(
@@ -728,6 +887,7 @@ def _execute_in_vm_sandbox(
     revision: str,
     probe_only: bool,
     lifecycle_path: Path | None = None,
+    worker_log_path: Path | None = None,
 ) -> tuple[bytes, dict[str, Any]]:
     if modal is None or app is None or d4_image is None:
         raise D4CaptureError("the Modal client is required to allocate the D4 VM Sandbox")
@@ -790,9 +950,10 @@ def _execute_in_vm_sandbox(
         if probe_only:
             command.append("--probe-only")
         process = sandbox.exec(*command, timeout=600 if probe_only else SANDBOX_TIMEOUT_SECONDS)
-        exit_code = process.wait()
-        stdout = process.stdout.read()
-        stderr = process.stderr.read()
+        exit_code, stdout, stderr = _stream_worker_process(
+            process,
+            worker_log_path=worker_log_path,
+        )
         lifecycle["worker_exit_code"] = exit_code
         lifecycle["worker_stdout"] = stdout
         lifecycle["worker_stderr"] = stderr
@@ -825,12 +986,54 @@ def _execute_in_vm_sandbox(
     return payload, lifecycle
 
 
+def _finalize_capture(
+    destination: Path,
+    *,
+    expected_source: dict[str, Any],
+    expected_assets: dict[str, Any],
+) -> None:
+    diagnostic = _unvalidated_capture_path(destination)
+    try:
+        payload = diagnostic.read_bytes()
+    except OSError as error:
+        raise D4CaptureError(f"retrieved Modal payload is unavailable: {diagnostic}") from error
+    try:
+        write_capture_archive(
+            payload,
+            destination,
+            expected_source=expected_source,
+            expected_assets=expected_assets,
+            phase_c_assets_root=LOCAL_ASSETS_ROOT,
+        )
+    except BaseException:
+        print(
+            f"D4 x86_64 archive validation failed; retained raw payload: {diagnostic}",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise
+    diagnostic.unlink()
+    print(f"wrote validated D4 x86_64 raw capture: {destination}", flush=True)
+
+
+def finalize_capture(output: str = "/tmp/qwen-mm-d4-x86_64.zip") -> None:
+    """Validate and promote a retrieved payload inside the locked project environment."""
+
+    destination = Path(output).expanduser().resolve()
+    _finalize_capture(
+        destination,
+        expected_source=source_payload_identity(LOCAL_ROOT),
+        expected_assets=assets_identity(LOCAL_ASSETS_ROOT),
+    )
+
+
 def main(
     output: str = "/tmp/qwen-mm-d4-x86_64.zip",
     dry_run: bool = False,
     short_probe: bool = False,
     probe_output: str = "/tmp/qwen-mm-d4-modal-vm-probe.json",
     approve_paid_compute: bool = False,
+    defer_validation: bool = False,
 ) -> None:
     source = source_payload_identity(LOCAL_ROOT)
     assets = assets_identity(LOCAL_ASSETS_ROOT)
@@ -850,7 +1053,8 @@ def main(
             },
             indent=2,
             sort_keys=True,
-        )
+        ),
+        flush=True,
     )
     if not approve_paid_compute:
         raise D4CaptureError(
@@ -864,36 +1068,29 @@ def main(
     lifecycle_path = destination.with_suffix(
         destination.suffix + (".lifecycle.json" if short_probe else ".modal-lifecycle.json")
     )
-    payload, lifecycle = _execute_in_vm_sandbox(
+    worker_log_path = destination.with_suffix(destination.suffix + ".modal-worker.jsonl")
+    payload, _lifecycle = _execute_in_vm_sandbox(
         source=source,
         assets=assets,
         revision=revision,
         probe_only=short_probe,
         lifecycle_path=lifecycle_path,
+        worker_log_path=worker_log_path,
     )
     if short_probe:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(payload)
-        print(f"wrote terminated Modal VM Sandbox probe: {destination}")
+        print(f"wrote terminated Modal VM Sandbox probe: {destination}", flush=True)
         return
     diagnostic = _unvalidated_capture_path(destination)
     _write_bytes_atomically(payload, diagnostic)
-    try:
-        write_capture_archive(
-            payload,
-            destination,
-            expected_source=source,
-            expected_assets=assets,
-            phase_c_assets_root=LOCAL_ASSETS_ROOT,
-        )
-    except BaseException:
+    if defer_validation:
         print(
-            f"D4 x86_64 archive validation failed; retained raw payload: {diagnostic}",
-            file=sys.stderr,
+            f"retrieved terminated Modal VM Sandbox payload for locked validation: {diagnostic}",
+            flush=True,
         )
-        raise
-    diagnostic.unlink()
-    print(f"wrote validated D4 x86_64 raw capture: {destination}")
+        return
+    _finalize_capture(destination, expected_source=source, expected_assets=assets)
 
 
 if app is not None:
@@ -902,11 +1099,18 @@ if app is not None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--finalize", action="store_true")
+    parser.add_argument("--output", default="/tmp/qwen-mm-d4-x86_64.zip")
     parser.add_argument("--sandbox-worker", action="store_true")
     parser.add_argument("--control", type=Path)
     parser.add_argument("--worker-output", type=Path)
     parser.add_argument("--probe-only", action="store_true")
     arguments = parser.parse_args()
+    if arguments.finalize:
+        if arguments.sandbox_worker:
+            parser.error("--finalize and --sandbox-worker are mutually exclusive")
+        finalize_capture(arguments.output)
+        raise SystemExit(0)
     if not arguments.sandbox_worker or arguments.control is None or arguments.worker_output is None:
         parser.error("direct execution is reserved for the internal --sandbox-worker path")
     _worker_main(
