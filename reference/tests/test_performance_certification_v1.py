@@ -489,6 +489,47 @@ class PerformanceCertificationTests(unittest.TestCase):
         self.assertIn("compact shipping-only matrix", report)
         self.assertIn("Certification missed", report)
 
+    def test_pic_scale_scratch_buffer_is_accepted_end_to_end(self) -> None:
+        raw_captures = compact_captures(self.identity)
+        memory = raw_captures[0]["observations"][0]["pairs"][0]["implementations"]["candidate"][
+            "memory"
+        ]
+        retained = memory["buffers"].pop()
+        scratch_bytes = 25
+        memory["buffers"].append(
+            {
+                "sequence": 1,
+                "name": "resize.pic_scale.scratch",
+                "class": "transient",
+                "scope": {
+                    "request_index": 0,
+                    "message_index": 0,
+                    "content_item_index": 0,
+                    "media_index": 0,
+                    "input_index": 0,
+                },
+                "bytes": scratch_bytes,
+                "allocated_at_ns": 20,
+                "released_at_ns": 40,
+            }
+        )
+        retained["sequence"] = 2
+        memory["buffers"].append(retained)
+        memory["allocation_count"] += 1
+        memory["allocated_bytes"] += scratch_bytes
+        memory["peak_transient_live_bytes"] += scratch_bytes
+
+        artifact = build_certification(
+            raw_captures,
+            current_identity=self.identity,
+            created_at="2026-08-21T00:00:00Z",
+        )
+        validate_certification(artifact, current_identity=self.identity)
+        self.assertEqual(
+            certification.BUFFER_SEMANTICS["resize.pic_scale.scratch"],
+            ("uint8", "vector", False, "transient"),
+        )
+
     def test_noise_miss_is_reported_after_the_complete_matrix(self) -> None:
         noisy_captures = captures(self.identity)
         native = next(

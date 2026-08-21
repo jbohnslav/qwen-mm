@@ -108,6 +108,7 @@ BUFFER_SEMANTICS = {
     "resize.vertical.weights_f64": ("float64", "vector", False, "transient"),
     "resize.vertical.bounds": ("usize_pair", "vector", False, "transient"),
     "resize.vertical.coefficients_i32": ("int32", "vector", False, "transient"),
+    "resize.pic_scale.scratch": ("uint8", "vector", False, "transient"),
 }
 COPY_NAMES = frozenset({"binding.owned_media", "resize.packed_source", "resize.noop.source_copy"})
 
