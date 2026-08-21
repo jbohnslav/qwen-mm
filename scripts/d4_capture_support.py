@@ -1353,12 +1353,20 @@ def local_linux_resource_attestation(
     return result
 
 
-def noise_assessment(values: Sequence[float]) -> dict[str, Any]:
+def noise_assessment(
+    values: Sequence[float], *, minimum_observations: int = NOISE_MIN_OBSERVATIONS
+) -> dict[str, Any]:
     """Evaluate the frozen no-pruning CV rule over all supplied observations."""
 
-    if len(values) < NOISE_MIN_OBSERVATIONS:
+    if (
+        isinstance(minimum_observations, bool)
+        or not isinstance(minimum_observations, int)
+        or minimum_observations < 2
+    ):
+        raise D4CaptureError("noise assessment minimum must be at least two observations")
+    if len(values) < minimum_observations:
         raise D4CaptureError(
-            f"noise assessment requires at least {NOISE_MIN_OBSERVATIONS} observations"
+            f"noise assessment requires at least {minimum_observations} observations"
         )
     if any(
         not isinstance(value, (int, float))
@@ -1384,7 +1392,9 @@ def noise_assessment(values: Sequence[float]) -> dict[str, Any]:
     }
 
 
-def result_noise_assessment(result: Mapping[str, Any]) -> dict[str, Any]:
+def result_noise_assessment(
+    result: Mapping[str, Any], *, minimum_observations: int = NOISE_MIN_OBSERVATIONS
+) -> dict[str, Any]:
     """Recompute the complete no-pruning CV evidence from raw process medians."""
 
     groups: dict[tuple[str, str, str], list[float]] = {}
@@ -1408,7 +1418,7 @@ def result_noise_assessment(result: Mapping[str, Any]) -> dict[str, Any]:
                 "profile_alias": profile,
                 "case_id": case,
                 "implementation": implementation,
-                **noise_assessment(values),
+                **noise_assessment(values, minimum_observations=minimum_observations),
             }
         )
     return {
@@ -1420,14 +1430,23 @@ def result_noise_assessment(result: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def capture_failure_report(
-    *, build_label: str, noise_by_budget: Mapping[int, Mapping[str, Any]]
+    *,
+    build_label: str,
+    noise_by_budget: Mapping[int, Mapping[str, Any]],
+    budgets: Sequence[int] = THREAD_BUDGETS,
 ) -> dict[str, Any]:
     """Render every observed noise miss without changing or pruning the frozen evidence."""
 
-    if build_label not in BUILD_LABELS or set(noise_by_budget) != set(THREAD_BUDGETS):
+    expected_budgets = tuple(budgets)
+    if (
+        build_label not in BUILD_LABELS
+        or not expected_budgets
+        or len(expected_budgets) != len(set(expected_budgets))
+        or set(noise_by_budget) != set(expected_budgets)
+    ):
         raise D4CaptureError("capture failure report requires one complete build/thread matrix")
     failures: list[dict[str, Any]] = []
-    for budget in THREAD_BUDGETS:
+    for budget in expected_budgets:
         noise = noise_by_budget[budget]
         assessments = noise.get("assessments")
         if not isinstance(assessments, list) or not assessments:

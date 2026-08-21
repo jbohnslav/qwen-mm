@@ -17,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
 
 import d4_capture_support as support  # noqa: E402
 import d4_local  # noqa: E402
+import d4_smoke  # noqa: E402
 import d4_worker  # noqa: E402
 
 
@@ -120,6 +121,33 @@ def _base_files() -> dict[str, bytes]:
 
 
 class D4CaptureSupportTests(unittest.TestCase):
+    def test_smoke_preserves_virtualenv_interpreter_path(self) -> None:
+        interpreter = Path(".venv/bin/python")
+        selected = d4_smoke.absolute_without_resolving(interpreter)
+        self.assertEqual(selected, Path.cwd() / interpreter)
+        self.assertNotEqual(selected, interpreter.resolve())
+
+    def test_smoke_rebuilds_current_native_extension_before_measurement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            python = root / "venv/bin/python"
+            with mock.patch.object(d4_smoke.subprocess, "run") as run:
+                d4_smoke.run_smoke(
+                    python=python,
+                    assets_root=root / "assets",
+                    phase_c_report=root / "phase-c.json",
+                    output=root / "result.json",
+                    report=root / "report.md",
+                )
+        self.assertEqual(len(run.call_args_list), 3)
+        build = run.call_args_list[0]
+        self.assertTrue(any(Path(item).name == "maturin" for item in build.args[0]))
+        self.assertIn("develop", build.args[0])
+        self.assertIn("--release", build.args[0])
+        self.assertIn("--skip-install", build.args[0])
+        self.assertNotIn("uv", build.args[0])
+        self.assertEqual(build.kwargs["env"]["VIRTUAL_ENV"], str(python.parent.parent))
+
     def test_source_payload_must_match_immutable_revision(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -832,9 +860,30 @@ class D4CaptureSupportTests(unittest.TestCase):
         with self.assertRaises(support.D4CaptureError):
             support.parse_cpu_list("3-1")
 
-    def test_worker_plan_wraps_the_complete_matrix_in_phase_c(self) -> None:
-        masks = {budget: tuple(range(budget)) for budget in support.THREAD_BUDGETS}
-        plan = d4_worker.capture_plan(
+    def test_smoke_command_is_small_real_adapter_gut_check(self) -> None:
+        command = d4_worker.smoke_command(
+            python=Path("/venv/bin/python"),
+            assets_root=Path("/assets"),
+            phase_c_report=Path("/phase-c/report.json"),
+            output=Path("/output/result.json"),
+            report=Path("/output/report.md"),
+        )
+        self.assertIn("official", command)
+        self.assertIn("qwen_mm.benchmark:create_adapter", command)
+        self.assertEqual(
+            command[command.index("--cases") + 1],
+            ",".join(d4_worker.SMOKE_CASES),
+        )
+        self.assertEqual(command[command.index("--process-repetitions") + 1], "1")
+        self.assertEqual(command[command.index("--warmups") + 1], "1")
+        self.assertEqual(command[command.index("--minimum-samples") + 1], "3")
+        self.assertEqual(command[command.index("--minimum-seconds") + 1], "0")
+        self.assertEqual(command[command.index("--thread-regimes") + 1], "t1")
+        self.assertEqual(command[command.index("--build-labels") + 1], "shipping")
+
+    def test_worker_plan_wraps_the_compact_matrix_in_phase_c(self) -> None:
+        masks = {budget: tuple(range(budget)) for budget in d4_worker.COMPACT_THREAD_BUDGETS}
+        plan = d4_worker.compact_capture_plan(
             python=Path("/venv/shipping/bin/python"),
             wheel=Path("/wheels/qwen_mm.whl"),
             build_label="shipping",
@@ -842,19 +891,35 @@ class D4CaptureSupportTests(unittest.TestCase):
             output_root=Path("/capture"),
             affinity_masks=masks,
         )
-        self.assertEqual(len(plan["timed_matrix"]), 4)
+        self.assertEqual(len(plan["timed_matrix"]), 2)
         self.assertIn("qwen_mm_reference.phase_c_overlay_v2", plan["pre_conformance"])
         self.assertIn("qwen_mm_reference.phase_c_overlay_v2", plan["post_conformance"])
         self.assertIn("--reuse-committed-production-evidence", plan["pre_conformance"])
         self.assertNotIn("qwen_mm_reference.phase_c_conformance", plan["pre_conformance"])
-        for budget, coordinate in zip(support.THREAD_BUDGETS, plan["timed_matrix"], strict=True):
+        for budget, coordinate in zip(
+            d4_worker.COMPACT_THREAD_BUDGETS, plan["timed_matrix"], strict=True
+        ):
             self.assertEqual(coordinate["thread_budget"], budget)
             self.assertEqual(coordinate["command"][:2], ["taskset", "--cpu-list"])
             self.assertIn(f"t{budget}", coordinate["command"])
             self.assertIn("--mode", coordinate["command"])
             self.assertIn("dedicated", coordinate["command"])
-            self.assertIn("5", coordinate["command"])
-            self.assertIn("30", coordinate["command"])
+            self.assertEqual(
+                coordinate["command"][coordinate["command"].index("--cases") + 1],
+                ",".join(d4_worker.COMPACT_CASES_BY_THREAD_BUDGET[budget]),
+            )
+            self.assertEqual(
+                coordinate["command"][coordinate["command"].index("--process-repetitions") + 1],
+                "3",
+            )
+            self.assertEqual(
+                coordinate["command"][coordinate["command"].index("--minimum-samples") + 1],
+                "30",
+            )
+            self.assertEqual(
+                coordinate["command"][coordinate["command"].index("--minimum-seconds") + 1],
+                "5",
+            )
             seed_index = coordinate["command"].index("--seed")
             self.assertEqual(coordinate["command"][seed_index + 1], str(support.D4_RANDOM_SEED))
 
@@ -949,6 +1014,82 @@ class D4CaptureSupportTests(unittest.TestCase):
                     "noise/shipping/qwen3-vl-8b/image24/t4/reference",
                 ],
             )
+
+    def test_compact_worker_collects_failures_and_finishes_capture_window(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            coordinates = []
+            for budget in d4_worker.COMPACT_THREAD_BUDGETS:
+                result_path = root / "captures" / "shipping" / f"t{budget}" / "result.json"
+                result_path.parent.mkdir(parents=True, exist_ok=True)
+                medians = [80.0, 100.0, 120.0] if budget == 1 else [99.0, 100.0, 101.0]
+                result_path.write_text(
+                    json.dumps(
+                        {
+                            "pairs": [
+                                {
+                                    "profile_alias": "qwen3-vl-8b",
+                                    "case_id": "image24",
+                                    "implementations": {
+                                        implementation: {"summary": {"wall_ms": {"p50": median}}}
+                                        for implementation in ("reference", "candidate")
+                                    },
+                                }
+                                for median in medians
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                coordinates.append(
+                    {
+                        "thread_budget": budget,
+                        "command": [f"compact-t{budget}"],
+                        "output": str(result_path),
+                    }
+                )
+            plan = {
+                "suite": "compact",
+                "pre_conformance": ["pre-conformance"],
+                "timed_matrix": coordinates,
+                "post_conformance": ["post-conformance"],
+            }
+            commands: list[list[str]] = []
+
+            def run_logged(command: list[str], **_kwargs: object) -> None:
+                commands.append(list(command))
+
+            with (
+                mock.patch.object(d4_worker, "compact_capture_plan", return_value=plan),
+                mock.patch.object(d4_worker, "installed_build_identity", return_value={}),
+                mock.patch.object(d4_worker, "normalized_capture_environment", return_value={}),
+                mock.patch.object(d4_worker, "initialize_private_environment_integrity"),
+                mock.patch.object(d4_worker, "verify_private_environment_integrity"),
+                mock.patch.object(
+                    d4_worker,
+                    "phase_c_overlay_validation_command",
+                    return_value=["validate-phase-c"],
+                ),
+                mock.patch.object(
+                    d4_worker, "benchmark_validation_command", return_value=["validate-benchmark"]
+                ),
+                mock.patch.object(d4_worker, "_run_logged", side_effect=run_logged),
+            ):
+                d4_worker.run_compact_capture(
+                    python=root / "venv/bin/python",
+                    wheel=root / "qwen_mm.whl",
+                    assets_root=root / "assets",
+                    output_root=root,
+                    affinity_masks={budget: None for budget in d4_worker.COMPACT_THREAD_BUDGETS},
+                    execute=True,
+                )
+
+            self.assertIn(["post-conformance"], commands)
+            failures = json.loads(
+                (root / "builds/shipping/failures.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(failures["status"], "miss")
+            self.assertEqual(failures["failure_count"], 2)
 
 
 if __name__ == "__main__":

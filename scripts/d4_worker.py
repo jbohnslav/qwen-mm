@@ -41,6 +41,13 @@ REPOSITORY_ROOT = SCRIPT_DIRECTORY.parent
 WORKLOAD = REPOSITORY_ROOT / "benchmarks/workloads-v2.json"
 PROFILES = ("qwen3-vl-8b", "qwen3.5-9b")
 CACHED_CASE = "repeat24_cached"
+SMOKE_CASES = ("text_long", "image1", "image24")
+COMPACT_THREAD_BUDGETS = (1, 8)
+COMPACT_CASES_BY_THREAD_BUDGET = {
+    1: ("image24", "image1", "rgb24", "text_long"),
+    8: ("image24", "ragged24", "images_16"),
+}
+COMPACT_PROCESS_REPETITIONS = 3
 THREAD_ENVIRONMENT_NAMES = (
     "OMP_NUM_THREADS",
     "MKL_NUM_THREADS",
@@ -85,22 +92,34 @@ def _run_logged(
         )
 
 
-def benchmark_command(
+def _paired_benchmark_command(
     *,
     python: Path,
     build_label: str,
     thread_budget: int,
+    cases: Sequence[str],
+    mode: str,
+    process_repetitions: int,
+    warmups: int,
+    minimum_samples: int,
+    minimum_seconds: float,
     phase_c_report: Path,
     assets_root: Path,
     output: Path,
     report: Path,
     affinity_cpus: Sequence[int] | None,
 ) -> list[str]:
-    """Build the frozen full-matrix command for exactly one build/thread label."""
-
-    if build_label not in BUILD_LABELS or thread_budget not in THREAD_BUDGETS:
+    if (
+        build_label not in BUILD_LABELS
+        or thread_budget <= 0
+        or not cases
+        or len(cases) != len(set(cases))
+        or process_repetitions <= 0
+        or warmups < 0
+        or minimum_samples <= 0
+        or minimum_seconds < 0
+    ):
         raise D4CaptureError("invalid D4 build/thread coordinate")
-    selected_cases = ["image24"] if thread_budget in {2, 4} else _release_case_ids()
     command = [
         str(python),
         "-m",
@@ -109,7 +128,7 @@ def benchmark_command(
         "--workload",
         str(WORKLOAD),
         "--mode",
-        "dedicated",
+        mode,
         "--reference-adapter",
         "official",
         "--candidate-adapter",
@@ -117,17 +136,17 @@ def benchmark_command(
         "--profiles",
         ",".join(PROFILES),
         "--cases",
-        ",".join(selected_cases),
+        ",".join(cases),
         "--process-repetitions",
-        "5",
+        str(process_repetitions),
         "--seed",
         str(D4_RANDOM_SEED),
         "--warmups",
-        "3",
+        str(warmups),
         "--minimum-samples",
-        "30",
+        str(minimum_samples),
         "--minimum-seconds",
-        "5",
+        str(minimum_seconds),
         "--thread-regimes",
         f"t{thread_budget}",
         "--build-labels",
@@ -146,6 +165,68 @@ def benchmark_command(
     if affinity_cpus is not None:
         command.extend(("--affinity-cpus", ",".join(str(cpu) for cpu in affinity_cpus)))
     return command
+
+
+def benchmark_command(
+    *,
+    python: Path,
+    build_label: str,
+    thread_budget: int,
+    phase_c_report: Path,
+    assets_root: Path,
+    output: Path,
+    report: Path,
+    affinity_cpus: Sequence[int] | None,
+) -> list[str]:
+    """Build the archived exhaustive-matrix command for one build/thread label."""
+
+    if thread_budget not in THREAD_BUDGETS:
+        raise D4CaptureError("invalid exhaustive D4 thread coordinate")
+    selected_cases = ["image24"] if thread_budget in {2, 4} else _release_case_ids()
+    return _paired_benchmark_command(
+        python=python,
+        build_label=build_label,
+        thread_budget=thread_budget,
+        cases=selected_cases,
+        mode="dedicated",
+        process_repetitions=5,
+        warmups=3,
+        minimum_samples=30,
+        minimum_seconds=5,
+        phase_c_report=phase_c_report,
+        assets_root=assets_root,
+        output=output,
+        report=report,
+        affinity_cpus=affinity_cpus,
+    )
+
+
+def smoke_command(
+    *,
+    python: Path,
+    assets_root: Path,
+    phase_c_report: Path,
+    output: Path,
+    report: Path,
+) -> list[str]:
+    """Return the real-adapter, non-gating local D4 smoke command."""
+
+    return _paired_benchmark_command(
+        python=python,
+        build_label="shipping",
+        thread_budget=1,
+        cases=SMOKE_CASES,
+        mode="smoke",
+        process_repetitions=1,
+        warmups=1,
+        minimum_samples=3,
+        minimum_seconds=0,
+        phase_c_report=phase_c_report,
+        assets_root=assets_root,
+        output=output,
+        report=report,
+        affinity_cpus=None,
+    )
 
 
 def _release_case_ids() -> list[str]:
@@ -231,6 +312,77 @@ def capture_plan(
     return plan
 
 
+def compact_capture_plan(
+    *,
+    python: Path,
+    wheel: Path,
+    build_label: str,
+    assets_root: Path,
+    output_root: Path,
+    affinity_masks: Mapping[int, Sequence[int] | None],
+) -> dict[str, Any]:
+    """Return the selected 84-subprocess D4 benchmark plan."""
+
+    if build_label != "shipping" or set(affinity_masks) != set(COMPACT_THREAD_BUDGETS):
+        raise D4CaptureError("compact capture requires shipping with exact t1/t8 masks")
+    phase_c_root = output_root / "phase-c" / build_label
+    pre_report = phase_c_root / "pre/report.json"
+    plan: dict[str, Any] = {
+        "suite": "compact",
+        "build_label": build_label,
+        "python": str(python),
+        "wheel": str(wheel),
+        "pre_conformance": phase_c_overlay_command(
+            python=python,
+            wheel=wheel,
+            assets_root=assets_root,
+            output=phase_c_root / "pre/outputs",
+            report=pre_report,
+            summary=phase_c_root / "pre/summary.md",
+        ),
+        "timed_matrix": [],
+        "post_conformance": phase_c_overlay_command(
+            python=python,
+            wheel=wheel,
+            assets_root=assets_root,
+            output=phase_c_root / "post/outputs",
+            report=phase_c_root / "post/report.json",
+            summary=phase_c_root / "post/summary.md",
+        ),
+    }
+    for budget in COMPACT_THREAD_BUDGETS:
+        capture_root = output_root / "captures" / build_label / f"t{budget}"
+        command = _paired_benchmark_command(
+            python=python,
+            build_label=build_label,
+            thread_budget=budget,
+            cases=COMPACT_CASES_BY_THREAD_BUDGET[budget],
+            mode="dedicated",
+            process_repetitions=COMPACT_PROCESS_REPETITIONS,
+            warmups=3,
+            minimum_samples=30,
+            minimum_seconds=5,
+            phase_c_report=pre_report,
+            assets_root=assets_root,
+            output=capture_root / "result.json",
+            report=capture_root / "report.md",
+            affinity_cpus=affinity_masks[budget],
+        )
+        plan["timed_matrix"].append(
+            {
+                "thread_budget": budget,
+                "affinity": None
+                if affinity_masks[budget] is None
+                else list(affinity_masks[budget] or ()),
+                "cases": list(COMPACT_CASES_BY_THREAD_BUDGET[budget]),
+                "command": _taskset(command, affinity_masks[budget]),
+                "output": str(capture_root / "result.json"),
+                "report": str(capture_root / "report.md"),
+            }
+        )
+    return plan
+
+
 def _cached_unsupported_attestations(
     result: Mapping[str, Any], *, build_label: str, thread_budget: int
 ) -> list[dict[str, Any]]:
@@ -289,6 +441,178 @@ def _cached_unsupported_attestations(
             }
         )
     return records
+
+
+def run_compact_capture(
+    *,
+    python: Path,
+    wheel: Path,
+    assets_root: Path,
+    output_root: Path,
+    affinity_masks: Mapping[int, Sequence[int] | None],
+    execute: bool,
+) -> dict[str, Any]:
+    """Run semantic conformance immediately around the compact timed matrix."""
+
+    build_label = "shipping"
+    plan = compact_capture_plan(
+        python=python,
+        wheel=wheel,
+        build_label=build_label,
+        assets_root=assets_root,
+        output_root=output_root,
+        affinity_masks=affinity_masks,
+    )
+    build_root = output_root / "builds" / build_label
+    build_root.mkdir(parents=True, exist_ok=True)
+    (build_root / "build.json").write_text(
+        json.dumps(
+            {
+                "suite": "compact",
+                "build_label": build_label,
+                "identity": installed_build_identity(python=python, wheel=wheel),
+                "plan": plan,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    matrix_log = output_root / "logs" / build_label / "matrix.log"
+    environment = normalized_capture_environment(os.environ)
+    noise_by_budget: dict[int, dict[str, Any]] = {}
+    integrity_path = build_root / "environment-integrity.json"
+    if execute:
+        initialize_private_environment_integrity(
+            python.parent.parent,
+            build_label=build_label,
+            evidence_path=integrity_path,
+        )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="before-pre-phase-c-v2",
+        )
+
+    _run_logged(
+        plan["pre_conformance"],
+        log=matrix_log,
+        environment=environment,
+        append=False,
+        execute=execute,
+    )
+    if execute:
+        pre_report = output_root / "phase-c" / build_label / "pre/report.json"
+        _run_logged(
+            phase_c_overlay_validation_command(
+                python=python,
+                wheel=wheel,
+                report=pre_report,
+            ),
+            log=matrix_log,
+            environment=environment,
+            append=True,
+            execute=True,
+        )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="after-pre-phase-c-v2",
+        )
+
+    for coordinate in plan["timed_matrix"]:
+        budget = int(coordinate["thread_budget"])
+        if execute:
+            verify_private_environment_integrity(
+                python.parent.parent,
+                evidence_path=integrity_path,
+                checkpoint=f"before-t{budget}",
+            )
+        _run_logged(
+            coordinate["command"],
+            log=matrix_log,
+            environment=environment,
+            append=True,
+            execute=execute,
+        )
+        if execute:
+            result_path = Path(coordinate["output"])
+            _run_logged(
+                benchmark_validation_command(python=python, result=result_path),
+                log=matrix_log,
+                environment=environment,
+                append=True,
+                execute=True,
+            )
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            noise = result_noise_assessment(
+                result, minimum_observations=COMPACT_PROCESS_REPETITIONS
+            )
+            noise_by_budget[budget] = noise
+            result_path.with_name("noise.json").write_text(
+                json.dumps(noise, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            verify_private_environment_integrity(
+                python.parent.parent,
+                evidence_path=integrity_path,
+                checkpoint=f"after-t{budget}",
+            )
+
+    if execute:
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="before-post-phase-c-v2",
+        )
+    _run_logged(
+        plan["post_conformance"],
+        log=matrix_log,
+        environment=environment,
+        append=True,
+        execute=execute,
+    )
+    if execute:
+        post_report = output_root / "phase-c" / build_label / "post/report.json"
+        _run_logged(
+            phase_c_overlay_validation_command(
+                python=python,
+                wheel=wheel,
+                report=post_report,
+            ),
+            log=matrix_log,
+            environment=environment,
+            append=True,
+            execute=True,
+        )
+        verify_private_environment_integrity(
+            python.parent.parent,
+            evidence_path=integrity_path,
+            checkpoint="after-post-phase-c-v2",
+        )
+        failure_report = capture_failure_report(
+            build_label=build_label,
+            noise_by_budget=noise_by_budget,
+            budgets=COMPACT_THREAD_BUDGETS,
+        )
+        (build_root / "failures.json").write_text(
+            json.dumps(failure_report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    completed = {
+        "schema_id": "qwen-mm-d4-compact-build-capture-v1",
+        "schema_version": 1,
+        "suite": "compact",
+        "build_label": build_label,
+        "executed": execute,
+        "created_at": datetime.now(UTC).isoformat(),
+        "phase_c_pre_and_post": True,
+        "sample_pruning": "forbidden",
+        "plan": plan,
+    }
+    (build_root / "capture.json").write_text(
+        json.dumps(completed, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return completed
 
 
 def run_capture(
