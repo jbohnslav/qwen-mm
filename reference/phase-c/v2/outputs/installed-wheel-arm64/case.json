@@ -1,0 +1,1597 @@
+{
+  "assets_directory": "/Users/jim/code/qwen-mm/reference/.cache/huggingface/models--Qwen--Qwen3-VL-8B-Instruct/snapshots/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+  "profile": "qwen3-vl-8b",
+  "requests": [
+    {
+      "images": [
+        {
+          "height": 64,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 18880,
+          "offset": 0,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 295,
+          "sha256": "6b7d9ef578285091bc279953ec9568373cb06ba1e74833e43571360027935ce2",
+          "width": 96
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:noop-padded-ramp",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 33,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 4653,
+          "offset": 18880,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 141,
+          "sha256": "02116a4b7ca27cd559ca8d3a6a805ce0425d40d5e3c8457fc21e42717a032330",
+          "width": 47
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-black-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 129,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 74691,
+          "offset": 23533,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 579,
+          "sha256": "cfef7b6503b73683d2daf9f4c3fd32a6e2e25e0bc76d7902d37d7287b1011b43",
+          "width": 193
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-white-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 31,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 23901,
+          "offset": 98224,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 771,
+          "sha256": "b8feb393d4287542c60477e664579831316af402f3c92414bc88f0d789c9779e",
+          "width": 257
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 256,
+                "resized_width": 32
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-midgray-anisotropic",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 35,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 5355,
+          "offset": 122125,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 153,
+          "sha256": "6e3f848bed91e7643d741d62d5f912063bbab996b1c7dae07b0548440fa95a58",
+          "width": 51
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-red-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 171,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 132867,
+          "offset": 127480,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 777,
+          "sha256": "28c30866c5c9e65030e4e04fa5126893bc203700550528ac096732b5fee72e20",
+          "width": 259
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-green-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 64,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 49344,
+          "offset": 260347,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 771,
+          "sha256": "17e8c768c3a3279b221f987b1e57104be15f546262fae9e71c3bbf5b8268f35c",
+          "width": 257
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:solid-blue-one-axis",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 37,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 44511,
+          "offset": 385819,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 1203,
+          "sha256": "e2ff544343bd4411e9d8df704a469be8724cc1187f57e9f8dc178bb654d90e77",
+          "width": 401
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 224,
+                "resized_width": 64
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:ramp-independent-anisotropic",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 37,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 5883,
+          "offset": 430330,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 159,
+          "sha256": "d0c5fc77a91fdac6c28fbb5a3a24ce600540ebfd6db493019b2fe9037f5c42db",
+          "width": 53
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:impulse-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 193,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 148803,
+          "offset": 436213,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 771,
+          "sha256": "b23efddf80a332d9f1ad6bd7da62551eb25f040061dd09be27fe889b4bf545e5",
+          "width": 257
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:impulse-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 97,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 84681,
+          "offset": 585016,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 873,
+          "sha256": "21e45198a476f3cfd98349f942f07c4d94c849e79d82b6987f4b307d185863b5",
+          "width": 291
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:edge-vertical-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 39,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 8307,
+          "offset": 669697,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 213,
+          "sha256": "d0b6cb4469f805d40f006d5d8e9711a2b3153f62b32147a1f6766d75354c0b01",
+          "width": 71
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:edge-horizontal-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 35,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 5355,
+          "offset": 678004,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 153,
+          "sha256": "045408956c50bcc1b9ac995e191c311ca494c444a56e5e658e2bf0b8b510cb52",
+          "width": 51
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:checkerboard-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 193,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 148803,
+          "offset": 683359,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 771,
+          "sha256": "a366202359cf1438ab5a7773990a64488629a4afaf18f7ebfc469d010ce6f615",
+          "width": 257
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:checkerboard-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 127,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 145923,
+          "offset": 832162,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 1149,
+          "sha256": "0eb7177268dbfa1981a720659877f337fd375875da81a10f41e71bd03b964c1e",
+          "width": 383
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:nyquist-vertical-stripes",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 383,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 145923,
+          "offset": 978085,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 381,
+          "sha256": "8b3e53e8c59bae1712448f5d86cd6246b89f81fa8464861ff45acaea1d7f9a0b",
+          "width": 127
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 64
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:nyquist-horizontal-stripes",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 173,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 136497,
+          "offset": 1124008,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 789,
+          "sha256": "56d065dcfe3ec587b73fe89fe058f955632d7cdcfee01b088060465ad6b8daf2",
+          "width": 263
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:independent-rgb-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 43,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 7611,
+          "offset": 1260505,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 177,
+          "sha256": "359e87a4deac8908c2b71e23a282d146b8e9a1e99dd009df1f0ec16c05721db9",
+          "width": 59
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:alternating-channels-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 93,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 42129,
+          "offset": 1268116,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 453,
+          "sha256": "7a0fc00abe863a025575bed6f0a29d63e58517c50a42bb8793090e77c252b19e",
+          "width": 151
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:red-only-edge",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 47,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 10011,
+          "offset": 1310245,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 213,
+          "sha256": "666f3bbb63ffbdb7c71c1462b091c3e88a7c2cce3782bf582e54ba61bb7080c8",
+          "width": 71
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:green-only-ramp",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 137,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 86721,
+          "offset": 1320256,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 633,
+          "sha256": "88366c2c1b065bf4921e7da76fe9c952c18159270bcb2ae5483c7a72f4d3740c",
+          "width": 211
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:blue-only-noise",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 151,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 102831,
+          "offset": 1406977,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 681,
+          "sha256": "9024f30fa5c73c70c2504e6a8fc3e1363f63067e866c302221568d99e429b3e3",
+          "width": 227
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:identical-channels-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 79,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 26781,
+          "offset": 1509808,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 339,
+          "sha256": "db66bd138ac968dc19d22482f10d69dcd4fcbc02c0617c00f5ac5f160a523561",
+          "width": 113
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:channel-permutation-base",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 79,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 26781,
+          "offset": 1536589,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 339,
+          "sha256": "f2f54ff46571a5378f815f9f3224fafd4fd258cb220accc6305ea826bd8d835c",
+          "width": 113
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:channel-permutation-bgr",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 47,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 8601,
+          "offset": 1563370,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 183,
+          "sha256": "9d8c55eeb0e7f54e7416d35188c54d80d3c03634c7b3ccfad689e64be1d91571",
+          "width": 61
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:noise-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 211,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 200661,
+          "offset": 1571971,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 951,
+          "sha256": "a3680e39a79b66e739cf07ea229caad784923d3f6a99afd62be08356a1619d86",
+          "width": 317
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:noise-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 31,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 2883,
+          "offset": 1772632,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 93,
+          "sha256": "db989cb8153ebbc2fa6595c5645daebf556f945a7beac37492911c4cbd2b6fc8",
+          "width": 31
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 64
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:factor-below",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 32,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 3072,
+          "offset": 1775515,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 96,
+          "sha256": "0e7e3856dad57c530710ddcfc0d950cac129aac5ff0e53f64b06800a55281fca",
+          "width": 32
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 64
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:factor-at",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 33,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 3267,
+          "offset": 1778587,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 99,
+          "sha256": "f060782abaae547da4a32900af86785c890bad211d84c5d69d792a038ca80c03",
+          "width": 33
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 64
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:factor-above",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 32,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 12288,
+          "offset": 1781854,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "5803a30b817e0303ff274b15d0d0b4da983d893a31e4e296f8def4b2b7dc92bb",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 32,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:min-below",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 32,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 12288,
+          "offset": 1794142,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "cfd63d1aa90908ccc5a469ddb6fb47c75cde3282d1af789efeb2480d9b24fa78",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 32,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:min-at",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 32,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 12288,
+          "offset": 1806430,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "4942aaa008e9fad5bfa7028275c2f76235ee7e28ebbf13aa6b1c7c6decfa6b71",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 64,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:min-above",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 128,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 49152,
+          "offset": 1818718,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "d71e65d534f4a278d417dcd61a4797effefdf3041b0490dc5db9c6caba5e336c",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 96,
+                "resized_width": 96
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:max-below",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 128,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 49152,
+          "offset": 1867870,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "43dfd54f5f289ae80d9e9dc13dddd0591f2c22dda472c72db80b3f7e1d2cf122",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:max-at",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 128,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 49152,
+          "offset": 1917022,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 384,
+          "sha256": "886107fb354407290f879f22a848097168fd33a5176cb49e4411ab322ebb03b9",
+          "width": 128
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:max-above",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 480,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 921600,
+          "offset": 1966174,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 1920,
+          "sha256": "2264972b442236ff854d280e4a7cb3b5097d600c13b24f2eb1af8ff8dc8955c5",
+          "width": 640
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 192
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:procedural-fixture-crop-00-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 192,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 147456,
+          "offset": 2887774,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 768,
+          "sha256": "364be4d35e44b3fa9dfbf88f85e5a5c251f844ac6db1537e400ad766983e2281",
+          "width": 256
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 384,
+                "resized_width": 512
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:procedural-fixture-crop-07-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 576,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 442368,
+          "offset": 3035230,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 768,
+          "sha256": "ea02610c33c1f4adee60d0394f3d7121965844b1ae8f11f8f1e96732cf129232",
+          "width": 256
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 256,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:procedural-fixture-crop-13-portrait",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 256,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 491520,
+          "offset": 3477598,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 1920,
+          "sha256": "84ae18f5d3b3833213270c7c2146ebc4c85809530b8fe52be624df2c54ed5e93",
+          "width": 640
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 256,
+                "resized_width": 192
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:procedural-fixture-crop-21-one-axis",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 600,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 1440000,
+          "offset": 3969118,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 2400,
+          "sha256": "81a8d9f3b8474bbf022f1ce33b166ebdd20b3ab48499bc960b6538f941714e3a",
+          "width": 800
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 128,
+                "resized_width": 192
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:natural-blue-marble-africa-down",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 750,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 1125000,
+          "offset": 5409118,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 1500,
+          "sha256": "04118d7d1b841d28e4b733fa6b5bab5a490e50beb201100bf0e28067d219532b",
+          "width": 500
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 256,
+                "resized_width": 160
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:natural-blue-marble-americas-portrait",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 240,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 230400,
+          "offset": 6534118,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 960,
+          "sha256": "fc26b9e7b7cbe3ab703e7127c3617a8d903b69795b99a627f6cd8b65d47f0d0a",
+          "width": 320
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 384,
+                "resized_width": 512
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:natural-blue-marble-asia-up",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    },
+    {
+      "images": [
+        {
+          "height": 300,
+          "kind": "raw",
+          "layout": "positive",
+          "length": 810000,
+          "offset": 6764518,
+          "path": "/Users/jim/code/qwen-mm/reference/resize/v2/sources.rgb8.bin",
+          "row_stride": 2700,
+          "sha256": "790d7d3a9971fd2097961582328033a052ffcc9ce5c03a4e4e5c1dbb585cca7c",
+          "width": 900
+        }
+      ],
+      "messages": [
+        {
+          "content": [
+            {
+              "input_index": 0,
+              "options": {
+                "resized_height": 256,
+                "resized_width": 128
+              },
+              "type": "image"
+            },
+            {
+              "text": "resize-v2:natural-blue-marble-ocean-anisotropic",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "options": {
+        "add_generation_prompt": false
+      }
+    }
+  ]
+}

@@ -15,7 +15,7 @@
     "tested_revision": "b7d8eee2eb4096ed966e6fc8740919ae312eb3a5"
   },
   "contract_id": "qwen-mm-still-image-resize-v2",
-  "created_at": "2026-08-13T06:52:40.999593+00:00",
+  "created_at": "2026-08-26T15:37:20.555125+00:00",
   "current_candidate": {
     "allowed_production_delta": [
       "Cargo.lock",
@@ -25,6 +25,7 @@
       "crates/qwen-mm-core/examples/still_resize_bakeoff.rs",
       "crates/qwen-mm-core/src/media_conformance_tests.rs",
       "crates/qwen-mm-core/src/observability.rs",
+      "crates/qwen-mm-core/src/patchify.rs",
       "crates/qwen-mm-core/src/resize.rs"
     ],
     "backend_source": {
@@ -44,13 +45,45 @@
         "python": "3.11.15"
       },
       "case_count": 45,
+      "direct_core_case_ids": [
+        "ramp-horizontal-down",
+        "ramp-vertical-up"
+      ],
+      "installed_wheel_evidence": {
+        "candidate_case": {
+          "byte_length": 39627,
+          "path": "outputs/installed-wheel-arm64/case.json",
+          "sha256": "d3be79f5b6af8d0c0c5f6132f2a21d22fd4cc11319626f4f25836fccd4c852b7"
+        },
+        "candidate_result": {
+          "byte_length": 138342,
+          "path": "outputs/installed-wheel-arm64/actual/result.json",
+          "sha256": "c783e6e077f5cb2b655c6612ca624f8a2fcc8c658a18837f0a9b738b76184ccd"
+        },
+        "image_grid_thw": {
+          "byte_length": 1160,
+          "path": "outputs/installed-wheel-arm64/actual/arrays/image_grid_thw.npy",
+          "sha256": "55a6a4caf869db3c36e99cd6f1bcea5ea67ff06e06d718bfb9ea8a79a51508a7"
+        },
+        "mode": "architecture-local-installed-wheel-v1",
+        "pixel_values": {
+          "byte_length": 22831232,
+          "path": "outputs/installed-wheel-arm64/actual/arrays/pixel_values.npy",
+          "sha256": "23782ccd0b0b0ef6a46b51a62fbfced90240bf3bda74a80e83f802e4c1d08ed2"
+        },
+        "rgb8": {
+          "byte_length": 2914752,
+          "path": "outputs/installed-wheel-resize.rgb8.bin",
+          "sha256": "f4ea0c36e3a65000576e38b772080a69dbe3bd664e428137aa99846a96d32e6a"
+        }
+      },
       "isolation": {
         "forbidden_imports": [],
         "installed_origin": true,
-        "native_path": "/private/tmp/qwen-mm-phase-c-v2-venv/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+        "native_path": "/private/tmp/qwen-mm-725c-overlay.Ym33oV/venv/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
         "oracle_accesses": [],
-        "package_path": "/private/tmp/qwen-mm-phase-c-v2-venv/lib/python3.11/site-packages/qwen_mm/__init__.py",
-        "sys_prefix": "/private/tmp/qwen-mm-phase-c-v2-venv"
+        "package_path": "/private/tmp/qwen-mm-725c-overlay.Ym33oV/venv/lib/python3.11/site-packages/qwen_mm/__init__.py",
+        "sys_prefix": "/private/tmp/qwen-mm-725c-overlay.Ym33oV/venv"
       },
       "profile": "qwen3-vl-8b",
       "public_processor_case_count": 43,
@@ -99,11 +132,11 @@
         "natural-blue-marble-asia-up",
         "natural-blue-marble-ocean-anisotropic"
       ],
-      "public_processor_matches_production_blob": true,
+      "public_processor_matches_installed_wheel_evidence": true,
       "quality_result": {
         "candidate": {
           "byte_length": 2914752,
-          "path": "reference/phase-c/v2/production-resize.rgb8.bin",
+          "path": "outputs/installed-wheel-resize.rgb8.bin",
           "sha256": "f4ea0c36e3a65000576e38b772080a69dbe3bd664e428137aa99846a96d32e6a"
         },
         "cases": [
@@ -3303,38 +3336,38 @@
         "schema_version": 1
       },
       "runtime_identity": {
-        "native_artifact_sha256": "3b9213264d5699fa984b7e90c9bce9eae74b1b76616d5669f4103f3d89ce2e3c",
+        "native_artifact_sha256": "4d0e74a5f4863c53996150467dc256b5cce29f797980aeaa809a1e2d77bd051a",
         "native_module": "qwen_mm._native",
         "package": "qwen_mm",
         "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
         "version": "0.1.0"
       },
       "wheel": {
-        "byte_length": 2512272,
+        "byte_length": 2505494,
         "filename": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
         "runtime_identity": {
-          "native_artifact_sha256": "3b9213264d5699fa984b7e90c9bce9eae74b1b76616d5669f4103f3d89ce2e3c",
+          "native_artifact_sha256": "4d0e74a5f4863c53996150467dc256b5cce29f797980aeaa809a1e2d77bd051a",
           "native_module": "qwen_mm._native",
           "package": "qwen_mm",
           "package_artifact_sha256": "f947311a8f7b462cf26d26395f1d09445955fb5fc5d2897648754b966bfc4a16",
           "version": "0.1.0"
         },
         "sbom": {
-          "byte_length": 146133,
+          "byte_length": 147266,
           "path": "qwen_mm-0.1.0.dist-info/sboms/qwen-mm-python.cyclonedx.json",
           "selected_component": {
             "name": "pic-scale",
             "version": "0.7.11"
           },
-          "sha256": "e5cbf241e51d53fea4236c5096752b3a271f620fef63924273c38cc92e2f1b88"
+          "sha256": "992643397e87f110815cd565967baff50c5f27eb1d036c0921302f4eccf45ce9"
         },
-        "sha256": "99d7faa694e3e5264490c4479de8e39eb2961e2f44f9c5cbfb25230091d37417"
+        "sha256": "2aa7a546417fe0bc493cf1ab3700823d45f6054b507329705737603718e17bc8"
       }
     },
     "dependency_lock": {
-      "byte_length": 29194,
+      "byte_length": 29425,
       "path": "Cargo.lock",
-      "sha256": "4d8cf2792a94840c9cea5538882b323a4c10dd6642df020b3d582ef3e6be4c9f"
+      "sha256": "21ba977dae188c9427872a89dc4db851426e22b99c2f8a511d103d167d0e71e0"
     },
     "production_delta_from_v1": [
       "Cargo.lock",
@@ -3344,9 +3377,10 @@
       "crates/qwen-mm-core/examples/still_resize_bakeoff.rs",
       "crates/qwen-mm-core/src/media_conformance_tests.rs",
       "crates/qwen-mm-core/src/observability.rs",
+      "crates/qwen-mm-core/src/patchify.rs",
       "crates/qwen-mm-core/src/resize.rs"
     ],
-    "revision": "625ece90d615e652ba5103384e0dc2173adc0bfc",
+    "revision": "f75e1d68e1bf4c047498bb89eff124db6c63d6c6",
     "selected_backend": {
       "crate": "pic-scale",
       "filter": "Bicubic",
@@ -3357,7 +3391,7 @@
   },
   "passed": true,
   "provenance": {
-    "claim": "The authenticated v1 report supplies exact structural and non-resize coverage; its production-code delta is restricted to the selected resize backend, whose fresh installed-wheel output passes resize-v2.",
+    "claim": "The authenticated v1 report supplies exact structural and non-resize coverage; its production-code delta is restricted to the selected resize and reversible patch-layout path, whose fresh installed-wheel output passes resize-v2 and byte-matches the selected production RGB8 evidence.",
     "command": "python -m qwen_mm_reference.phase_c_overlay_v2 capture",
     "profiles_inherited_from_v1": [
       "qwen3-vl-8b",

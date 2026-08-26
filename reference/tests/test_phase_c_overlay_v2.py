@@ -15,10 +15,14 @@ from qwen_mm_reference.phase_c_overlay_v2 import REPORT_PATH, repository_root, v
 
 class PhaseCOverlayV2Tests(unittest.TestCase):
     def setUp(self) -> None:
-        self.report = json.loads((repository_root() / REPORT_PATH).read_text(encoding="utf-8"))
+        self.report_path = repository_root() / REPORT_PATH
+        self.report = json.loads(self.report_path.read_text(encoding="utf-8"))
+
+    def validate(self, report: dict[str, object]) -> None:
+        validate_overlay(report, evidence_root=self.report_path.parent.resolve())
 
     def test_committed_overlay_is_current_and_passing(self) -> None:
-        validate_overlay(self.report)
+        self.validate(self.report)
 
     def test_current_overlay_satisfies_the_benchmark_correctness_gate(self) -> None:
         runtime = self.report["current_candidate"]["capture"]["runtime_identity"]
@@ -39,7 +43,7 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
         hostile = copy.deepcopy(self.report)
         hostile["base_phase_c_v1"]["artifact"]["sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "authentication failed"):
-            validate_overlay(hostile)
+            self.validate(hostile)
 
     def test_cannot_expand_production_delta(self) -> None:
         hostile = copy.deepcopy(self.report)
@@ -47,25 +51,25 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
             "crates/qwen-mm-python/src/lib.rs"
         )
         with self.assertRaisesRegex(ValueError, "delta exceeds"):
-            validate_overlay(hostile)
+            self.validate(hostile)
 
     def test_cannot_replace_selected_backend_identity(self) -> None:
         hostile = copy.deepcopy(self.report)
         hostile["current_candidate"]["selected_backend"]["filter"] = "Bilinear"
         with self.assertRaisesRegex(ValueError, "backend identity"):
-            validate_overlay(hostile)
+            self.validate(hostile)
 
     def test_cannot_downgrade_quality_result(self) -> None:
         hostile = copy.deepcopy(self.report)
         hostile["current_candidate"]["capture"]["quality_result"]["passed"] = False
         with self.assertRaisesRegex(ValueError, "quality result"):
-            validate_overlay(hostile)
+            self.validate(hostile)
 
     def test_cannot_hide_oracle_import(self) -> None:
         hostile = copy.deepcopy(self.report)
         hostile["current_candidate"]["capture"]["isolation"]["forbidden_imports"] = ["PIL"]
-        with self.assertRaisesRegex(ValueError, "isolation"):
-            validate_overlay(hostile)
+        with self.assertRaisesRegex(ValueError, "execution binding"):
+            self.validate(hostile)
 
     def test_architecture_local_public_outputs_replace_only_their_frozen_slices(self) -> None:
         cases = [
