@@ -20,7 +20,7 @@ qwen-mm-core = { path = "crates/qwen-mm-core" }
 rayon = "=1.12.0"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
-sha2 = "=0.10.9"
+sha2 = { version = "=0.10.9", features = ["asm"] }
 tokenizers = { version = "=0.22.2", default-features = false, features = ["onig"] }
 pic-scale = { version = "=0.7.11", default-features = false, features = ["neon", "rdm", "sse", "avx"] }
 

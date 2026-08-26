@@ -6,7 +6,7 @@ evidence base. The v2 overlay is current only when all of these bindings hold:
 - the authenticated v1 report contains all 290 declared, executed, passing
   cases with no skips;
 - the current revision descends from the v1 tested revision, and every changed
-  package-tree file is in the explicit resize-backend allowlist;
+  package-tree file is in the explicit resize/patch-layout allowlist;
 - the current source and `Cargo.lock` select pic-scale 0.7.11 Bicubic with
   `PreferQuality` and single-thread execution;
 - the fresh wheel's native-module identity matches the supplied wheel and its
@@ -16,6 +16,11 @@ evidence base. The v2 overlay is current only when all of these bindings hold:
   rerun through the isolated installed wheel and must byte-match the direct
   production-core blob. The remaining two one-axis holdout destinations are
   deliberately low-level resizer cases; `Processor` would round their geometry.
+
+The patch-layout allowance is intentionally narrow: the installed-wheel round
+trip unpatchifies every legal Qwen geometry and byte-compares it with the
+selected production RGB8 evidence, so a layout, normalization, channel, or
+temporal-copy regression cannot pass this overlay.
 
 Validation recomputes file hashes, git ancestry and production deltas, holdout
 authentication, all numerical and exact-invariant gates, installed-wheel

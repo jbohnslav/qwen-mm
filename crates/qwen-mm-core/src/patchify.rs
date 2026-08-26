@@ -311,16 +311,21 @@ pub(crate) fn execute_image_patchify_plan_into(
                     let source_y = (outer_y * merge + merge_y) * patch;
                     let source_x = (outer_x * merge + merge_x) * patch;
                     for channel in 0..3_usize {
-                        for _temporal in 0..temporal {
-                            for patch_y in 0..patch {
-                                let row = (source_y + patch_y) * width;
-                                for patch_x in 0..patch {
-                                    let source = (row + source_x + patch_x) * 3 + channel;
-                                    values[destination] =
-                                        (f32::from(rgb[source]) - means[channel]) / stds[channel];
-                                    destination += 1;
-                                }
+                        let plane_start = destination;
+                        for patch_y in 0..patch {
+                            let row = (source_y + patch_y) * width;
+                            for patch_x in 0..patch {
+                                let source = (row + source_x + patch_x) * 3 + channel;
+                                values[destination] =
+                                    (f32::from(rgb[source]) - means[channel]) / stds[channel];
+                                destination += 1;
                             }
+                        }
+                        let plane_end = destination;
+                        let plane_elements = plane_end - plane_start;
+                        for _ in 1..temporal {
+                            values.copy_within(plane_start..plane_end, destination);
+                            destination += plane_elements;
                         }
                     }
                 }

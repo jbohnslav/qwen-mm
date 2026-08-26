@@ -2,9 +2,9 @@
 
 The Phase C v1 report remains immutable historical evidence.  This overlay is
 valid only when the production-code delta from that report's tested revision is
-confined to the named resize implementation files, and a fresh installed wheel
-passes the frozen resize-v2 holdout.  It deliberately cannot turn an arbitrary
-new wheel plus an old passing report into current evidence.
+confined to the named resize and reversible patch-layout implementation files,
+and a fresh installed wheel passes the frozen resize-v2 holdout.  It deliberately
+cannot turn an arbitrary new wheel plus an old passing report into current evidence.
 """
 
 from __future__ import annotations
@@ -55,7 +55,9 @@ QUALITY_RECOMPUTE_ABS_TOLERANCE = 1e-12
 # These are the only package-tree files permitted to differ from the exact
 # Phase C v1 candidate revision. The examples and conformance test module are
 # named explicitly because they changed with the backend but do not enter the
-# normal library build.
+# normal library build. Patchification is admitted because the overlay's
+# installed-wheel round trip reconstructs and byte-compares every legal Qwen
+# geometry against the selected production RGB8 evidence.
 ALLOWED_PRODUCTION_DELTA = (
     "Cargo.lock",
     "Cargo.toml",
@@ -64,6 +66,7 @@ ALLOWED_PRODUCTION_DELTA = (
     "crates/qwen-mm-core/examples/still_resize_bakeoff.rs",
     "crates/qwen-mm-core/src/media_conformance_tests.rs",
     "crates/qwen-mm-core/src/observability.rs",
+    "crates/qwen-mm-core/src/patchify.rs",
     "crates/qwen-mm-core/src/resize.rs",
 )
 REQUIRED_BACKEND = {
@@ -673,7 +676,8 @@ def build_overlay(
             "claim": (
                 "The authenticated v1 report supplies exact structural and non-resize "
                 "coverage; its production-code delta is restricted to the selected resize "
-                "backend, whose fresh installed-wheel output passes resize-v2."
+                "and reversible patch-layout path, whose fresh installed-wheel output "
+                "passes resize-v2 and byte-matches the selected production RGB8 evidence."
             ),
         },
     }
@@ -897,7 +901,8 @@ def _write_summary(path: Path, report: Mapping[str, Any]) -> None:
         ),
         "",
         "The v1 report remains unchanged. This overlay authenticates it, restricts the",
-        "production delta to the selected resize backend, and binds the frozen holdout",
+        "production delta to the selected resize and reversible patch-layout paths,",
+        "and binds the frozen holdout",
         "result to the supplied installed wheel, native module, and CycloneDX pic-scale entry.",
         "",
     ]
