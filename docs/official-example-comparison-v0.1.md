@@ -5,6 +5,10 @@ new user is most likely to copy. The comparison is about preprocessing only:
 model loading, generation, decoding generated tokens, HTTP transport, and
 agent orchestration are not features of this wheel.
 
+For the focused code-first view, start with the
+[official-example Rosetta Stone](official-example-rosetta-stone-v0.1.md). This
+document is the exhaustive source and boundary appendix.
+
 ## Frozen sources
 
 The compatibility pins are immutable. SGLang, Qwen-MM-Plugins,

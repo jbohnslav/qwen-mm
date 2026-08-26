@@ -121,10 +121,12 @@ Request failures are all-or-nothing and raise stable subclasses of
 `context`. A missing cached snapshot raises `FileNotFoundError` with the exact
 pinned `hf download` command.
 
-The [official-example comparison](docs/official-example-comparison-v0.1.md)
-maps Hugging Face, qwen-vl-utils, vLLM, SGLang, Qwen-MM-Plugins,
-LLaMA-Factory, and ModelScope SWIFT examples to this API and records deliberate
-v0.1 boundaries. The implementation contract and immutable pins are in
+The [official-example Rosetta Stone](docs/official-example-rosetta-stone-v0.1.md)
+puts each upstream preprocessing sample immediately before its qwen-mm
+equivalent. The [full comparison appendix](docs/official-example-comparison-v0.1.md)
+records the wider Hugging Face, qwen-vl-utils, vLLM, SGLang, Qwen-MM-Plugins,
+LLaMA-Factory, and ModelScope SWIFT source audit and deliberate v0.1
+boundaries. The implementation contract and immutable pins are in
 [ADR 0001](docs/compatibility-v1.md) and
 [`reference/compatibility/v1.json`](reference/compatibility/v1.json).
 
