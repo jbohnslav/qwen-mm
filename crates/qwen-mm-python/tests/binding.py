@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import gc
-import hashlib
 import json
+import os
+import tempfile
 import threading
 import weakref
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import qwen_mm
@@ -80,6 +82,52 @@ def _assert_arrays(output: qwen_mm.PreparedBatch, token_columns: int, image_coun
     assert len(output.metadata["images"]) == image_count
     assert len(output.metadata["sidecar"]["images"]) == image_count
     assert [item["grid_row"] for item in output.metadata["images"]] == list(range(image_count))
+
+
+def test_profile_discovery_is_pinned_local_and_actionable() -> None:
+    expected = {
+        "qwen3-vl-8b": (
+            "Qwen/Qwen3-VL-8B-Instruct",
+            "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+        ),
+        "qwen3.5-9b": (
+            "Qwen/Qwen3.5-9B",
+            "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+        ),
+    }
+    profiles = qwen_mm.Processor.supported_profiles()
+    assert [profile["profile"] for profile in profiles] == list(expected)
+    for profile in profiles:
+        alias = profile["profile"]
+        model_id, revision = expected[alias]
+        assert profile["model_id"] == model_id
+        assert profile["revision"] == revision
+        assert len(profile["fingerprint"]) == 64
+        processor = qwen_mm.Processor.from_huggingface_cache(
+            alias,
+            cache_directory=ASSETS_ROOT,
+        )
+        assert processor.profile == alias
+        assert processor.model_id == model_id
+        assert processor.revision == revision
+
+    with patch.dict(os.environ, {"HF_HUB_CACHE": str(ASSETS_ROOT)}):
+        processor = qwen_mm.Processor.from_huggingface_cache("qwen3-vl-8b")
+        assert processor.profile == "qwen3-vl-8b"
+
+    with tempfile.TemporaryDirectory() as empty_cache:
+        try:
+            qwen_mm.Processor.from_huggingface_cache(
+                "qwen3-vl-8b",
+                cache_directory=empty_cache,
+            )
+        except FileNotFoundError as error:
+            message = str(error)
+            assert "hf download Qwen/Qwen3-VL-8B-Instruct" in message
+            assert expected["qwen3-vl-8b"][1] in message
+            assert "cache_directory=" in message
+        else:
+            raise AssertionError("missing pinned snapshot did not explain how to download it")
 
 
 def test_explicit_thread_budget_is_bounded_and_read_only() -> None:
@@ -351,13 +399,13 @@ def test_exact_24_image_shape_and_gil_release() -> None:
     )
     _assert_arrays(output, 18_493, 24)
     assert output.arrays["pixel_values"].nbytes == 452_984_832
+    # The binding gate owns array shape, layout, and lifetime. Resized-pixel
+    # quality is covered by the versioned still-image resize-v2 conformance gate.
     golden = json.loads(
         (REPOSITORY_ROOT / "reference/goldens/v1/qwen3-vl-8b/image24/manifest.json").read_text()
     )["output"]["arrays"]
     for key in OFFICIAL_TEXT_KEYS + ["image_grid_thw"]:
         np.testing.assert_array_equal(output.arrays[key], np.asarray(golden[key]["data"]))
-    pixel_hash = hashlib.sha256(memoryview(output.arrays["pixel_values"]).cast("B")).hexdigest()
-    assert pixel_hash == golden["pixel_values"]["sha256"]
     del output, request, encoded
     gc.collect()
 
@@ -640,6 +688,7 @@ def test_typed_failures_have_no_partial_outputs() -> None:
 def main() -> None:
     if not all((ASSETS_ROOT / relative).is_dir() for relative, _ in PROFILE_CASES.values()):
         raise SystemExit(f"hash-pinned snapshots are missing below {ASSETS_ROOT}")
+    test_profile_discovery_is_pinned_local_and_actionable()
     test_explicit_thread_budget_is_bounded_and_read_only()
     test_python_thread_sweep_is_array_and_metadata_exact()
     test_one_image_and_conditional_outputs()

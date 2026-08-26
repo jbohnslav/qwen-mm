@@ -4,15 +4,23 @@ mod errors;
 mod input;
 mod output;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 #[cfg(feature = "test-hooks")]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use pyo3::prelude::*;
+use pyo3::{
+    exceptions::PyFileNotFoundError,
+    prelude::*,
+    types::{PyDict, PyList, PyType},
+};
 use qwen_mm_core::{
-    ObservationRecorder, ObservationScope, ProcessorConfig, ProfileRegistry, QwenImageProcessor,
-    ResourceLimits,
+    ObservationRecorder, ObservationScope, ProcessorConfig, ProfileAlias, ProfileRegistry,
+    QwenImageProcessor, ResourceLimits,
 };
 
 use crate::{
@@ -69,6 +77,32 @@ struct PyProcessor {
     supports_thinking: bool,
 }
 
+fn non_empty_environment_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+fn default_huggingface_hub_cache() -> Option<PathBuf> {
+    non_empty_environment_path("HF_HUB_CACHE")
+        .or_else(|| non_empty_environment_path("HF_HOME").map(|path| path.join("hub")))
+        .or_else(|| {
+            non_empty_environment_path("XDG_CACHE_HOME")
+                .map(|path| path.join("huggingface").join("hub"))
+        })
+        .or_else(|| {
+            non_empty_environment_path("HOME")
+                .map(|path| path.join(".cache").join("huggingface").join("hub"))
+        })
+}
+
+fn huggingface_snapshot_directory(cache: &Path, model_id: &str, revision: &str) -> PathBuf {
+    cache
+        .join(format!("models--{}", model_id.replace('/', "--")))
+        .join("snapshots")
+        .join(revision)
+}
+
 #[pymethods]
 impl PyProcessor {
     /// Loads one hash-pinned profile from a local snapshot directory.
@@ -101,6 +135,64 @@ impl PyProcessor {
             limits,
             supports_thinking,
         })
+    }
+
+    /// Loads this profile's exact pinned snapshot from a local Hugging Face
+    /// hub cache. This performs no network access or implicit download.
+    #[classmethod]
+    #[pyo3(signature = (profile, *, cache_directory=None, limits=None, thread_budget=None))]
+    fn from_huggingface_cache(
+        _class: &Bound<'_, PyType>,
+        py: Python<'_>,
+        profile: &str,
+        cache_directory: Option<PathBuf>,
+        limits: Option<&Bound<'_, PyAny>>,
+        thread_budget: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let registry = ProfileRegistry::bundled().map_err(|error| to_python_error(py, &error))?;
+        let resolved = registry
+            .resolve(profile)
+            .map_err(|error| to_python_error(py, &error))?;
+        let cache = cache_directory
+            .or_else(default_huggingface_hub_cache)
+            .ok_or_else(|| {
+                PyFileNotFoundError::new_err(concat!(
+                    "cannot resolve the Hugging Face hub cache; set HF_HUB_CACHE or pass ",
+                    "cache_directory=",
+                ))
+            })?;
+        let snapshot =
+            huggingface_snapshot_directory(&cache, &resolved.model_id, &resolved.revision);
+        if !snapshot.is_dir() {
+            return Err(PyFileNotFoundError::new_err(format!(
+                concat!(
+                    "pinned snapshot not found at {}; download it with ",
+                    "`hf download {} --revision {}` or pass the Hugging Face hub cache root ",
+                    "as cache_directory=",
+                ),
+                snapshot.display(),
+                resolved.model_id,
+                resolved.revision,
+            )));
+        }
+        Self::new(py, profile, snapshot, limits, thread_budget)
+    }
+
+    /// Frozen profiles accepted by this wheel.
+    #[staticmethod]
+    fn supported_profiles(py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let registry = ProfileRegistry::bundled().map_err(|error| to_python_error(py, &error))?;
+        let profiles = PyList::empty(py);
+        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+            let profile = registry.get(alias);
+            let value = PyDict::new(py);
+            value.set_item("profile", profile.alias.as_str())?;
+            value.set_item("model_id", &profile.model_id)?;
+            value.set_item("revision", &profile.revision)?;
+            value.set_item("fingerprint", &profile.fingerprint)?;
+            profiles.append(value)?;
+        }
+        Ok(profiles.into_any().unbind())
     }
 
     /// Prepares one heterogeneous batch in a single GIL-free native call.
@@ -228,6 +320,18 @@ impl PyProcessor {
     #[getter]
     fn profile_fingerprint(&self) -> &str {
         &self.inner.profile().fingerprint
+    }
+
+    /// Exact upstream Hugging Face model identifier.
+    #[getter]
+    fn model_id(&self) -> &str {
+        &self.inner.profile().model_id
+    }
+
+    /// Immutable upstream repository revision required by this profile.
+    #[getter]
+    fn revision(&self) -> &str {
+        &self.inner.profile().revision
     }
 
     /// Exact total native-worker budget owned by this processor.
