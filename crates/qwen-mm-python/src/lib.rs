@@ -14,7 +14,7 @@ use std::{
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use pyo3::{
-    exceptions::PyFileNotFoundError,
+    exceptions::{PyFileNotFoundError, PyValueError},
     prelude::*,
     types::{PyDict, PyList, PyType},
 };
@@ -30,10 +30,20 @@ use crate::{
         parse_thread_budget,
     },
     output::{
-        NativeBatch, PyPreparedBatch, RunError, native_batch_bytes, observation_report_dict,
-        run_batch, run_batch_observed,
+        NativeBatch, PaddingSide, PyPreparedBatch, RunError, native_batch_bytes,
+        observation_report_dict, run_batch, run_batch_observed,
     },
 };
+
+fn parse_padding_side(value: &str) -> PyResult<PaddingSide> {
+    match value {
+        "left" => Ok(PaddingSide::Left),
+        "right" => Ok(PaddingSide::Right),
+        _ => Err(PyValueError::new_err(
+            "padding_side must be either 'left' or 'right'",
+        )),
+    }
+}
 
 /// Returns the native package version.
 #[pyfunction]
@@ -196,11 +206,16 @@ impl PyProcessor {
     }
 
     /// Prepares one heterogeneous batch in a single GIL-free native call.
+    /// Right padding is the default; pass `padding_side="left"` for batched
+    /// generation, matching the official tokenizer examples.
+    #[pyo3(signature = (requests, *, padding_side="right"))]
     fn prepare_batch(
         &self,
         py: Python<'_>,
         requests: &Bound<'_, PyAny>,
+        padding_side: &str,
     ) -> PyResult<PyPreparedBatch> {
+        let padding_side = parse_padding_side(padding_side)?;
         let requests = parse_requests(
             py,
             requests,
@@ -214,7 +229,7 @@ impl PyProcessor {
             .detach(move || {
                 #[cfg(feature = "test-hooks")]
                 let _active = TestNativeBatchActiveGuard::enter();
-                run_batch(&processor, &requests)
+                run_batch(&processor, &requests, padding_side)
             })
             .map_err(|error| match error {
                 RunError::Core(error) => to_python_error(py, &error),
@@ -226,13 +241,15 @@ impl PyProcessor {
     /// Prepares one batch and returns the same arrays plus a bounded JSON-ready
     /// whole-operation observation report. The normal `prepare_batch` path
     /// remains completely uninstrumented.
-    #[pyo3(signature = (requests, *, event_capacity=4096))]
+    #[pyo3(signature = (requests, *, event_capacity=4096, padding_side="right"))]
     fn prepare_batch_observed(
         &self,
         py: Python<'_>,
         requests: &Bound<'_, PyAny>,
         event_capacity: usize,
+        padding_side: &str,
     ) -> PyResult<(PyPreparedBatch, Py<PyAny>)> {
+        let padding_side = parse_padding_side(padding_side)?;
         let mut recorder = ObservationRecorder::new(event_capacity);
         recorder.calls_mut().public_python_calls = 1;
         let operation_span =
@@ -265,7 +282,7 @@ impl PyProcessor {
         let (native, mut recorder) = py.detach(move || {
             #[cfg(feature = "test-hooks")]
             let _active = TestNativeBatchActiveGuard::enter();
-            let result = run_batch_observed(&processor, &requests, &mut recorder);
+            let result = run_batch_observed(&processor, &requests, padding_side, &mut recorder);
             drop_owned_media(requests, &mut recorder);
             recorder.release_all_transients();
             (result, recorder)

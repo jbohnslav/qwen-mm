@@ -8,7 +8,6 @@ from ._native import (
     MediaDecodeError,
     MediaGeometryError,
     PreparedBatch,
-    Processor,
     ProfileMismatchError,
     QwenMMError,
     ResourceLimitError,
@@ -17,6 +16,7 @@ from ._native import (
     __version__,
     native_version,
 )
+from ._processor import Processor
 
 __all__ = [
     "ArithmeticOverflowError",

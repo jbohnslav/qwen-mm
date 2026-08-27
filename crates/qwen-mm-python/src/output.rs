@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use numpy::{IntoPyArray, PyArray2, PyArrayMethods, PyUntypedArrayMethods, ndarray::Array2};
 use pyo3::{
+    exceptions::PyKeyError,
     prelude::*,
     types::{PyDict, PyList},
 };
@@ -25,6 +26,22 @@ use crate::{
 pub(crate) enum RunError {
     Core(QwenError),
     Allocation { name: &'static str, elements: usize },
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum PaddingSide {
+    Left,
+    #[default]
+    Right,
+}
+
+impl PaddingSide {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
 }
 
 impl From<QwenError> for RunError {
@@ -49,6 +66,7 @@ pub(crate) struct NativeBatch {
     pub(crate) images: Vec<ProcessedBatchImageOccurrence>,
     pub(crate) request_layouts: Vec<BatchRequestLayout>,
     pub(crate) image_layouts: Vec<BatchImageLayout>,
+    pub(crate) padding_side: PaddingSide,
     pub(crate) input_ids: NativeMatrix<i64>,
     pub(crate) attention_mask: NativeMatrix<i64>,
     pub(crate) mm_token_type_ids: NativeMatrix<i64>,
@@ -79,6 +97,7 @@ impl AllocatedBatchDestinations {
         metadata: ExecutedBatchMetadata,
         request_layouts: Vec<BatchRequestLayout>,
         image_layouts: Vec<BatchImageLayout>,
+        padding_side: PaddingSide,
     ) -> NativeBatch {
         let Self {
             input_ids,
@@ -87,7 +106,7 @@ impl AllocatedBatchDestinations {
             pixel_values,
             image_grid_thw,
         } = self;
-        NativeBatch {
+        let mut batch = NativeBatch {
             contract_id: metadata.contract_id,
             profile_fingerprint: metadata.profile_fingerprint,
             text: metadata.text,
@@ -95,6 +114,7 @@ impl AllocatedBatchDestinations {
             images: metadata.images,
             request_layouts,
             image_layouts,
+            padding_side,
             input_ids: native_matrix(input_ids, capacities.input_ids),
             attention_mask: native_matrix(attention_mask, capacities.attention_mask),
             mm_token_type_ids: native_matrix(mm_token_type_ids, capacities.mm_token_type_ids),
@@ -104,6 +124,29 @@ impl AllocatedBatchDestinations {
             image_grid_thw: image_grid_thw
                 .zip(capacities.image_grid_thw)
                 .map(|(values, capacity)| native_matrix(values, capacity)),
+        };
+        batch.apply_padding_side();
+        batch
+    }
+}
+
+impl NativeBatch {
+    fn apply_padding_side(&mut self) {
+        if self.padding_side != PaddingSide::Left {
+            return;
+        }
+        for layout in &self.request_layouts {
+            let padding = layout.right_padding;
+            if padding == 0 {
+                continue;
+            }
+            for row in [
+                &mut self.input_ids.data,
+                &mut self.attention_mask.data,
+                &mut self.mm_token_type_ids.data,
+            ] {
+                row[layout.text_elements.start..layout.text_elements.end].rotate_right(padding);
+            }
         }
     }
 }
@@ -160,6 +203,58 @@ impl PyPreparedBatch {
     /// Official keys in the same order as `.arrays` iteration.
     fn official_keys(&self) -> Vec<String> {
         self.official_keys.clone()
+    }
+
+    /// Official model array for `key`, matching `.arrays[key]`.
+    fn __getitem__(&self, py: Python<'_>, key: Py<PyAny>) -> PyResult<Py<PyAny>> {
+        self.arrays
+            .bind(py)
+            .get_item(key.bind(py))?
+            .map(Bound::unbind)
+            .ok_or_else(|| PyKeyError::new_err(key))
+    }
+
+    /// Iterates over official model-input keys without exposing metadata.
+    fn __iter__(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.arrays.bind(py).call_method0("__iter__")?.unbind())
+    }
+
+    fn __len__(&self) -> usize {
+        self.official_keys.len()
+    }
+
+    fn __contains__(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<bool> {
+        self.arrays.bind(py).contains(key)
+    }
+
+    /// Official model-input keys in frozen processor order.
+    fn keys(&self) -> Vec<String> {
+        self.official_keys.clone()
+    }
+
+    /// Official model-input values in frozen processor order.
+    fn values(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.arrays.bind(py).call_method0("values")?.unbind())
+    }
+
+    /// Official model-input `(key, value)` pairs in frozen processor order.
+    fn items(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.arrays.bind(py).call_method0("items")?.unbind())
+    }
+
+    /// Returns an official model array, or `default` when the key is absent.
+    #[pyo3(signature = (key, default=None))]
+    fn get(
+        &self,
+        py: Python<'_>,
+        key: &Bound<'_, PyAny>,
+        default: Option<Py<PyAny>>,
+    ) -> PyResult<Py<PyAny>> {
+        Ok(self
+            .arrays
+            .bind(py)
+            .get_item(key)?
+            .map_or_else(|| default.unwrap_or_else(|| py.None()), Bound::unbind))
     }
 
     fn __repr__(&self) -> String {
@@ -282,6 +377,7 @@ const fn outcome_name(outcome: StageOutcome) -> &'static str {
 
 impl PyPreparedBatch {
     pub(crate) fn from_native(py: Python<'_>, native: NativeBatch) -> PyResult<Self> {
+        let padding_side = native.padding_side;
         let arrays = PyDict::new(py);
         let input_ids = matrix_i64(py, native.input_ids)
             .map_err(|error| crate::errors::to_python_error(py, &error))?;
@@ -322,6 +418,7 @@ impl PyPreparedBatch {
             &native.images,
             &native.request_layouts,
             &native.image_layouts,
+            padding_side,
         )?;
         Ok(Self {
             arrays: arrays.unbind(),
@@ -334,21 +431,24 @@ impl PyPreparedBatch {
 pub(crate) fn run_batch(
     processor: &Arc<QwenImageProcessor>,
     owned: &[OwnedRequest],
+    padding_side: PaddingSide,
 ) -> Result<NativeBatch, RunError> {
-    run_batch_internal(processor, owned, None)
+    run_batch_internal(processor, owned, padding_side, None)
 }
 
 pub(crate) fn run_batch_observed(
     processor: &Arc<QwenImageProcessor>,
     owned: &[OwnedRequest],
+    padding_side: PaddingSide,
     recorder: &mut ObservationRecorder,
 ) -> Result<NativeBatch, RunError> {
-    run_batch_internal(processor, owned, Some(recorder))
+    run_batch_internal(processor, owned, padding_side, Some(recorder))
 }
 
 fn run_batch_internal(
     processor: &Arc<QwenImageProcessor>,
     owned: &[OwnedRequest],
+    padding_side: PaddingSide,
     mut recorder: Option<&mut ObservationRecorder>,
 ) -> Result<NativeBatch, RunError> {
     let plan = plan_owned_requests(processor, owned, recorder.as_deref_mut())?;
@@ -400,7 +500,13 @@ fn run_batch_internal(
         Some(recorder) => plan.drop_observed(recorder),
         None => drop(plan),
     }
-    Ok(destinations.into_native_batch(capacities, metadata, request_layouts, image_layouts))
+    Ok(destinations.into_native_batch(
+        capacities,
+        metadata,
+        request_layouts,
+        image_layouts,
+        padding_side,
+    ))
 }
 
 fn plan_owned_requests(
@@ -713,10 +819,12 @@ fn build_metadata<'py>(
     images: &[ProcessedBatchImageOccurrence],
     request_layouts: &[BatchRequestLayout],
     image_layouts: &[BatchImageLayout],
+    padding_side: PaddingSide,
 ) -> PyResult<Bound<'py, PyDict>> {
     let metadata = PyDict::new(py);
     metadata.set_item("contract_id", contract_id)?;
     metadata.set_item("profile_fingerprint", profile_fingerprint)?;
+    metadata.set_item("padding_side", padding_side.as_str())?;
     let text_items = PyList::empty(py);
     for request in text {
         let item = PyDict::new(py);
@@ -770,7 +878,12 @@ fn build_metadata<'py>(
             [layout.text_elements.start, layout.text_elements.end],
         )?;
         item.set_item("token_count", layout.token_count)?;
-        item.set_item("right_padding", layout.right_padding)?;
+        let (left_padding, right_padding) = match padding_side {
+            PaddingSide::Left => (layout.right_padding, 0),
+            PaddingSide::Right => (0, layout.right_padding),
+        };
+        item.set_item("left_padding", left_padding)?;
+        item.set_item("right_padding", right_padding)?;
         item.set_item(
             "image_grid_rows",
             [layout.image_grid_rows.start, layout.image_grid_rows.end],

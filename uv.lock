@@ -724,6 +724,7 @@ name = "qwen-mm"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "huggingface-hub" },
     { name = "numpy" },
 ]
 
@@ -736,7 +737,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "numpy", specifier = "==2.4.6" }]
+requires-dist = [
+    { name = "huggingface-hub", specifier = "==1.26.0" },
+    { name = "numpy", specifier = "==2.4.6" },
+]
 
 [package.metadata.requires-dev]
 dev = [
