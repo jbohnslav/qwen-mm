@@ -71,118 +71,103 @@ that a grouped status row does not hide an omitted flow:
 
 ## Coverage matrix
 
-“Supported after caller I/O” means qwen-mm accepts the resulting encoded bytes
-or `uint8` RGB array but deliberately does not open a path or URL. “Deferred”
-means the example stays visible here but is not part of v0.1.
+“Supported directly” means qwen-mm accepts the official message/source form
+and performs the explicitly requested still-image read before entering its
+deterministic native core. “Deferred” means the example stays visible here but
+is not part of v0.1.
 
 | Official example family | Input behavior being compared | v0.1 status | qwen-mm equivalent or boundary |
 | --- | --- | --- | --- |
 | Both pinned model cards | Text-only chat | Supported | [Text-only](#text-only) |
-| Qwen3-VL model card and Transformers model doc | One remote image inside a user message | Supported after caller I/O | [One image](#one-image) |
-| Qwen3-VL README and SGLang cookbook | Multiple images in one message | Supported after caller I/O | [Multiple and interleaved images](#multiple-and-interleaved-images) |
-| Qwen3-VL README | Heterogeneous batch: multi-image request plus text-only request | Supported preprocessing with right padding | [Heterogeneous batches and raw RGB](#heterogeneous-batches-and-raw-rgb). Direct Hugging Face generation's documented left-padding mutation is intentionally not emulated. |
+| Qwen3-VL model card and Transformers model doc | One remote image inside a user message | Supported directly | [One image](#one-image) |
+| Qwen3-VL README and SGLang cookbook | Multiple images in one message | Supported directly | [Multiple and interleaved images](#multiple-and-interleaved-images) |
+| Qwen3-VL README | Heterogeneous batch: multi-image request plus text-only request | Supported with explicit left or right padding | [Heterogeneous batches and raw RGB](#heterogeneous-batches-and-raw-rgb) |
 | Qwen3-VL README and qwen-vl-utils | Per-image `min_pixels`, `max_pixels`, `resized_height`, and `resized_width` | Supported | [Image and chat options](#image-and-chat-options) |
-| qwen-vl-utils and Transformers chat guide | Local path, HTTP URL, data URI, base64 wrapper, or PIL image | Encoded JPEG/PNG/WebP bytes and raw RGB are supported after caller I/O; path/URL/base64-wrapper/PIL loading is intentionally unsupported | [One image](#one-image) |
+| qwen-vl-utils and Transformers chat guide | Local path, HTTP URL, data URI, base64 wrapper, or PIL image | Path, file/HTTP(S) URL, and image data URI supported directly; bytes and RGB supported; arbitrary PIL remains caller conversion | [One image](#one-image) |
 | Qwen3-VL README | Visual IDs across interleaved image/video conversations | Image IDs supported; video occurrence deferred | `options.add_vision_id=True`; see [Image and chat options](#image-and-chat-options) |
 | Transformers docs/tests and qwen-vl-utils | Video URL/path, decoded video array, sampled frame list, FPS or frame-count sampling | Deferred to the video phase | No v0.1 equivalent; the request raises `UnsupportedMediaError` before execution. |
 | Qwen3-VL and video-understanding cookbooks | Video preprocessing, temporal metadata, grounding, and frame-list workflows | Deferred to the video phase | Page/frame extraction remains caller-owned; still frames can be submitted as independent images, but are not relabeled as video. |
-| Qwen long-document cookbook | PDF download and conversion to many page images | Page-image preprocessing supported after caller conversion; PDF/network handling intentionally unsupported | Use the [multiple-image](#multiple-and-interleaved-images) form after converting pages to encoded bytes or RGB arrays. |
+| Qwen long-document cookbook | PDF download and conversion to many page images | Page-image paths/URLs supported directly after caller PDF-to-image conversion; PDF decoding remains out of scope | Use the [multiple-image](#multiple-and-interleaved-images) form for converted pages. |
 | Qwen image/OCR/grounding/computer-use cookbooks | Task-specific single-image and iterative image inputs | Preprocessing supported; task execution and tool loops out of scope | [One image](#one-image) or [heterogeneous batches](#heterogeneous-batches-and-raw-rgb) |
 | Qwen3.5 model card | Thinking and non-thinking chat rendering | Supported for `qwen3.5-9b` | `options.enable_thinking`; see [Image and chat options](#image-and-chat-options) |
 | Qwen3.5 model card and SGLang | Tools, tool calls, tool responses, and agent orchestration | Frozen chat rendering is supported; orchestration/model execution out of scope | Supply `options.tools` and normal assistant/tool messages. |
 | Transformers processor API | PyTorch tensors returned directly | NumPy output supported; direct Torch construction intentionally unsupported | Convert downstream with `torch.from_numpy` when desired. [Outputs and failures](#outputs-and-failures) |
 | vLLM offline examples | Raw image, raw video, or image-plus-video with manual prompt placeholders | Still-image preprocessing supported; video deferred | qwen-mm renders the pinned chat template and returns prepared image arrays, avoiding manual placeholder construction. |
-| vLLM OpenAI client | Text, URL/local/base64 image, multi-image, and URL/base64 video payloads | Local still-image preprocessing supported after caller I/O; HTTP transport and video deferred | Use the text/single/multi-image forms below. |
+| vLLM OpenAI client | Text, URL/local/base64 image, multi-image, and URL/base64 video payloads | OpenAI still-image message content supported directly; server transport, generation, and video deferred | Use the text/single/multi-image forms below. |
 | qwen-mm vLLM plugin prototype | Prepared still pixels handed to pinned vLLM without HF preprocessing | Prototype exists, but production integration is deferred beyond v0.1 | See [`integrations/vllm/README.md`](../integrations/vllm/README.md). |
-| SGLang Qwen3-VL/Qwen3.5 cookbooks | OpenAI-compatible text, single/multi-image, video, and reasoning requests | Local text/still-image preprocessing supported after caller I/O; SGLang transport and video deferred | The message ordering maps directly; media transport does not. |
-| Qwen-MM-Plugins core/API cookbooks | Agent tools with separate `images`/`videos`, local paths/URLs, dry-run routing, OCR, and grounding | Comparison-only integration inspiration | qwen-mm likewise keeps media buffers separate from message references, but performs no I/O, API call, routing, or model task. |
-| LLaMA-Factory multimodal datasets | Multi-turn text with ordered `<image>` placeholders and a separate `images` list, including repeated images | Supported after caller I/O | Replace placeholders with ordered numeric image content items and pass the corresponding encoded buffers or RGB arrays in `images`; training labels and dataset loading remain caller-owned. |
+| SGLang Qwen3-VL/Qwen3.5 cookbooks | OpenAI-compatible text, single/multi-image, video, and reasoning requests | Text/still-image message content supported directly; SGLang transport and video deferred | The still-image message ordering and sources map directly. |
+| Qwen-MM-Plugins core/API cookbooks | Agent tools with separate `images`/`videos`, local paths/URLs, dry-run routing, OCR, and grounding | Explicit still-image sources and lists map directly; agent/API behavior is comparison-only | qwen-mm reads explicit still-image inputs but does not route, call a model, or implement agent tasks. |
+| LLaMA-Factory multimodal datasets | Multi-turn text with ordered `<image>` placeholders and a separate `images` list, including repeated images | Supported after placeholder expansion | Replace placeholders with ordered numeric image content items and pass the original path list in `images`; training labels and dataset loading remain framework-owned. |
 | LLaMA-Factory video datasets | `<video>` placeholders with a separate `videos` list | Deferred to the video phase | Dataset parsing and video decoding are outside v0.1. |
-| ModelScope SWIFT datasets and requests | Text, multi-image, mixed image/video, frame-list video, tools, and agent messages with separate media lists | Text/still-image chat rendering supported after caller I/O; video and training integration deferred | The separate-media-list design maps to qwen-mm's request boundary; dataset loading, label construction, orchestration, and video sampling stay outside the wheel. |
+| ModelScope SWIFT datasets and requests | Text, multi-image, mixed image/video, frame-list video, tools, and agent messages with separate media lists | Text/still-image chat rendering and explicit image sources supported; video and training integration deferred | The separate image-list design maps to qwen-mm; dataset loading, labels, orchestration, and video sampling stay outside the wheel. |
 
 ## Runnable qwen-mm equivalents
 
-All examples below use the installed wheel and the exact snapshot already in a
-local Hugging Face hub cache. `Processor.from_huggingface_cache` never accesses
-the network.
+All examples below use the installed wheel. `Processor.from_pretrained` maps a
+supported name to qwen-mm's tested revision and populates the normal Hugging
+Face cache with processor/tokenizer artifacts only. Add
+`local_files_only=True` for an offline/cache-only call.
 
 ### Text-only
 
 ```python
 from qwen_mm import Processor
 
-processor = Processor.from_huggingface_cache("qwen3-vl-8b")
-prepared = processor.prepare_batch(
-    [{"messages": [{"role": "user", "content": "Describe the color blue."}]}]
-)
-assert list(prepared.arrays) == ["input_ids", "attention_mask", "mm_token_type_ids"]
+processor = Processor.from_pretrained("Qwen3")
+prepared = processor.prepare([{"role": "user", "content": "Describe the color blue."}])
+assert list(prepared) == ["input_ids", "attention_mask", "mm_token_type_ids"]
 ```
 
 ### One image
 
 ```python
-from pathlib import Path
-
 from qwen_mm import Processor
 
-processor = Processor.from_huggingface_cache("qwen3-vl-8b", thread_budget=4)
-image_bytes = Path("image.jpg").read_bytes()
-prepared = processor.prepare_batch(
+processor = Processor.from_pretrained("Qwen3", thread_budget=4)
+prepared = processor.prepare(
     [
         {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "text", "text": "Describe this image."},
-                    ],
-                }
+            "role": "user",
+            "content": [
+                {"type": "image", "image": "https://example.com/image.jpg"},
+                {"type": "text", "text": "Describe this image."},
             ],
-            "images": [image_bytes],
-            "options": {"add_generation_prompt": True},
         }
-    ]
+    ],
+    add_generation_prompt=True,
 )
-pixel_values = prepared.arrays["pixel_values"]
-image_grid_thw = prepared.arrays["image_grid_thw"]
+pixel_values = prepared["pixel_values"]
+image_grid_thw = prepared["image_grid_thw"]
 ```
 
-Bare encoded buffers are signature-detected. Use
-`{"data": image_bytes, "format": "jpeg"}` when an explicit format is clearer.
-PNG and WebP are also accepted.
+Explicit paths, `pathlib.Path`, file/HTTP(S) URLs, image data URIs, encoded
+buffers, and RGB arrays are accepted. Use `{"data": image_bytes, "format":
+"jpeg"}` when an explicit encoded format is clearer.
 
 ### Multiple and interleaved images
 
 ```python
-from pathlib import Path
-
-images = [Path("before.png").read_bytes(), Path("after.png").read_bytes()]
-prepared = processor.prepare_batch(
+prepared = processor.prepare(
     [
         {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Before: "},
-                        {"type": "image", "image": 0},
-                        {"type": "text", "text": " After: "},
-                        {"type": "image", "image": 1},
-                        {"type": "text", "text": " What changed?"},
-                    ],
-                }
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Before: "},
+                {"type": "image", "image": "before.png"},
+                {"type": "text", "text": " After: "},
+                {"type": "image", "image": "after.png"},
+                {"type": "text", "text": " What changed?"},
             ],
-            "images": images,
-            "options": {"add_generation_prompt": True, "add_vision_id": True},
         }
-    ]
+    ],
+    add_generation_prompt=True,
+    add_vision_id=True,
 )
-assert prepared.arrays["image_grid_thw"].shape[0] == 2
+assert prepared["image_grid_thw"].shape[0] == 2
 ```
 
-Every supplied image must be referenced. Reusing an index intentionally reuses
-the same supplied buffer at another prompt location.
+The separate preloaded `images` list and reusable integer-reference form remain
+available for services that manage media ownership themselves.
 
 ### Heterogeneous batches and raw RGB
 
@@ -205,14 +190,15 @@ prepared = processor.prepare_batch(
             ],
             "images": [rgb],
         },
-    ]
+    ],
+    padding_side="left",
 )
-assert prepared.arrays["input_ids"].shape[0] == 2
+assert prepared["input_ids"].shape[0] == 2
 ```
 
-Raw arrays must be `uint8` HWC RGB. Batched text arrays are right-padded under
-compatibility contract v1; qwen-mm rejects requests for mutable left-padding
-or truncation behavior.
+Raw arrays must be `uint8` HWC RGB. Batched text arrays are right-padded by
+default; `padding_side="left"` produces the generation layout used in the
+official batch sample.
 
 ### Image and chat options
 
@@ -237,29 +223,30 @@ requires `add_generation_prompt=True`.
 
 ### Outputs and failures
 
-`PreparedBatch.arrays` contains only official model-input arrays, in frozen
-processor order. Conditional image keys are absent from text-only results.
-`PreparedBatch.metadata` contains integration-only occurrence, range, cache,
-profile, and request-layout metadata.
+`PreparedBatch` is a mapping over only the official model-input arrays, in
+frozen processor order. `.arrays` exposes the same mapping as a dictionary;
+`.metadata` contains integration-only occurrence, range, cache, profile,
+padding, and request-layout details.
 
 ```python
 from qwen_mm import QwenMMError
 
 try:
-    processor.prepare_batch(requests)
+    processor.prepare(messages)
 except QwenMMError as error:
     print(error.category, error.context)
 ```
 
 Input and compatibility failures use stable qwen-mm exception subclasses.
-Missing cache snapshots raise `FileNotFoundError` with the exact pinned
-`hf download` command. Processing is all-or-nothing: failed batches do not
-return partial arrays.
+The lower-level cache-only constructor raises `FileNotFoundError` with the
+exact pinned `hf download` command. Processing is all-or-nothing: failed
+batches do not return partial arrays.
 
 ## Deliberate v0.1 boundary
 
-v0.1 does not fetch URLs, open paths, decode video, accept arbitrary PIL or
-Torch objects, run a model, decode generated tokens, or provide a production
-vLLM/SGLang adapter. Those omissions avoid hidden I/O and ambiguous ownership.
-The official examples remain listed above so later phases can add capabilities
-without rewriting release history.
+v0.1 reads an explicit still-image path, file/HTTP(S) URL, or image data URI
+and can populate its pinned processor cache. It does not decode video, accept
+arbitrary PIL or Torch objects, download or run model weights, decode generated
+tokens, or provide a production vLLM/SGLang adapter. The official examples
+remain listed above so later phases can add capabilities without rewriting
+release history.

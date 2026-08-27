@@ -36,7 +36,6 @@ prepared = processor.prepare(messages, add_generation_prompt=True)
 input_ids = prepared["input_ids"]
 pixel_values = prepared["pixel_values"]
 image_grid_thw = prepared["image_grid_thw"]
-# model.generate(**prepared, ...)
 ```
 
 `Processor.from_pretrained` accepts `Qwen3`, `Qwen3.5`,
@@ -129,7 +128,9 @@ choice, and each request layout records its left and right padding.
 `input_ids`, `attention_mask`, `mm_token_type_ids`, and, when the batch has an
 image, `pixel_values` and `image_grid_thw`. Integer arrays are `int64`; pixels
 are `float32`. The prepared result is also a mapping over exactly those arrays,
-so `prepared["input_ids"]` and `model(**prepared)` work directly.
+so `prepared["input_ids"]` and normal `consumer(**prepared)` keyword expansion
+work directly. Convert the NumPy values when the downstream runtime requires
+another tensor type.
 `PreparedBatch.metadata` contains qwen-mm integration metadata, including
 request layouts and image occurrences, and is not a model input.
 

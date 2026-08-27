@@ -1,23 +1,23 @@
 # Official Qwen examples → qwen-mm Rosetta Stone
 
-This is the short code-comparison guide. Each pair stops at the preprocessing
-boundary: the official side produces model inputs, and the qwen-mm side
-produces the corresponding NumPy arrays. Model loading, generation, and
-decoding are omitted.
+This is the code-first comparison. Each official excerpt stops when it has
+produced model inputs; the qwen-mm excerpt immediately below produces the same
+kind of inputs as NumPy arrays. Model loading, generation, and output decoding
+are outside qwen-mm.
 
-The official excerpts are condensed to the relevant lines while preserving
-their messages, options, and media order. Links point to immutable upstream
-revisions. The exhaustive source audit and support classifications remain in
-the [comparison appendix](official-example-comparison-v0.1.md).
+The official snippets are shortened only around the preprocessing boundary.
+Their message objects, media order, and processor options are preserved. Links
+point to immutable upstream revisions; the broader source inventory is in the
+[comparison appendix](official-example-comparison-v0.1.md).
 
-If you read only one pair, read [one image from a URL](#2-one-image-from-a-url).
-Run one constructor from section 0, then use any numbered pair below.
+The short version is: keep the official `messages`, replace the processor
+constructor, and make one `prepare` call.
 
 ## 0. Construct the processor
 
 Source: [Qwen3-VL-8B-Instruct model card](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct/blob/0c351dd01ed87e9c1b53cbc748cba10e6187ff3b/README.md#using--transformers-to-chat).
 
-Official Transformers examples:
+Official Transformers:
 
 ```python
 from transformers import AutoProcessor
@@ -30,13 +30,20 @@ qwen-mm:
 ```python
 from qwen_mm import Processor
 
-processor = Processor.from_huggingface_cache("qwen3-vl-8b")
+processor = Processor.from_pretrained("Qwen3")
 ```
 
-Both select Qwen3-VL-8B-Instruct. qwen-mm opens only revision
-`0c351dd01ed87e9c1b53cbc748cba10e6187ff3b` from the local Hugging Face cache;
-it never downloads implicitly. Use `"qwen3.5-9b"` for the pinned Qwen3.5-9B
-profile.
+The exact official model ID works too:
+
+```python
+processor = Processor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
+```
+
+For Qwen3.5, use `"Qwen3.5"` or `"Qwen/Qwen3.5-9B"`. qwen-mm resolves each
+name to its tested immutable revision and downloads only the pinned
+processor/tokenizer artifacts through the normal Hugging Face cache—not model
+weights. `cache_dir=` selects a cache and `local_files_only=True` makes the call
+offline/cache-only.
 
 ## 1. Text-only chat
 
@@ -62,23 +69,17 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm:
+qwen-mm, using the same `messages`:
 
 ```python
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": messages,
-            "options": {"add_generation_prompt": True},
-        }
-    ]
-)
-inputs = prepared.arrays
+inputs = processor.prepare(messages, add_generation_prompt=True)
 ```
 
-The qwen-mm output contains `input_ids`, `attention_mask`, and
-`mm_token_type_ids`. It contains no placeholder image arrays for a text-only
-request.
+`inputs` is a mapping over `input_ids`, `attention_mask`, and
+`mm_token_type_ids`, so normal `consumer(**inputs)` keyword expansion works.
+The values are NumPy arrays rather than PyTorch tensors; convert them when the
+downstream runtime requires another tensor type. Adapter-only details remain
+separate in `inputs.metadata`.
 
 ## 2. One image from a URL
 
@@ -109,38 +110,19 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm:
+qwen-mm, using the same `messages`:
 
 ```python
-from urllib.request import urlopen
-
-image_url = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"
-with urlopen(image_url) as response:
-    image_bytes = response.read()
-
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "text", "text": "Describe this image."},
-                    ],
-                }
-            ],
-            "images": [image_bytes],
-            "options": {"add_generation_prompt": True},
-        }
-    ]
-)
-inputs = prepared.arrays
+inputs = processor.prepare(messages, add_generation_prompt=True)
 ```
 
-The only ownership difference is explicit: Transformers may fetch the URL;
-qwen-mm requires the caller to supply encoded JPEG/PNG/WebP bytes or a
-`uint8` HWC RGB array.
+That URL is the caller's explicit image input, so qwen-mm fetches it directly.
+There is no permission flag, private-network filter, security-policy mode, or
+warning ceremony. Redirects, a 30-second timeout, byte ceilings, and typed
+network failures are ordinary reliability behavior.
+
+Plain paths, `pathlib.Path` values, `file:` URLs, and image data URIs work in
+the same `image` field.
 
 ## 3. Multiple images
 
@@ -172,41 +154,18 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm:
+qwen-mm, using the same `messages`:
 
 ```python
-from pathlib import Path
-
-images = [Path("image1.jpg").read_bytes(), Path("image2.jpg").read_bytes()]
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "image", "image": 1},
-                        {
-                            "type": "text",
-                            "text": "Identify the similarities between these images.",
-                        },
-                    ],
-                }
-            ],
-            "images": images,
-            "options": {"add_generation_prompt": True},
-        }
-    ]
-)
-inputs = prepared.arrays
+inputs = processor.prepare(messages, add_generation_prompt=True)
 ```
 
-The integer in each image content item is the position in that request's
-`images` list. Text and image items may be interleaved in any order. Repeating
-an integer repeats the same supplied image at another prompt position.
+Image and text items may be interleaved in any order. Existing callers may
+still preload encoded bytes or RGB arrays in a separate `images` list and use
+integer image references; direct sources and the deterministic preloaded form
+share the same native preprocessing path.
 
-## 4. Heterogeneous batch
+## 4. Heterogeneous batch with left padding
 
 Source: [Qwen3-VL batch example](https://github.com/QwenLM/Qwen3-VL/blob/96588727e44c78b25ba03ea03b8e12f7e64fd0da/README.md#batch-inference).
 
@@ -246,55 +205,27 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm:
+qwen-mm, using the same `messages1` and `messages2`:
 
 ```python
-from pathlib import Path
-
-image1_bytes = Path("/path/to/image1.jpg").read_bytes()
-image2_bytes = Path("/path/to/image2.jpg").read_bytes()
-
-prepared = processor.prepare_batch(
+inputs = processor.prepare_batch(
     [
         {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "image", "image": 1},
-                        {
-                            "type": "text",
-                            "text": "What are the common elements in these pictures?",
-                        },
-                    ],
-                }
-            ],
-            "images": [image1_bytes, image2_bytes],
+            "messages": messages1,
             "options": {"add_generation_prompt": True},
         },
         {
-            "messages": [
-                {
-                    "role": "system",
-                    "content": [{"type": "text", "text": "You are a helpful assistant."}],
-                },
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": "Who are you?"}],
-                },
-            ],
+            "messages": messages2,
             "options": {"add_generation_prompt": True},
         },
-    ]
+    ],
+    padding_side="left",
 )
-inputs = prepared.arrays
 ```
 
-Both preprocess a multi-image row and a text-only row together. qwen-mm always
-uses the frozen compatibility contract's right padding. It does not reproduce
-the official example's mutable left-padding step, so direct batched generation
-must account for that downstream.
+The request wrappers let rows carry different media lists and chat options.
+The default remains `padding_side="right"`; `inputs.metadata["padding_side"]`
+and each request layout record the selected side and count.
 
 ## 5. qwen-vl-utils path loading and explicit image size
 
@@ -337,42 +268,17 @@ inputs = processor(
 )
 ```
 
-qwen-mm:
+qwen-mm, using the same `messages`:
 
 ```python
-from pathlib import Path
-
-image_bytes = Path("/path/to/your/image.jpg").read_bytes()
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "image": 0,
-                            "resized_height": 280,
-                            "resized_width": 420,
-                        },
-                        {"type": "text", "text": "Describe this image."},
-                    ],
-                }
-            ],
-            "images": [image_bytes],
-            "options": {"add_generation_prompt": True},
-        }
-    ]
-)
-inputs = prepared.arrays
+inputs = processor.prepare(messages, add_generation_prompt=True)
 ```
 
-One qwen-mm call replaces chat rendering, `process_vision_info`, image
-resizing, tokenization, and tensor assembly. `min_pixels` and `max_pixels` use
-the same per-image position.
+One call performs chat rendering, still-image loading, resizing, tokenization,
+and array assembly. `min_pixels`, `max_pixels`, `resized_height`, and
+`resized_width` stay on the same image content item.
 
-## 6. Qwen3.5 non-thinking mode
+## 6. Qwen3.5 OpenAI image content and non-thinking mode
 
 Source: [Qwen3.5-9B non-thinking example](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/README.md#disable-thinking).
 
@@ -408,47 +314,22 @@ chat_response = client.chat.completions.create(
 )
 ```
 
-qwen-mm local preprocessing:
+qwen-mm local preprocessing, using the same `messages`:
 
 ```python
-from urllib.request import urlopen
-
-from qwen_mm import Processor
-
-image_url = (
-    "https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png"
+processor = Processor.from_pretrained("Qwen3.5")
+inputs = processor.prepare(
+    messages,
+    add_generation_prompt=True,
+    enable_thinking=False,
 )
-with urlopen(image_url) as response:
-    image_bytes = response.read()
-
-processor = Processor.from_huggingface_cache("qwen3.5-9b")
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "text", "text": "Where is this?"},
-                    ],
-                }
-            ],
-            "images": [image_bytes],
-            "options": {
-                "add_generation_prompt": True,
-                "enable_thinking": False,
-            },
-        }
-    ]
-)
-inputs = prepared.arrays
 ```
 
-Sampling options such as `top_k` belong to generation and are not processor
-inputs. `enable_thinking` changes chat rendering, so qwen-mm accepts it.
+Both the nested `{"url": ...}` object above and a direct `image_url` string are
+accepted. Sampling settings such as `temperature` and `top_k` belong to the
+model runner, not preprocessing.
 
-## 7. LLaMA-Factory multimodal dataset row
+## 7. LLaMA-Factory and separate-media dataset rows
 
 Source: [LLaMA-Factory `mllm_demo.json`](https://github.com/hiyouga/LLaMA-Factory/blob/a18110d2f064b1518ac313eeb2ba980946467b4d/data/mllm_demo.json).
 
@@ -472,50 +353,44 @@ row = {
 }
 ```
 
-qwen-mm request after caller-owned dataset/path loading:
+qwen-mm after the dataset adapter expands the two ordered placeholders:
 
 ```python
-from pathlib import Path
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "image": 0},
+            {"type": "text", "text": "Who are they?"},
+        ],
+    },
+    {
+        "role": "assistant",
+        "content": "They're Kane and Gretzka from Bayern Munich.",
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What are they doing?"},
+            {"type": "image", "image": 1},
+        ],
+    },
+    {
+        "role": "assistant",
+        "content": "They are celebrating on the soccer field.",
+    },
+]
 
-image_bytes = Path("mllm_demo_data/1.jpg").read_bytes()
-prepared = processor.prepare_batch(
-    [
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": 0},
-                        {"type": "text", "text": "Who are they?"},
-                    ],
-                },
-                {
-                    "role": "assistant",
-                    "content": "They're Kane and Gretzka from Bayern Munich.",
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "What are they doing?"},
-                        {"type": "image", "image": 1},
-                    ],
-                },
-                {
-                    "role": "assistant",
-                    "content": "They are celebrating on the soccer field.",
-                },
-            ],
-            "images": [image_bytes, image_bytes],
-        }
-    ]
-)
+inputs = processor.prepare(messages, images=row["images"])
 ```
 
-The `<image>` placeholders become ordered numeric content items. Dataset
-loading and training-label construction stay in LLaMA-Factory or the caller.
-ModelScope SWIFT's separate `images`/`videos` columns map the same way.
+The paths in `row["images"]` are accepted directly; the adapter does not read
+them into bytes. Placeholder expansion, training labels, and dataset loading
+remain the training framework's responsibility. ModelScope SWIFT's separate
+image columns and Qwen-MM-Plugins' explicit image lists map to the same
+preloaded-media form.
 
-## 8. Video
+## 8. Video remains an explicit boundary
 
 Source: [Qwen3-VL video example](https://github.com/QwenLM/Qwen3-VL/blob/96588727e44c78b25ba03ea03b8e12f7e64fd0da/README.md#video-inference).
 
@@ -544,63 +419,58 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm v0.1:
+qwen-mm v0.1 has no equivalent video preparation call. Supplying an encoded
+video through the deterministic media-list form fails explicitly:
 
 ```python
-from pathlib import Path
-
 from qwen_mm import UnsupportedMediaError
 
-video_bytes = Path("/path/to/video.mp4").read_bytes()
 try:
-    processor.prepare_batch(
+    processor.prepare(
         [
             {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "video", "video": 0},
-                            {"type": "text", "text": "Describe this video."},
-                        ],
-                    }
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": 0},
+                    {"type": "text", "text": "Describe this video."},
                 ],
-                "videos": [video_bytes],
             }
-        ]
+        ],
+        videos=[b"encoded video"],
     )
 except UnsupportedMediaError:
-    pass  # Video preprocessing is deferred beyond v0.1.
+    pass
 ```
 
-There is deliberately no equivalent video preprocessing path in v0.1. Frame
-sampling, temporal metadata, and video decoding remain deferred; extracted
-still frames may be submitted as independent images but are not treated as a
+Video decoding, frame sampling, and temporal metadata are deferred. Extracted
+still frames may be submitted as images, but qwen-mm does not relabel them as a
 video.
 
-## 9. vLLM and SGLang HTTP examples
+## 9. vLLM, SGLang, and Qwen-MM-Plugins boundaries
 
-Sources: [vLLM multi-image example](https://github.com/vllm-project/vllm/blob/0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665/examples/generate/multimodal/vision_language_multi_image_offline.py)
-and [SGLang Qwen3-VL cookbook](https://github.com/sgl-project/sglang/blob/2935bb8e79e669b71aa4fef3b412fa25bc656c25/docs/cookbook/autoregressive/Qwen/Qwen3-VL.mdx).
+Sources: [vLLM multimodal examples](https://github.com/vllm-project/vllm/tree/0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665/examples/generate/multimodal),
+[SGLang Qwen cookbooks](https://github.com/sgl-project/sglang/tree/2935bb8e79e669b71aa4fef3b412fa25bc656c25/docs/cookbook/autoregressive/Qwen),
+and [Qwen-MM-Plugins](https://github.com/QwenLM/Qwen-MM-Plugins/tree/ab339d2016ed1da8e9a96c477b067ecc74a6ce59).
 
-These examples send OpenAI-compatible messages to a running model server or
-pass media through a framework-owned model runner. qwen-mm is a local
-preprocessor, not a server, HTTP client, or model runner, so there is no honest
-one-line substitution for those transport and generation calls. Their text
-and still-image message order maps to sections 1–3 above; a production
-prepared-pixel adapter is deferred beyond v0.1.
+Their OpenAI-compatible text and still-image message objects can be passed
+directly to `prepare`, including URL and nested `image_url` content as shown in
+sections 2 and 6. Their HTTP transport, model execution, generation settings,
+agent routing, and video handling are outside qwen-mm. The prepared-pixel vLLM
+adapter remains a separate prototype rather than part of the v0.1 wheel.
 
-## Field and call cheat sheet
+## Call translation
 
-| Official example | qwen-mm |
+| Official sample | qwen-mm |
 | --- | --- |
-| `AutoProcessor.from_pretrained(model_id)` | `Processor.from_huggingface_cache(profile)` |
-| URL, path, data URI, or PIL object in the message | Caller loads bytes/RGB; message holds an integer image reference |
-| `processor.apply_chat_template(...)` | `processor.prepare_batch([request])` |
-| `process_vision_info(messages)` | Included in `prepare_batch` for still images |
-| `processor(..., images=..., return_tensors="pt")` | Included in `prepare_batch`; arrays are NumPy |
-| `min_pixels`, `max_pixels`, or explicit dimensions on an image | Same option names on the numeric image content item |
-| `padding=True` plus mutable `padding_side` | Automatic fixed right padding |
-| `chat_template_kwargs={"enable_thinking": ...}` | `options={"enable_thinking": ...}` |
-| Video URL/path/frames | `UnsupportedMediaError` in v0.1 |
-| vLLM/SGLang request or generation | Out of scope; qwen-mm only prepares local arrays |
+| `AutoProcessor.from_pretrained(model_id)` | `Processor.from_pretrained("Qwen3")` or the same supported model ID |
+| `messages` with a path, URL, or image data URI | The same `messages` |
+| OpenAI `image_url` string or nested `{"url": ...}` | The same `messages` |
+| `processor.apply_chat_template(...)` for one chat | `processor.prepare(messages, ...)` |
+| `process_vision_info(messages)` plus `processor(...)` | Included in `prepare` for still images |
+| `min_pixels`, `max_pixels`, or explicit dimensions | The same fields on the image content item |
+| `padding=True` plus `padding_side = "left"` | `prepare_batch(..., padding_side="left")` |
+| Model input dictionary | `PreparedBatch`, a mapping over the NumPy model arrays |
+| `chat_template_kwargs={"enable_thinking": ...}` | `prepare(..., enable_thinking=...)` |
+| Preloaded ordered media lists | `prepare(messages, images=...)` or per-request batch lists |
+| Video URL/path/frames | `UnsupportedMediaError`; deferred beyond v0.1 |
+| vLLM/SGLang generation or agent calls | Out of scope; qwen-mm stops at local model inputs |
