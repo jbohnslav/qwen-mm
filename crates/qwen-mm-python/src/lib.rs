@@ -115,6 +115,19 @@ fn huggingface_snapshot_directory(cache: &Path, model_id: &str, revision: &str) 
 
 #[pymethods]
 impl PyProcessor {
+    /// Decodes generated IDs without loading another tokenizer or processor.
+    #[pyo3(signature = (token_ids, *, skip_special_tokens=false))]
+    fn decode(
+        &self,
+        py: Python<'_>,
+        token_ids: Vec<u32>,
+        skip_special_tokens: bool,
+    ) -> PyResult<String> {
+        let processor = Arc::clone(&self.inner);
+        py.detach(move || processor.decode(&token_ids, skip_special_tokens))
+            .map_err(|error| to_python_error(py, &error))
+    }
+
     /// Loads one hash-pinned profile from a local snapshot directory.
     #[new]
     #[pyo3(signature = (profile, assets_directory, *, limits=None, thread_budget=None))]

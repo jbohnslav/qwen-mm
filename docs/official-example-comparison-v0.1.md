@@ -91,7 +91,7 @@ is not part of v0.1.
 | Qwen image/OCR/grounding/computer-use cookbooks | Task-specific single-image and iterative image inputs | Preprocessing supported; task execution and tool loops out of scope | [One image](#one-image) or [heterogeneous batches](#heterogeneous-batches-and-raw-rgb) |
 | Qwen3.5 model card | Thinking and non-thinking chat rendering | Supported for `qwen3.5-9b` | `options.enable_thinking`; see [Image and chat options](#image-and-chat-options) |
 | Qwen3.5 model card and SGLang | Tools, tool calls, tool responses, and agent orchestration | Frozen chat rendering is supported; orchestration/model execution out of scope | Supply `options.tools` and normal assistant/tool messages. |
-| Transformers processor API | PyTorch tensors returned directly | NumPy output supported; direct Torch construction intentionally unsupported | Convert downstream with `torch.from_numpy` when desired. [Outputs and failures](#outputs-and-failures) |
+| Transformers processor API | PyTorch tensors returned directly | Optional `return_tensors="pt"`, `.to(device)`, and native `batch_decode` supported | NumPy remains the default; Torch is installed by the consumer. [Outputs and failures](#outputs-and-failures) |
 | vLLM offline examples | Raw image, raw video, or image-plus-video with manual prompt placeholders | Still-image preprocessing supported; video deferred | qwen-mm renders the pinned chat template and returns prepared image arrays, avoiding manual placeholder construction. |
 | vLLM OpenAI client | Text, URL/local/base64 image, multi-image, and URL/base64 video payloads | OpenAI still-image message content supported directly; server transport, generation, and video deferred | Use the text/single/multi-image forms below. |
 | qwen-mm vLLM plugin prototype | Prepared still pixels handed to pinned vLLM without HF preprocessing | Prototype exists, but production integration is deferred beyond v0.1 | See [`integrations/vllm/README.md`](../integrations/vllm/README.md). |
@@ -246,7 +246,8 @@ batches do not return partial arrays.
 
 v0.1 reads an explicit still-image path, file/HTTP(S) URL, or image data URI
 and can populate its pinned processor cache. It does not decode video, accept
-arbitrary PIL or Torch objects, download or run model weights, decode generated
-tokens, or provide a production vLLM/SGLang adapter. The official examples
+arbitrary PIL or Torch image inputs, download or run model weights,
+or provide a production vLLM/SGLang adapter. It does decode generated token IDs.
+The official examples
 remain listed above so later phases can add capabilities without rewriting
 release history.

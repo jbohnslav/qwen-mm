@@ -1,0 +1,278 @@
+{
+  "timestamp": "2026-09-05T19:22:13.588347+00:00",
+  "model": "qwen/qwen3.5-9b",
+  "script_sha256": "3f3563073ce7fcd2d03bf865c6fcc3b9bf2b79e6112830d2f0c861b0eabe69b2",
+  "document_sha256": "cc020dad0cb01f315ccd95592e4a290c12e5b4c46856cf9189de5411cf2a1926",
+  "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.00000015"
+  },
+  "budget_usd": 1.99,
+  "scope": "Hosted request/media/tool behavior only; no local tensor parity or model-quality claim",
+  "section_6_transport_changes": {
+    "endpoint": "https://openrouter.ai/api/v1",
+    "model": "qwen/qwen3.5-9b",
+    "max_tokens": "32768 -> 128 for this bounded smoke",
+    "extra_body": "flattened into HTTP JSON; chat_template_kwargs.enable_thinking=False -> reasoning.enabled=False",
+    "messages": "executed from the original Markdown without changes, including the public image URL"
+  },
+  "cases": [
+    {
+      "name": "text",
+      "passed": true,
+      "id": "gen-1788636133-7UqpR352tTHxiTaBtiOa",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "Venice",
+      "elapsed_seconds": 0.6506046671420336,
+      "usage": {
+        "prompt_tokens": 19,
+        "completion_tokens": 5,
+        "total_tokens": 24,
+        "cost": 2.65e-06,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 2.65e-06,
+          "upstream_inference_prompt_cost": 1.9e-06,
+          "upstream_inference_completions_cost": 7.5e-07
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "content": "QWEN_OK",
+      "tool_calls": null,
+      "reasoning_returned": false
+    },
+    {
+      "name": "images_red",
+      "passed": true,
+      "id": "gen-1788636134-wuUs65LEkNGHcQ8heSEy",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "Venice",
+      "elapsed_seconds": 0.36693558283150196,
+      "usage": {
+        "prompt_tokens": 89,
+        "completion_tokens": 2,
+        "total_tokens": 91,
+        "cost": 9.2e-06,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 9.2e-06,
+          "upstream_inference_prompt_cost": 8.9e-06,
+          "upstream_inference_completions_cost": 3e-07
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "content": "red",
+      "tool_calls": null,
+      "reasoning_returned": false
+    },
+    {
+      "name": "images_red_blue",
+      "passed": true,
+      "id": "gen-1788636134-zNWD8Rv0p67GsEYjmuM5",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "SiliconFlow",
+      "elapsed_seconds": 1.5177114997059107,
+      "usage": {
+        "prompt_tokens": 157,
+        "completion_tokens": 4,
+        "total_tokens": 161,
+        "cost": 1.63e-05,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 1.63e-05,
+          "upstream_inference_prompt_cost": 1.57e-05,
+          "upstream_inference_completions_cost": 6e-07
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "content": "red, blue",
+      "tool_calls": null,
+      "reasoning_returned": false
+    },
+    {
+      "name": "section_6_original_public_url",
+      "passed": true,
+      "id": "gen-1788636136-q0kZGKqbxDPkbgRK9HD5",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "SiliconFlow",
+      "elapsed_seconds": 7.743669457733631,
+      "usage": {
+        "prompt_tokens": 2470,
+        "completion_tokens": 128,
+        "total_tokens": 2598,
+        "cost": 0.0002662,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0002662,
+          "upstream_inference_prompt_cost": 0.000247,
+          "upstream_inference_completions_cost": 1.92e-05
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "length",
+      "content": "This is **Medell\u00edn, Colombia** \u2014 specifically, the view from the rooftop of a building in the **El Poblado** or nearby neighborhood, looking toward the city\u2019s iconic **Comuna 13** (or possibly Comuna 12/13 area) and surrounding hills.\n\n### Key visual clues:\n- The giant stone head statue with a golden headband is part of an art installation called **\u201cEl Origen\u201d** (\u201cThe Origin\u201d), created by Colombian artist **Jaime Rosales**. It\u2019s located on top of a building in **Comuna 13**, one of Medell\u00edn\u2019s most famous",
+      "tool_calls": null,
+      "reasoning_returned": false
+    },
+    {
+      "name": "tool_call",
+      "passed": true,
+      "id": "gen-1788636143-Zd2K0Y4l8hlvkFBJ7d8K",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "SiliconFlow",
+      "elapsed_seconds": 1.3822640823200345,
+      "usage": {
+        "prompt_tokens": 284,
+        "completion_tokens": 12,
+        "total_tokens": 296,
+        "cost": 3.02e-05,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 3.02e-05,
+          "upstream_inference_prompt_cost": 2.84e-05,
+          "upstream_inference_completions_cost": 1.8e-06
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "tool_calls",
+      "content": null,
+      "tool_calls": [
+        {
+          "type": "function",
+          "index": 0,
+          "id": "chatcmpl-tool-bda032f346414f70",
+          "function": {
+            "name": "temperature",
+            "arguments": "{\n  \"city\": \"Paris\"\n}"
+          }
+        }
+      ],
+      "reasoning_returned": false
+    },
+    {
+      "name": "tool_result",
+      "passed": true,
+      "id": "gen-1788636145-JxjPRl6exXlWYC13l7rb",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "Venice",
+      "elapsed_seconds": 1.542074916884303,
+      "usage": {
+        "prompt_tokens": 78,
+        "completion_tokens": 13,
+        "total_tokens": 91,
+        "cost": 9.75e-06,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 9.75e-06,
+          "upstream_inference_prompt_cost": 7.8e-06,
+          "upstream_inference_completions_cost": 1.95e-06
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "content": "The temperature tool returned **17\u00b0C** for Paris.",
+      "tool_calls": null,
+      "reasoning_returned": false
+    },
+    {
+      "name": "thinking_enabled",
+      "passed": true,
+      "id": "gen-1788636146-tmhPbigLt32GCfDrAriW",
+      "model": "qwen/qwen3.5-9b",
+      "provider": "SiliconFlow",
+      "elapsed_seconds": 2.0876668747514486,
+      "usage": {
+        "prompt_tokens": 21,
+        "completion_tokens": 173,
+        "total_tokens": 194,
+        "cost": 2.805e-05,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 2.805e-05,
+          "upstream_inference_prompt_cost": 2.1e-06,
+          "upstream_inference_completions_cost": 2.595e-05
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 148,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "content": "5",
+      "tool_calls": null,
+      "reasoning_returned": true
+    }
+  ],
+  "total_cost_usd": 0.00036235,
+  "all_required_passed": true
+}

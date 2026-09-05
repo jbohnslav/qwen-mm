@@ -8,6 +8,7 @@ from typing import Any
 from . import _native
 from ._media import normalize_requests
 from ._pretrained import _download_pretrained_snapshot
+from ._tensors import TorchBatch, tensor_backend
 
 
 class Processor:
@@ -100,7 +101,10 @@ class Processor:
         tools: Any | None = None,
         enable_thinking: bool | None = None,
         padding_side: str = "right",
-    ) -> _native.PreparedBatch:
+        min_pixels: int | None = None,
+        max_pixels: int | None = None,
+        return_tensors: str | None = "np",
+    ) -> _native.PreparedBatch | TorchBatch:
         """Prepare one conversation without a one-element batch wrapper."""
         options: dict[str, Any] = {
             "add_generation_prompt": add_generation_prompt,
@@ -116,19 +120,98 @@ class Processor:
             request["images"] = images
         if videos is not None:
             request["videos"] = videos
-        return self.prepare_batch([request], padding_side=padding_side)
+        return self.prepare_batch(
+            [request],
+            padding_side=padding_side,
+            min_pixels=min_pixels,
+            max_pixels=max_pixels,
+            return_tensors=return_tensors,
+        )
 
     def prepare_batch(
         self,
         requests: Any,
         *,
         padding_side: str = "right",
-    ) -> _native.PreparedBatch:
+        add_generation_prompt: bool | None = None,
+        add_vision_id: bool | None = None,
+        tools: Any | None = None,
+        enable_thinking: bool | None = None,
+        min_pixels: int | None = None,
+        max_pixels: int | None = None,
+        return_tensors: str | None = "np",
+    ) -> _native.PreparedBatch | TorchBatch:
         """Prepare a heterogeneous batch, using right padding by default."""
-        return self._native.prepare_batch(
-            normalize_requests(requests, limits=self._limits),
+        torch = tensor_backend(return_tensors)
+        defaults = {}
+        for name, value in (("min_pixels", min_pixels), ("max_pixels", max_pixels)):
+            if value is not None:
+                if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                    raise ValueError(f"{name} must be a positive integer")
+                defaults[name] = value
+        options = {
+            key: value
+            for key, value in {
+                "add_generation_prompt": add_generation_prompt,
+                "add_vision_id": add_vision_id,
+                "tools": tools,
+                "enable_thinking": enable_thinking,
+            }.items()
+            if value is not None
+        }
+        if isinstance(requests, list):
+            normalized = []
+            for request in requests:
+                if isinstance(request, list):
+                    request = {"messages": request}
+                if (
+                    options
+                    and isinstance(request, dict)
+                    and isinstance(request.get("options", {}), dict)
+                ):
+                    request = {**request, "options": {**options, **request.get("options", {})}}
+                normalized.append(request)
+            requests = normalized
+        prepared = self._native.prepare_batch(
+            normalize_requests(requests, limits=self._limits, image_defaults=defaults),
             padding_side=padding_side,
         )
+        return prepared if torch is None else TorchBatch(prepared, torch)
+
+    def decode(
+        self,
+        token_ids: Any,
+        *,
+        skip_special_tokens: bool = False,
+        clean_up_tokenization_spaces: bool = False,
+    ) -> str:
+        """Decode tokens; like the pinned Qwen BPE tokenizer, preserve spacing.
+
+        ``clean_up_tokenization_spaces`` is accepted for call compatibility;
+        the pinned Transformers Qwen tokenizer also ignores this option.
+        """
+        if hasattr(token_ids, "tolist"):
+            token_ids = token_ids.tolist()
+        if isinstance(token_ids, int):
+            token_ids = [token_ids]
+        return self._native.decode(token_ids, skip_special_tokens=skip_special_tokens)
+
+    def batch_decode(
+        self,
+        sequences: Any,
+        *,
+        skip_special_tokens: bool = False,
+        clean_up_tokenization_spaces: bool = False,
+    ) -> list[str]:
+        """Decode a batch of generated token sequences."""
+        return [
+            self.decode(
+                row,
+                skip_special_tokens=skip_special_tokens,
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+            )
+            for row in sequences
+        ]
 
     def prepare_batch_observed(
         self,

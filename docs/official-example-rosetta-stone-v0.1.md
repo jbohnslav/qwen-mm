@@ -1,9 +1,9 @@
 # Official Qwen examples → qwen-mm Rosetta Stone
 
 This is the code-first comparison. Each official excerpt stops when it has
-produced model inputs; the qwen-mm excerpt immediately below produces the same
-kind of inputs as NumPy arrays. Model loading, generation, and output decoding
-are outside qwen-mm.
+produced model inputs; the qwen-mm excerpt immediately below produces model inputs. NumPy is the default; the examples request PyTorch
+tensors to match the official calls. Model loading and generation remain in
+Transformers; qwen-mm also decodes output tokens.
 
 The official snippets are shortened only around the preprocessing boundary.
 Their message objects, media order, and processor options are preserved. Links
@@ -30,13 +30,13 @@ qwen-mm:
 ```python
 from qwen_mm import Processor
 
-processor = Processor.from_pretrained("Qwen3")
+processor = Processor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
 ```
 
-The exact official model ID works too:
+The short name works too:
 
 ```python
-processor = Processor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
+processor = Processor.from_pretrained("Qwen3")
 ```
 
 For Qwen3.5, use `"Qwen3.5"` or `"Qwen/Qwen3.5-9B"`. qwen-mm resolves each
@@ -72,14 +72,18 @@ inputs = processor.apply_chat_template(
 qwen-mm, using the same `messages`:
 
 ```python
-inputs = processor.prepare(messages, add_generation_prompt=True)
+inputs = processor.prepare(messages, add_generation_prompt=True, return_tensors="pt")
 ```
 
 `inputs` is a mapping over `input_ids`, `attention_mask`, and
 `mm_token_type_ids`, so normal `consumer(**inputs)` keyword expansion works.
-The values are NumPy arrays rather than PyTorch tensors; convert them when the
-downstream runtime requires another tensor type. Adapter-only details remain
-separate in `inputs.metadata`.
+With `return_tensors="pt"`, values are Torch tensors and `inputs.to(model.device)`
+moves them to the model device. Omit that option for NumPy arrays. Adapter-only
+details remain separate in `inputs.metadata`.
+
+For the next step, the [local Transformers consumer example](transformers-consumer-verification.md)
+shows the NumPy-to-Torch handoff, generation, and output decoding. Its opt-in
+test runs our Qwen3.5 arrays through pinned 0.8B weights on CPU.
 
 ## 2. One image from a URL
 
@@ -113,7 +117,9 @@ inputs = processor.apply_chat_template(
 qwen-mm, using the same `messages`:
 
 ```python
-inputs = processor.prepare(messages, add_generation_prompt=True)
+inputs = processor.prepare(
+    messages, add_generation_prompt=True, min_pixels=65536, return_tensors="pt"
+)
 ```
 
 That URL is the caller's explicit image input, so qwen-mm fetches it directly.
@@ -123,6 +129,11 @@ network failures are ordinary reliability behavior.
 
 Plain paths, `pathlib.Path` values, `file:` URLs, and image data URIs work in
 the same `image` field.
+
+The composed `qwen-vl-utils` default used by qwen-mm has a 4,096-pixel minimum.
+The direct Transformers call above uses 65,536. The explicit `min_pixels=65536`
+matches that call, including small images; it does not mutate `messages`.
+Per-image pixel options override shared defaults.
 
 ## 3. Multiple images
 
@@ -154,10 +165,17 @@ inputs = processor.apply_chat_template(
 )
 ```
 
+The pinned Transformers 5.14.1 loader rejects the upstream `file:` URIs above.
+For that official call, use plain filesystem paths instead. qwen-mm accepts
+the original `file:` form directly; the suite records this upstream issue and
+compares against the official call with only that path adjustment.
+
 qwen-mm, using the same `messages`:
 
 ```python
-inputs = processor.prepare(messages, add_generation_prompt=True)
+inputs = processor.prepare(
+    messages, add_generation_prompt=True, min_pixels=65536, return_tensors="pt"
+)
 ```
 
 Image and text items may be interleaved in any order. Existing callers may
@@ -205,25 +223,25 @@ inputs = processor.apply_chat_template(
 )
 ```
 
+The pinned Transformers 5.14.1 loader rejects the upstream `file:` URIs above.
+For that official call, use plain filesystem paths instead. qwen-mm accepts
+the original `file:` form directly; the suite records this upstream issue and
+compares against the official call with only that path adjustment.
+
 qwen-mm, using the same `messages1` and `messages2`:
 
 ```python
 inputs = processor.prepare_batch(
-    [
-        {
-            "messages": messages1,
-            "options": {"add_generation_prompt": True},
-        },
-        {
-            "messages": messages2,
-            "options": {"add_generation_prompt": True},
-        },
-    ],
+    [messages1, messages2],
+    add_generation_prompt=True,
     padding_side="left",
+    min_pixels=65536,
+    return_tensors="pt",
 )
 ```
 
-The request wrappers let rows carry different media lists and chat options.
+Request wrappers remain available when rows need separate media lists or options;
+row options override shared options.
 The default remains `padding_side="right"`; `inputs.metadata["padding_side"]`
 and each request layout record the selected side and count.
 
@@ -271,7 +289,7 @@ inputs = processor(
 qwen-mm, using the same `messages`:
 
 ```python
-inputs = processor.prepare(messages, add_generation_prompt=True)
+inputs = processor.prepare(messages, add_generation_prompt=True, return_tensors="pt")
 ```
 
 One call performs chat rendering, still-image loading, resizing, tokenization,
@@ -322,6 +340,7 @@ inputs = processor.prepare(
     messages,
     add_generation_prompt=True,
     enable_thinking=False,
+    return_tensors="pt",
 )
 ```
 
@@ -381,7 +400,7 @@ messages = [
     },
 ]
 
-inputs = processor.prepare(messages, images=row["images"])
+inputs = processor.prepare(messages, images=row["images"], return_tensors="pt")
 ```
 
 The paths in `row["images"]` are accepted directly; the adapter does not read
@@ -419,32 +438,17 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm v0.1 has no equivalent video preparation call. Supplying an encoded
-video through the deterministic media-list form fails explicitly:
+qwen-mm v0.1 rejects the original video message explicitly, without reading
+media. The same applies to local video paths and frame lists:
 
 ```python
 from qwen_mm import UnsupportedMediaError
 
-try:
-    processor.prepare(
-        [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "video", "video": 0},
-                    {"type": "text", "text": "Describe this video."},
-                ],
-            }
-        ],
-        videos=[b"encoded video"],
-    )
-except UnsupportedMediaError:
-    pass
+processor.prepare(messages)  # raises UnsupportedMediaError: video is not supported
 ```
 
 Video decoding, frame sampling, and temporal metadata are deferred. Extracted
-still frames may be submitted as images, but qwen-mm does not relabel them as a
-video.
+still frames may be submitted as images, but are not treated as video.
 
 ## 9. vLLM, SGLang, and Qwen-MM-Plugins boundaries
 
@@ -458,6 +462,136 @@ sections 2 and 6. Their HTTP transport, model execution, generation settings,
 agent routing, and video handling are outside qwen-mm. The prepared-pixel vLLM
 adapter remains a separate prototype rather than part of the v0.1 wheel.
 
+## 10. Thinking and tool conversations
+
+These chat options and message fields are preserved. Tool execution remains the
+caller's responsibility.
+
+Official:
+
+```python
+messages = [
+    {"role": "user", "content": "What is the temperature in Boston?"},
+    {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {
+                "type": "function",
+                "function": {"name": "temperature", "arguments": {"city": "Boston"}},
+            }
+        ],
+    },
+    {"role": "tool", "content": "18 degrees Celsius"},
+    {"role": "user", "content": "Summarize the result."},
+]
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "temperature",
+            "description": "Read the temperature in a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string"}},
+                "required": ["city"],
+            },
+        },
+    }
+]
+inputs = processor.apply_chat_template(
+    messages,
+    tools=tools,
+    enable_thinking=True,
+    add_generation_prompt=True,
+    tokenize=True,
+    return_dict=True,
+    return_tensors="pt",
+)
+```
+
+qwen-mm, using the same messages and tools:
+
+```python
+inputs = processor.prepare(
+    messages,
+    tools=tools,
+    enable_thinking=True,
+    add_generation_prompt=True,
+    return_tensors="pt",
+)
+```
+
+This thinking example uses Qwen3.5. Omitting `enable_thinking` keeps the pinned
+profile's default; it is not inferred from the consumer model's size.
+
+## 11. Raw RGB arrays
+
+Here `rgb` is a caller-owned `uint8` array with shape `(height, width, 3)`.
+The official path converts it to PIL; qwen-mm accepts it directly.
+
+Official composed path:
+
+```python
+from PIL import Image
+from qwen_vl_utils import process_vision_info
+
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "image": Image.fromarray(rgb)},
+            {"type": "text", "text": "Describe this image."},
+        ],
+    }
+]
+text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+images, _ = process_vision_info(messages, image_patch_size=16)
+inputs = processor(text=[text], images=images, do_resize=False, return_tensors="pt")
+```
+
+qwen-mm:
+
+```python
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "image": rgb},
+            {"type": "text", "text": "Describe this image."},
+        ],
+    }
+]
+inputs = processor.prepare(messages, add_generation_prompt=True, return_tensors="pt")
+```
+
+## 12. Generation and output decoding
+
+Given an already-loaded compatible Transformers `model` and the Torch `inputs`
+from a supported example, both processors use the same downstream code:
+
+Official:
+
+```python
+inputs = inputs.to(model.device)
+generated_ids = model.generate(**inputs, max_new_tokens=8, do_sample=False)
+new_tokens = generated_ids[:, inputs["input_ids"].shape[1] :]
+output_text = processor.batch_decode(new_tokens, skip_special_tokens=True)
+```
+
+qwen-mm:
+
+```python
+inputs = inputs.to(model.device)
+generated_ids = model.generate(**inputs, max_new_tokens=8, do_sample=False)
+new_tokens = generated_ids[:, inputs["input_ids"].shape[1] :]
+output_text = processor.batch_decode(new_tokens, skip_special_tokens=True)
+```
+
+The local verification consumer uses pinned Qwen3.5-0.8B weights with explicit
+thinking options and the verified 9B processor contract. It does not change
+which model IDs `Processor.from_pretrained` accepts.
+
 ## Call translation
 
 | Official sample | qwen-mm |
@@ -469,7 +603,8 @@ adapter remains a separate prototype rather than part of the v0.1 wheel.
 | `process_vision_info(messages)` plus `processor(...)` | Included in `prepare` for still images |
 | `min_pixels`, `max_pixels`, or explicit dimensions | The same fields on the image content item |
 | `padding=True` plus `padding_side = "left"` | `prepare_batch(..., padding_side="left")` |
-| Model input dictionary | `PreparedBatch`, a mapping over the NumPy model arrays |
+| NumPy or Torch model inputs | NumPy by default; `return_tensors="pt"` and `.to(device)` for Torch |
+| `processor.batch_decode(...)` | `processor.batch_decode(...)` |
 | `chat_template_kwargs={"enable_thinking": ...}` | `prepare(..., enable_thinking=...)` |
 | Preloaded ordered media lists | `prepare(messages, images=...)` or per-request batch lists |
 | Video URL/path/frames | `UnsupportedMediaError`; deferred beyond v0.1 |

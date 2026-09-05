@@ -311,10 +311,58 @@ def _normalize_request(request: Any, *, budget: _ReadBudget) -> Any:
     return normalized_request
 
 
-def normalize_requests(requests: Any, *, limits: dict[str, int]) -> Any:
+def normalize_requests(
+    requests: Any, *, limits: dict[str, int], image_defaults: dict[str, int] | None = None
+) -> Any:
     """Return the native request shape, resolving direct image sources."""
     if not isinstance(requests, list):
         return requests
+    # Reject original video URLs/frame lists before fetching any image in the batch.
+    for request in requests:
+        if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
+            continue
+        for message in request["messages"]:
+            if not isinstance(message, dict) or not isinstance(message.get("content"), list):
+                continue
+            for item in message["content"]:
+                if isinstance(item, dict) and (
+                    item.get("type") == "video_url"
+                    or (
+                        item.get("type") == "video"
+                        and not _is_numeric_reference(
+                            item.get("video", item.get("input_index", item.get("buffer_index")))
+                        )
+                    )
+                ):
+                    raise _error(
+                        UnsupportedMediaError,
+                        "Video preparation is not supported in qwen-mm v0.1",
+                        media_type="video",
+                    )
+    if image_defaults:
+
+        def with_defaults(item: Any) -> Any:
+            if not isinstance(item, dict) or item.get("type") not in ("image", "image_url"):
+                return item
+            if "options" in item:
+                if not isinstance(item["options"], dict):
+                    return item  # Preserve native validation of malformed options.
+                return {**item, "options": {**image_defaults, **item["options"]}}
+            return {**image_defaults, **item}
+
+        updated = []
+        for request in requests:
+            if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
+                updated.append(request)
+                continue
+            messages = []
+            for message in request["messages"]:
+                if isinstance(message, dict) and isinstance(message.get("content"), list):
+                    content = [with_defaults(item) for item in message["content"]]
+                    message = {**message, "content": content}
+                messages.append(message)
+            updated.append({**request, "messages": messages})
+        requests = updated
     budget = _ReadBudget(
         item_limit=limits.get("encoded_bytes_per_item", _DEFAULT_ENCODED_BYTES_PER_ITEM),
         batch_limit=limits.get("encoded_bytes_per_batch", _DEFAULT_ENCODED_BYTES_PER_BATCH),

@@ -33,4 +33,6 @@ test -n "$wheel_path"
 "$test_directory/venv/bin/python" \
     "$repository_root/crates/qwen-mm-python/tests/usability.py"
 "$test_directory/venv/bin/python" \
+    "$repository_root/crates/qwen-mm-python/tests/rosetta_regressions.py"
+"$test_directory/venv/bin/python" \
     "$repository_root/crates/qwen-mm-python/tests/binding.py"

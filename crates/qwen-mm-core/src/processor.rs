@@ -457,6 +457,14 @@ impl Drop for ActiveOperationGuard<'_> {
 }
 
 impl QwenImageProcessor {
+    /// Decodes generated IDs with this processor's pinned tokenizer.
+    ///
+    /// # Errors
+    /// Returns an invalid-request error if token decoding fails.
+    pub fn decode(&self, ids: &[u32], skip_special_tokens: bool) -> Result<String> {
+        self.text.decode(ids, skip_special_tokens)
+    }
+
     /// Loads the hash-pinned tokenizer/template assets from one local snapshot.
     ///
     /// This constructor performs no network access and has no Python fallback.

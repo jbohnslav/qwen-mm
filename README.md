@@ -52,8 +52,8 @@ model ID, revision, and compatibility fingerprint. The direct
 snapshot directory.
 
 For one conversation, `prepare(messages, ...)` exposes the common chat options
-directly. `prepare_batch` remains available for heterogeneous batches and for
-the separate preloaded-media form:
+directly. Ordinary batches accept `[messages1, messages2]` with shared chat
+options. Request dictionaries also support per-row options and separate media:
 
 ```python
 prepared = processor.prepare_batch(
@@ -88,7 +88,8 @@ prepared = processor.prepare_batch(
 | Per-image pixel budgets or explicit resize dimensions | Supported |
 | Qwen3.5 thinking/non-thinking rendering and tool messages | Supported |
 | Filesystem paths, file/HTTP(S) URLs, or image data URIs | Supported directly |
-| PIL images or Torch tensors | Caller conversion required |
+| PIL images or Torch tensors as image inputs | Caller conversion required |
+| Torch model-input outputs and token decoding | Supported; Torch is optional |
 | Video files, decoded video, frame lists, or video sampling | Deferred |
 | Model loading, generation, serving, and agent orchestration | Out of scope |
 
@@ -118,7 +119,9 @@ or channel-strided views are rejected.
 
 ## Batches, outputs, and threads
 
-`prepare_batch` accepts a non-empty list of requests. Requests may contain
+`prepare_batch` accepts a non-empty list of conversations or request dictionaries.
+Shared `add_generation_prompt`, `add_vision_id`, `tools`, and `enable_thinking`
+options apply to every row; a dictionary's `options` overrides them. Rows may contain
 different text lengths and image counts. Text arrays are right-padded by
 default; pass `padding_side="left"` for generation batches that follow the
 official Qwen examples. `PreparedBatch.metadata["padding_side"]` records the
@@ -129,10 +132,18 @@ choice, and each request layout records its left and right padding.
 image, `pixel_values` and `image_grid_thw`. Integer arrays are `int64`; pixels
 are `float32`. The prepared result is also a mapping over exactly those arrays,
 so `prepared["input_ids"]` and normal `consumer(**prepared)` keyword expansion
-work directly. Convert the NumPy values when the downstream runtime requires
-another tensor type.
+work directly. NumPy remains the default. With Torch installed, pass
+`return_tensors="pt"` to either preparation method for tensors sharing the CPU
+array storage and a `.to(device)` method. `decode` and `batch_decode` use the
+same pinned native tokenizer, so generation needs no second processor.
 `PreparedBatch.metadata` contains qwen-mm integration metadata, including
 request layouts and image occurrences, and is not a model input.
+
+Shared `min_pixels` and `max_pixels` keyword arguments provide image defaults;
+values on an individual image override them. The default minimum is 4096 pixels,
+matching the composed qwen-vl-utils contract. Use `min_pixels=65536` to match
+direct Transformers image examples. These distinct upstream defaults are
+explicit in the [executable Rosetta Stone](docs/official-example-rosetta-stone-v0.1.md).
 
 `thread_budget` is the processor-owned native worker budget, from 1 through
 256. It defaults to 1. Reuse a processor across calls and choose a budget that
@@ -158,6 +169,11 @@ LLaMA-Factory, and ModelScope SWIFT source audit and deliberate v0.1
 boundaries. The implementation contract and immutable pins are in
 [ADR 0001](docs/compatibility-v1.md) and
 [`reference/compatibility/v1.json`](reference/compatibility/v1.json).
+
+The opt-in [local Transformers consumer test](docs/transformers-consumer-verification.md)
+feeds prepared arrays through a pinned Qwen3.5-0.8B model on CPU and compares
+them with the official processor. It verifies the model handoff without making
+inference latency a release gate.
 
 Performance claims are limited to the controlled cases, hosts, and comparison
 paths in [BENCHMARK.md](BENCHMARK.md) and the

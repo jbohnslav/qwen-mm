@@ -219,6 +219,21 @@ impl TextProcessor {
         &self.profile
     }
 
+    /// Decodes output tokens using this processor's already validated tokenizer.
+    ///
+    /// # Errors
+    /// Returns an invalid-request error if the tokenizer cannot decode the IDs.
+    pub fn decode(&self, ids: &[u32], skip_special_tokens: bool) -> Result<String> {
+        self.tokenizer
+            .decode(ids, skip_special_tokens)
+            .map_err(|_| {
+                QwenError::new(
+                    ErrorCategory::InvalidRequest,
+                    "tokenizer could not decode output IDs",
+                )
+            })
+    }
+
     /// Renders once and proves that the resulting visual-marker sequence is
     /// exactly the request's media-occurrence sequence.
     pub(crate) fn render_validated_request(
