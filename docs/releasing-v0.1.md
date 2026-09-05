@@ -56,12 +56,15 @@ The v0.1 artifact makes no new performance claim. See
 
 ## Publishing rehearsal and approval commands
 
-The runner uses uv's built-in offline dry run, which validates the upload plan
-without sending package files or requiring credentials. Repeat it for both
+The runner uses uv's built-in dry run against a closed loopback endpoint, which validates the upload plan
+without sending package files or requiring credentials. uv 0.11.29 rejects
+combining `--offline` with `publish`, even for a dry run; the loopback-only
+destination ensures a mistaken upload cannot reach a public index. Repeat it for both
 selected wheels (one per platform, not their duplicate build copies):
 
 ```sh
-uv publish --dry-run --offline --no-config --trusted-publishing never \
+uv publish --dry-run --no-config --trusted-publishing never \
+  --publish-url http://127.0.0.1:9/legacy/ \
   dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl
 ```
 

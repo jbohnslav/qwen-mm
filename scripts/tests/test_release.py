@@ -1,5 +1,6 @@
 """Release provenance and wheel metadata must fail closed."""
 
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -43,12 +44,21 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 release.inspect_wheel(path)
 
+    def test_publish_rehearsal_works_without_an_index_server(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+            self.write_wheel(path)
+            result = subprocess.run(
+                release.publish_dry_run_command(path), capture_output=True, text=True
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     @staticmethod
     def write_wheel(path, version="0.1.0"):
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr(
                 "qwen_mm-0.1.0.dist-info/METADATA",
-                f"Name: qwen-mm\nVersion: {version}\nRequires-Python: >=3.11, <3.12\n"
+                f"Metadata-Version: 2.4\nName: qwen-mm\nVersion: {version}\nRequires-Python: >=3.11, <3.12\n"
                 "License-Expression: Apache-2.0\n",
             )
             archive.writestr("qwen_mm-0.1.0.dist-info/licenses/LICENSE", "license")

@@ -60,6 +60,20 @@ def inspect_wheel(wheel: Path) -> dict:
         return {"name": wheel.name, "sha256": sha256(wheel), "bytes": wheel.stat().st_size}
 
 
+def publish_dry_run_command(wheel: Path) -> list[str]:
+    # A closed loopback endpoint makes any accidental network upload fail locally.
+    return UV + [
+        "publish",
+        "--dry-run",
+        "--no-config",
+        "--trusted-publishing",
+        "never",
+        "--publish-url",
+        "http://127.0.0.1:9/legacy/",
+        str(wheel),
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="New directory under dist/")
@@ -258,19 +272,7 @@ def main() -> None:
                 ],
             )
             run("binding-with-gil-hooks", ["make", "python-binding-test"])
-            run(
-                "publish-dry-run",
-                UV
-                + [
-                    "publish",
-                    "--dry-run",
-                    "--offline",
-                    "--no-config",
-                    "--trusted-publishing",
-                    "never",
-                    str(wheels[0]),
-                ],
-            )
+            run("publish-dry-run", publish_dry_run_command(wheels[0]))
             assert source_identity() == source, "source changed during verification"
             report["status"] = "passed"
     finally:
