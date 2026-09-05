@@ -8,6 +8,19 @@ version = "0.1.0"
 description = "Rust multimodal preprocessing for Qwen3-VL and Qwen3.5-VL"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "qwen-mm contributors" }]
+keywords = ["qwen", "multimodal", "preprocessing", "rust"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "huggingface-hub==1.26.0",
     "numpy==2.4.6",

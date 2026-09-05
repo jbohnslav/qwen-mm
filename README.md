@@ -9,11 +9,18 @@ weights.
 
 ## Install
 
-qwen-mm 0.1 requires Python 3.11:
+qwen-mm 0.1.0 is a release candidate, awaiting approval and publication. It
+supports CPython 3.11 on native macOS ARM64 and Linux x86_64 with glibc.
+Install the matching candidate wheel from the release artifact bundle:
 
 ```shell
-pip install qwen-mm
+python3.11 -m pip install /path/to/qwen_mm-0.1.0-cp311-abi3-<platform>.whl
 ```
+
+Replace `<platform>` with the actual filename. After publication, the equivalent
+index install will be `python3.11 -m pip install qwen-mm==0.1.0`.
+See the [install and support guide](docs/install-v0.1.md),
+[release notes](CHANGELOG.md), and [release procedure](docs/releasing-v0.1.md).
 
 ## Quickstart
 
@@ -180,3 +187,8 @@ paths in [BENCHMARK.md](BENCHMARK.md) and the
 [performance certification](docs/performance-certification-v1.md); they are not
 general model-throughput claims. See [DESIGN.md](DESIGN.md) for architecture
 and [ROADMAP.md](ROADMAP.md) for release gates.
+
+## License
+
+qwen-mm is licensed under [Apache-2.0](LICENSE). Downloaded Qwen assets retain
+their upstream licenses; processor construction does not download model weights.
