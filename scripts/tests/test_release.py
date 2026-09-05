@@ -48,7 +48,7 @@ class ReleaseTests(unittest.TestCase):
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr(
                 "qwen_mm-0.1.0.dist-info/METADATA",
-                f"Name: qwen-mm\nVersion: {version}\nRequires-Python: >=3.11,<3.12\n"
+                f"Name: qwen-mm\nVersion: {version}\nRequires-Python: >=3.11, <3.12\n"
                 "License-Expression: Apache-2.0\n",
             )
             archive.writestr("qwen_mm-0.1.0.dist-info/licenses/LICENSE", "license")

@@ -47,7 +47,10 @@ def inspect_wheel(wheel: Path) -> dict:
         )
         assert metadata["Name"] == "qwen-mm"
         assert metadata["Version"] == "0.1.0"
-        assert set(metadata["Requires-Python"].split(",")) == {">=3.11", "<3.12"}
+        assert {part.strip() for part in metadata["Requires-Python"].split(",")} == {
+            ">=3.11",
+            "<3.12",
+        }
         assert metadata["License-Expression"] == "Apache-2.0"
         assert any(name.endswith("/licenses/LICENSE") for name in names)
         assert not any(".cache/" in name or ".kd/" in name for name in names)
@@ -271,6 +274,8 @@ def main() -> None:
             assert source_identity() == source, "source changed during verification"
             report["status"] = "passed"
     finally:
+        if report["status"] != "passed":
+            report["status"] = "failed"
         report["files"] = {
             str(path.relative_to(output)): sha256(path)
             for path in sorted(output.rglob("*"))
