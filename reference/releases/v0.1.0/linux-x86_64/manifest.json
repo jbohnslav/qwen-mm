@@ -1,0 +1,312 @@
+{
+  "schema": "qwen-mm-release-v1",
+  "version": "0.1.0",
+  "source": {
+    "commit": "57463587b335cbf54915162adcfc7d0238d170fd",
+    "tree": "c32e11074aafa1961be6fe998c2075dbb9eeac79",
+    "source_date_epoch": "1788644851"
+  },
+  "host": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "platform": "Linux-5.15.0-153-generic-x86_64-with-glibc2.36",
+    "python": "3.11.15 (main, Jul 14 2026, 02:10:36) [GCC 12.2.0]",
+    "rust": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "uv": "uv 0.11.29 (x86_64-unknown-linux-gnu)",
+    "libc": [
+      "glibc",
+      "2.36"
+    ],
+    "build_environment": "sha256:cb56a019011ab40da62bcf321c23932e18ab99d68058dc39682b5cf7f5bed754"
+  },
+  "steps": [
+    {
+      "name": "build-1",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "maturin",
+        "build",
+        "--release",
+        "--locked",
+        "--compatibility",
+        "pypi",
+        "--interpreter",
+        "/release/.venv/bin/python3",
+        "--out",
+        "/release/dist/linux-x86_64/build-1"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "build-2",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "maturin",
+        "build",
+        "--release",
+        "--locked",
+        "--compatibility",
+        "pypi",
+        "--interpreter",
+        "/release/.venv/bin/python3",
+        "--out",
+        "/release/dist/linux-x86_64/build-2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "create-environment",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "venv",
+        "--python",
+        "/release/.venv/bin/python3",
+        "/tmp/qwen-mm-release-skvnyzfg/venv"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "install",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/dist/linux-x86_64/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "fetch-pinned-processors",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "-c",
+        "from qwen_mm import Processor; [Processor.from_pretrained(p['model_id'], cache_dir='reference/.cache/huggingface') for p in Processor.supported_profiles()]"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/smoke.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "pretrained",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/pretrained.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "docs_examples",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/docs_examples.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "media_sources",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/media_sources.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "usability",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/usability.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta_regressions",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/rosetta_regressions.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ownership",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "-c",
+        "import runpy; import qwen_mm._native as n; assert not hasattr(n, '_test_native_batch_active'); suite=runpy.run_path('/release/crates/qwen-mm-python/tests/binding.py'); [(print(name, flush=True), fn()) for name, fn in suite.items() if name.startswith('test_') and name != 'test_exact_24_image_shape_and_gil_release']"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "export-oracle",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "export",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "--no-emit-workspace",
+        "--no-dev",
+        "--format",
+        "requirements-txt",
+        "--output-file",
+        "/release/dist/linux-x86_64/oracle-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "install-oracle",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "--require-hashes",
+        "-r",
+        "/release/dist/linux-x86_64/oracle-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta-ergonomics",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "/release/crates/qwen-mm-python/tests/rosetta_ergonomics.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta",
+      "command": [
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "scripts/rosetta_suite.py",
+        "--output",
+        "/release/dist/linux-x86_64/rosetta.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "resize",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "python",
+        "scripts/verify_rosetta_resize.py",
+        "--candidate-python",
+        "/tmp/qwen-mm-release-skvnyzfg/venv/bin/python",
+        "--wheel",
+        "/release/dist/linux-x86_64/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+        "--output",
+        "/release/dist/linux-x86_64/resize.zip"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "repository-check",
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "script-tests",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "binding-with-gil-hooks",
+      "command": [
+        "make",
+        "python-binding-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "publish-dry-run",
+      "command": [
+        "/release/scripts/with-cargo.sh",
+        "uv",
+        "publish",
+        "--dry-run",
+        "--no-config",
+        "--trusted-publishing",
+        "never",
+        "--publish-url",
+        "http://127.0.0.1:9/legacy/",
+        "/release/dist/linux-x86_64/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "status": "passed",
+  "artifact": {
+    "name": "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+    "sha256": "7a6ff3a7b97bd5435f5add33f7f1d1b82e30c382d2d489f675df4b24f9cdbaf8",
+    "bytes": 2931531
+  },
+  "reproducibility": "two separate Cargo target directories; identical wheel SHA-256",
+  "files": {
+    "binding-with-gil-hooks.log": "5495772339722257f94ae2953803252e21f0bad3ad0e743baee2ab8f9d3b44bd",
+    "build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl": "7a6ff3a7b97bd5435f5add33f7f1d1b82e30c382d2d489f675df4b24f9cdbaf8",
+    "build-1.log": "757b34ec279703b552becb3ad56704c6898835cc4f543d4af12c7bc191258ca9",
+    "build-2/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl": "7a6ff3a7b97bd5435f5add33f7f1d1b82e30c382d2d489f675df4b24f9cdbaf8",
+    "build-2.log": "a0ff70a2137ea770636c00540cd9ee4725585b7db1f69aecdd4908b5852a9b2f",
+    "create-environment.log": "5ed7177c3477fe8f59b6e9ef07f726ff03c191276e9e22791bf0d2c4c5520fd2",
+    "docs_examples.log": "89d009e7c0e184f968ff160a405eb908c8b794fdff3e7598f78d002ad9de77db",
+    "export-oracle.log": "9e42f248e25b0faba6e48795d41d7090ff023b29c6f42f2709de641f30f2a34f",
+    "fetch-pinned-processors.log": "617506408c159ac1189e368fa9a005c776c5b87454d0a13d28fb1e24e4dcac70",
+    "install-oracle.log": "799e969ae434bf84b078a1b045720e13d681b8a1f915da0491f3e0b6f36ebf57",
+    "install.log": "1e9197fa023b8aa1c80584e850692dc20564b30b42455a31e68907001e742e0b",
+    "media_sources.log": "ad86f74241b7b76e7b2da8d1ad8751ff230728608f574fd293c7f785fb07f8c9",
+    "oracle-requirements.txt": "227854d778c94e4189fc20f0e4fee21609363a225f5c62df54a305988749a36b",
+    "ownership.log": "e54d2b2944ba1d44191bedb6169765e64302996be3cf4934be92c122b52c7d36",
+    "pretrained.log": "76927b076e02d753b66770f171aeb2ceca986308e8df4de91df8261ff31dbd37",
+    "publish-dry-run.log": "a11052637f6a2e8ce397bc5f4188f679ce8dcb1fe54d988b3e02e5e6e9ea24df",
+    "repository-check.log": "dfa650c73f6728ec1b11bc40188b55a0810af356d676e8c4d4e70b35402d890e",
+    "resize.json": "407732db23654062a44be782395985ef34820a8c0154dc3d420fd284dd442f17",
+    "resize.log": "3eb83e76101d0b80057097df9068c08eafd66565a82c97f65f7473030ef0c6f3",
+    "resize.zip": "e067b9362f218de08870ba1e52f3fa7cf4a27cd2c8ad334a7ff81227162b860a",
+    "rosetta-ergonomics.log": "d35638d130b922a8f95013be016b7610dce8ab758022118fdbb881c92880e808",
+    "rosetta.json": "4cf4cca74d2c3c5cc0c5e3eeb0bac7cba6100571efec9fa43153c511621369bb",
+    "rosetta.log": "aef164052adbb8694c4be24b89f01264fd5df113eb987b5ff4f99dafb6d87224",
+    "rosetta_regressions.log": "da722e734f268871238ffe71ddc634569c7fedfd5a6466e1c2d80cf417388ee8",
+    "script-tests.log": "fe5cffa1b9400b06b1b73a1fe0c9b057a6d2da875c4a009068532f668b0cb53e",
+    "smoke.log": "8e3a38199648ac3fdcadd34263214d9fa0506917deb8fbb998223a10761907a7",
+    "usability.log": "02f616273dd58b8a207452121dda3110f1a8000cd1c6d138d75b2151e50db536"
+  }
+}

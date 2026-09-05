@@ -1,0 +1,302 @@
+{
+  "platform": "Linux-5.15.0-153-generic-x86_64-with-glibc2.36",
+  "document_sha256": "cc020dad0cb01f315ccd95592e4a290c12e5b4c46856cf9189de5411cf2a1926",
+  "script_sha256": "a6677f2254cb7dd286b8ee48bef47a39d605562c3181c3ff37f8f6b7e216706e",
+  "wheel": {
+    "url": "file:///release/dist/linux-x86_64/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+    "archive_info": {
+      "hashes": {
+        "sha256": "7a6ff3a7b97bd5435f5add33f7f1d1b82e30c382d2d489f675df4b24f9cdbaf8"
+      }
+    }
+  },
+  "packages": {
+    "qwen-mm": "0.1.0",
+    "torch": "2.13.0",
+    "transformers": "5.14.1"
+  },
+  "fixture_policy": "Only placeholder paths, image URLs, and cache locations are bound; code and options execute as published",
+  "live_urls": false,
+  "cases": [
+    {
+      "section": 1,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 3,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      },
+      "upstream_source_issue": "Pinned Transformers rejects the original file: URI; reference rerun binds those placeholders to plain paths. Native uses the original file: message form."
+    },
+    {
+      "section": 4,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      },
+      "upstream_source_issue": "Pinned Transformers rejects the original file: URI; reference rerun binds those placeholders to plain paths. Native uses the original file: message form."
+    },
+    {
+      "section": 5,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 7,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 8,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "result": "original video message rejected as unsupported_media"
+    },
+    {
+      "section": 11,
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "variant": "data_uri",
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "variant": "openai_url",
+      "profile": "qwen3-vl-8b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 1,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 3,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      },
+      "upstream_source_issue": "Pinned Transformers rejects the original file: URI; reference rerun binds those placeholders to plain paths. Native uses the original file: message form."
+    },
+    {
+      "section": 4,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      },
+      "upstream_source_issue": "Pinned Transformers rejects the original file: URI; reference rerun binds those placeholders to plain paths. Native uses the original file: message form."
+    },
+    {
+      "section": 5,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 6,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      },
+      "transport": "official serving request captured; local oracle is the composed processor, not a server-output comparison"
+    },
+    {
+      "section": 7,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 8,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "result": "original video message rejected as unsupported_media"
+    },
+    {
+      "section": 10,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0
+      }
+    },
+    {
+      "section": 11,
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "variant": "data_uri",
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 2,
+      "variant": "openai_url",
+      "profile": "qwen3.5-9b",
+      "passed": true,
+      "input_differences": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values": 0.0,
+        "image_grid_thw": 0.0
+      }
+    },
+    {
+      "section": 0,
+      "passed": true,
+      "result": "all literal constructor fences executed"
+    },
+    {
+      "section": 9,
+      "passed": true,
+      "result": "serving/plugin boundary; shared message schema exercised in section 6, no vLLM/SGLang execution claimed"
+    },
+    {
+      "section": 12,
+      "passed": false,
+      "result": "requires --local-model",
+      "optional": true
+    }
+  ],
+  "fixture_bindings": {
+    "file:///path/to/image1.jpg": "generated PNG fixture",
+    "file:///path/to/image2.jpg": "generated PNG fixture",
+    "file:///path/to/your/image.jpg": "generated PNG fixture",
+    "mllm_demo_data/1.jpg": "generated PNG fixture",
+    "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg": "generated PNG fixture",
+    "https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png": "generated PNG fixture"
+  },
+  "all_required_passed": true
+}
