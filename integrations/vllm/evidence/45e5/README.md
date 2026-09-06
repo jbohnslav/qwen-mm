@@ -73,3 +73,15 @@ is a proxy for responsiveness; local HTTP does not measure WAN latency.
 Historical release candidate `5746358`, D4 MISS, and legacy Phase C outcomes
 are unchanged. These integration changes require fresh release artifacts before
 publication; the old wheels remain evidence for their original source commit.
+
+### Access recheck after the user's correction
+
+The active workspace is `jbohnslav`, and earlier D0/D1/D4 runners requested
+CPU resources. A fresh minimal CPU Function succeeded in
+[ap-eb4qDY0490e73QFFoiNCzt](https://modal.com/apps/jbohnslav/main/ap-eb4qDY0490e73QFFoiNCzt).
+An A100-40GB Function was rejected with the same payment-method message in
+[ap-vFZP82rnX8Sjd76NyuvLm5](https://modal.com/apps/jbohnslav/main/ap-vFZP82rnX8Sjd76NyuvLm5).
+Thus CPU execution still works, while both tested GPU types are rejected.
+Actual payment-method configuration has not been inspected; the earlier
+statement that the account has no payment method was an unsupported inference
+from the allocation error.
