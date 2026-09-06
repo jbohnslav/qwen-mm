@@ -1,0 +1,25 @@
+.............D4 local ARM capture failed; retained diagnostic workspace: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/tmplj2z0vuu/failed
+.......................................D4 local Linux capture failed; retained diagnostic workspace: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/tmpwno1ir0v/failed
+................D4 smoke passed; report: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/tmp0ryaxb16/report.md
+{
+  "hard_cost_ceiling_usd": 6.077952,
+  "hard_time_ceiling_seconds": 14400,
+  "paid_compute_approval_required": true
+}
+.{
+  "hard_cost_ceiling_usd": 6.077952,
+  "hard_time_ceiling_seconds": 14400,
+  "paid_compute_approval_required": true
+}
+wrote validated D4 x86_64 raw capture: /private/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/tmpuxa1gquk/x86.zip
+.{
+  "hard_cost_ceiling_usd": 6.077952,
+  "hard_time_ceiling_seconds": 14400,
+  "paid_compute_approval_required": true
+}
+D4 x86_64 archive validation failed; retained raw payload: /private/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/tmpfohn6d90/x86.unvalidated.zip
+...stdoutstderr...stdoutstderr.............................
+----------------------------------------------------------------------
+Ran 105 tests in 0.451s
+
+OK

@@ -739,7 +739,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "huggingface-hub", specifier = "==1.26.0" },
-    { name = "numpy", specifier = "==2.4.6" },
+    { name = "numpy", specifier = ">=2.3.5,<3" },
 ]
 
 [package.metadata.requires-dev]

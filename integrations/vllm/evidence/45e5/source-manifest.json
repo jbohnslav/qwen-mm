@@ -1,0 +1,20 @@
+{
+  "scope": "Final CPU-verified source; GPU serving pending billing",
+  "files": {
+    "pyproject.toml": "aa0a0a39b25597a6b354d263ad44d7808d642de507ad2ae64468a94160a8a020",
+    "uv.lock": "6510537a070fdf3d66cc8e5bec8903d0046070526fbf81582ef9479af74781ef",
+    "integrations/vllm/qwen_mm_vllm/__init__.py": "5215255ab9797eec1da1637fe4781896630a73af2fd1d67a7984e41685246edd",
+    "integrations/vllm/qwen_mm_vllm/adapter.py": "35141716fb85f954053b6a4664f48f53da52ba53567fb51076bf62c2efb46050",
+    "integrations/vllm/qwen_mm_vllm/audit.py": "c509c8ea30e07720516491914eda361e6f191d8ba43a9c94a6897a87f0f7f86e",
+    "integrations/vllm/qwen_mm_vllm/native.py": "d8174f66c55a144c46336556d6242a32db198d4c3fe0afe7f519a657693a21e3",
+    "integrations/vllm/scripts/audit_server_inputs.py": "5a9637e51d5bbbdcb64e9b7bcbd022b0588a92da98edc7675732db7075a213ef",
+    "integrations/vllm/scripts/client.py": "0bc50eda9054c310ae5105aa27c79f518f19fd5845506eee4d9895b2bbe00dc1",
+    "integrations/vllm/scripts/modal_serve.py": "1e02b82c18ad892f0553e4d283803124fb27156552a04cfc746a9de20d9530b4",
+    "integrations/vllm/scripts/serve_experiment.py": "1607f050b15e07f33ae2dd12a0f775050006649fba22525e2a2313056a92ce72",
+    "integrations/vllm/scripts/verify_vllm_pin.py": "0192e63d5ccd05202ca71b37365ec6095bd35f89a9ea93a6d81e9b3886cdf429",
+    "integrations/vllm/tests/test_native_processor.py": "7705071dd9d359a3d3f39e5e6249a44f55c3998304a3f7fc00896f9a6092b219",
+    "integrations/vllm/tests/test_prepared_processor.py": "e5949b563927f7fc42e4a3b682b038cd5293156b7b11e9dbc437cccb54be1e21",
+    "integrations/vllm/tests/test_serve_experiment.py": "57bd55f4db758b111a789a644a51b7967eaaf8c26d3fde956af6aa75b4ad158c"
+  },
+  "linux_wheel_sha256": "f70a03784cf99235c11c5189c92c2bfa71cfe64d43edd0f85130c62c91e2c869"
+}

@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "huggingface-hub==1.26.0",
-    "numpy==2.4.6",
+    "numpy>=2.3.5,<3",
 ]
 
 [dependency-groups]

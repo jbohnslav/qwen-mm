@@ -1,0 +1,292 @@
+./scripts/with-cargo.sh uv run --locked ruff check .
+   Building qwen-mm @ file:///Users/jim/code/qwen-mm
+      Built qwen-mm @ file:///Users/jim/code/qwen-mm
+Uninstalled 1 package in 0.78ms
+Installed 1 package in 1ms
+All checks passed!
+./scripts/with-cargo.sh uv run --locked ruff format --check .
+133 files already formatted
+./scripts/cargo.sh fmt --all -- --check
+PYO3_PYTHON="/Users/jim/code/qwen-mm/.venv/bin/python3" ./scripts/cargo.sh clippy --workspace --all-targets --locked -- -D warnings
+   Compiling onig_sys v69.9.3
+   Compiling sha2-asm v0.6.4
+    Checking sha2 v0.10.9
+    Checking onig v6.5.3
+    Checking tokenizers v0.22.2
+    Checking qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+    Checking qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.12s
+PYO3_PYTHON="/Users/jim/code/qwen-mm/.venv/bin/python3" ./scripts/cargo.sh test --workspace --all-targets --locked
+   Compiling onig_sys v69.9.3
+   Compiling sha2-asm v0.6.4
+   Compiling sha2 v0.10.9
+   Compiling onig v6.5.3
+   Compiling tokenizers v0.22.2
+   Compiling qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.48s
+     Running unittests src/lib.rs (target/debug/deps/qwen_mm_core-eb13ab7181c43dea)
+
+running 124 tests
+test geometry::tests::smart_resize_transition_neighborhoods_and_no_op_alignment ... ok
+test geometry::tests::resize_is_symmetric_for_portrait_and_landscape_inputs ... ok
+test error::tests::every_category_has_the_frozen_name ... ok
+test geometry::tests::ties_to_even_cover_below_at_and_above_each_factor_half ... ok
+test error::tests::validation_precedence_contains_every_frozen_stage ... ok
+test limits::tests::callers_can_lower_but_not_silently_raise_defaults ... ok
+test error::tests::context_is_typed_and_deterministically_ordered ... ok
+test limits::tests::defaults_match_the_adr ... ok
+test limits::tests::later_token_and_output_capacity_limits_are_checked ... ok
+test geometry::tests::every_a3_image_geometry_rule_matches_the_committed_oracle ... ok
+test geometry::tests::explicit_dimensions_are_factor_aligned_with_default_budgets ... ok
+test limits::tests::rgb_stride_and_geometry_are_checked_without_output_allocation ... ok
+test limits::tests::prepared_image_cap_is_distinct_from_decoded_source_pixels ... ok
+test limits::tests::boundaries_distinguish_limit_from_overflow ... ok
+test limits::tests::prepared_image_cap_is_not_applied_to_video_options ... ok
+test geometry::tests::overflow_is_distinct_from_geometry_and_resource_excess ... ok
+test geometry::tests::plans_have_exact_grid_counts_strides_and_capacities ... ok
+test limits::tests::structure_profile_options_and_resource_precedence_is_stable ... ok
+test media::tests::embedded_eoi_bytes_and_truncated_animation_chunks_do_not_mask_corruption ... ok
+test geometry::tests::validation_categories_and_precedence_are_stable ... ok
+test media::tests::encoded_byte_limit_precedes_header_decode ... ok
+test media::tests::malformed_apng_control_is_decode_not_unsupported_animation ... ok
+test media::tests::malformed_and_truncated_recognized_inputs_are_media_decode ... ok
+test media::tests::every_encoded_resource_dimension_is_preflighted ... ok
+test media::tests::encoded_precedence_is_overflow_then_resource_then_decode_then_geometry ... ok
+test media::tests::oversized_headers_fail_before_full_decode ... ok
+test media::tests::webp_animation_flag_is_detected_without_decoding ... ok
+test observability::tests::event_capacity_is_hard_bounded_without_losing_aggregates ... ok
+test observability::tests::exclusive_durations_follow_parent_links_even_when_finish_is_not_lifo ... ok
+test media::tests::raw_resource_errors_precede_stride_geometry ... ok
+test observability::tests::retained_outputs_do_not_inflate_transient_peak ... ok
+test observability::tests::final_error_category_overwrites_earlier_child_failures ... ok
+test output::tests::absent_modalities_never_accept_placeholder_arrays ... ok
+test output::tests::grid_products_must_match_pixel_rows_and_use_checked_arithmetic ... ok
+test output::tests::image_outputs_are_f32_i64_contiguous_and_ordered ... ok
+test output::tests::matrix_shape_is_checked_before_storage_is_used ... ok
+test output::tests::text_only_has_exact_key_set_and_i64_strides ... ok
+test media::tests::malformed_png_ihdr_is_decode_but_valid_excluded_modes_are_unsupported ... ok
+test output::tests::sidecar_request_indices_cannot_regress ... ok
+test output::tests::video_outputs_retain_every_adapter_sidecar_field ... ok
+test media::tests::malformed_jpeg_and_webp_headers_do_not_masquerade_as_unsupported_media ... ok
+test patchify::tests::every_derived_geometry_field_is_revalidated_before_execution ... ok
+test media::tests::observed_encoded_no_op_reuses_decoded_ownership_without_a_copy ... ok
+test media::tests::raw_packed_and_padded_no_op_views_are_byte_exact ... ok
+test media::tests::raw_view_rejects_zero_narrow_short_and_overflowing_layouts ... ok
+test patchify::tests::constant_channels_and_temporal_duplication_are_exactly_located ... ok
+test processor::tests::aggregate_capacity_precedes_full_decode_during_batch_planning ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::aggregate_output_limit_is_checked_before_any_patch_matrix_is_built ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::batch_media_errors_follow_global_stage_and_occurrence_order ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::batch_plan_reports_exact_layouts_and_allocating_wrapper_matches_view ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test patchify_conformance_tests::failure_diagnostics_include_every_a3_numeric_field_and_decoded_coordinate ... ok
+test processor::tests::concurrent_media_errors_keep_serial_precedence_for_every_thread_count ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::every_short_destination_fails_before_any_sentinel_is_modified ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::explicit_owned_pool_ignores_rayon_global_budget ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::late_media_failure_is_atomic_and_does_not_poison_processor_reuse ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::malformed_raw_rgb_returns_media_geometry_before_cache_hashing ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::media_failures_are_selected_by_global_stage_not_first_occurrence ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::mixed_encoded_codecs_and_raw_rgb_share_deterministic_batch_order ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::multi_request_images_match_legacy_rows_and_global_ranges ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test patchify::tests::failures_are_stable_and_happen_in_preflight ... ok
+test observability::tests::adjacent_sibling_intervals_do_not_overlap ... ok
+test patchify::tests::minimum_and_maximum_plans_validate_without_large_allocations ... ok
+test patchify::tests::asymmetric_data_asserts_merged_patch_rows_and_inner_flattening_independently ... ok
+test processor::tests::cache_identity_uses_a_platform_stable_encoding ... ok
+test patchify::tests::odd_source_and_aligned_geometries_materialize_the_b3_destination ... ok
+test patchify_conformance_tests::committed_a2_prepared_rgb_matches_every_patch_for_both_profiles ... ok
+test media::tests::observed_deferred_geometry_error_releases_successfully_decoded_rgb ... ok
+test processor::tests::observed_invalid_request_failure_is_contained ... ok
+test processor::tests::packed_and_padded_rgb_are_bit_exact_end_to_end_for_both_profiles ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::processor_thread_budget_rejects_zero_and_over_limit_without_clamping ... ok
+test processor::tests::request_and_render_failures_precede_corrupt_media_then_decode_precedes_geometry ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::shared_processor_caps_all_calls_migrates_foreign_rayon_and_releases_workers ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::stale_plan_and_unplanned_conditional_destination_fail_before_writes ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::text_only_omits_all_image_outputs_for_both_profiles ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::thread_sweep_is_exact_under_ragged_mixed_repeated_stress_and_pool_reuse ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test processor::tests::traversal_order_repeated_reference_and_per_occurrence_options_are_preserved ... ignored, requires hash-pinned local model snapshots under reference/.cache
+test profile::tests::bundled_profiles_resolve_all_frozen_identity ... ok
+test processor::tests::observed_plan_lifetimes_survive_destination_failure ... ok
+test profile::tests::recomputed_but_unaccepted_drift_is_rejected ... ok
+test profile::tests::every_manifest_failure_is_profile_mismatch ... ok
+test processor::tests::observed_mixed_repeated_media_reconciles_buffers_copies_and_scopes ... ok
+test profile::tests::unknown_resolution_is_profile_mismatch ... ok
+test request::tests::invalid_role_content_and_media_combinations_are_rejected ... ok
+test request::tests::repeated_media_reference_is_two_valid_occurrences ... ok
+test request::tests::excluded_and_profile_conditional_options_have_stable_categories ... ok
+test request::tests::tools_are_rust_data_and_validate_json ... ok
+test processor::tests::observed_global_media_precedence_is_the_top_level_error ... ok
+test processor::tests::observed_plan_error_releases_media_prepared_before_later_decode_failure ... ok
+test resize::tests::forged_resize_plans_fail_before_kernel_indexing ... ok
+test resize::tests::observed_no_op_performs_only_the_required_owned_output_copy ... ok
+test resize::tests::no_op_is_an_exact_copy_in_both_domains ... ok
+test resize::tests::height_only_resize_matches_packed_oracle_for_padded_rows ... ok
+test resize::tests::observed_height_only_resize_reads_strided_source_without_a_clone ... ok
+test resize::tests::padded_rows_are_accepted_and_short_or_narrow_inputs_fail_stably ... ok
+test resize::tests::observed_two_axis_resize_reconciles_owned_scratch_and_copy_bytes ... ok
+test processor::tests::observed_media_failure_is_contained ... ok
+test resize::tests::video_quantization_clamps_and_rounds_ties_to_even ... ok
+test tests::version_matches_workspace_package_version ... ok
+test processor::tests::observed_partial_destination_failure_discards_outputs_and_plan_storage ... ok
+test resize::tests::two_axis_resize_is_identical_for_packed_and_padded_sources ... ok
+test text::conformance_tests::complete_chat_fixture_token_arrays_match_both_pinned_oracles ... ignored, requires both hash-pinned local model snapshots under reference/.cache
+test resize::tests::selected_quality_strategy_preserves_midgray_under_extreme_anisotropy ... ok
+test resize::tests::still_image_resize_is_repeatable_across_caller_thread_counts ... ok
+test text::tests::interleaved_image_video_expansion_matches_both_live_oracles ... ignored, requires the hash-pinned local model snapshots under reference/.cache
+test text::tests::literal_visual_tokens_and_plan_mismatches_are_rejected ... ignored, requires the hash-pinned local model snapshot under reference/.cache
+test text::tests::multimodal_smoke_matches_render_expansion_ids_and_ranges ... ignored, requires the hash-pinned local model snapshot under reference/.cache
+test text::tests::chat_smoke_rendering_is_always_on_for_both_profiles ... ok
+test text::tests::ordered_json_matches_python_tojson_spacing_and_order ... ok
+test text::tests::qwen35_extracts_reasoning_and_honors_thinking_toggle_exactly ... ignored, requires the hash-pinned local model snapshot under reference/.cache
+test text::tests::rendered_token_limits_fail_with_the_stable_category ... ignored, requires the hash-pinned local model snapshot under reference/.cache
+test text::tests::right_padding_and_masks_use_profile_ids ... ignored, requires the hash-pinned local model snapshot under reference/.cache
+test text::tests::text_smoke_matches_both_committed_goldens ... ignored, requires the hash-pinned local model snapshots under reference/.cache
+test text::tests::qwen35_reasoning_extraction_and_thinking_rendering_are_always_on ... ok
+test text::tests::tool_calls_consecutive_responses_and_reasoning_render_exactly ... ok
+test text::tests::changed_or_missing_assets_are_profile_mismatches ... ok
+test text::tests::tools_are_rendered_without_jinja_or_python ... ok
+test text::tests::visual_expansion_and_literal_placeholder_errors_are_always_on ... ok
+test resize::tests::resize_preserves_constants_primaries_and_channel_independence ... ok
+test text::conformance_tests::chat_fixture_executes_a3_text_and_padding_recipes ... ok
+test text::conformance_tests::complete_chat_fixture_rendering_expansion_and_errors_are_always_on ... ok
+test processor::tests::observed_text_batch_is_identical_bounded_and_request_correlated ... ok
+test resize::tests::frozen_pillow_and_torchvision_resize_stage_corpus_passes ... ok
+test processor::tests::observed_qwen35_text_batch_matches_unobserved_output ... ok
+test media_conformance_tests::prepared_rgb_stage_matches_pinned_pillow_oracle ... ok
+
+test result: ok. 97 passed; 0 failed; 27 ignored; 0 measured; 0 filtered out; finished in 2.72s
+
+     Running unittests examples/media_stage_report.rs (target/debug/examples/media_stage_report-4b4828d92881e499)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/phase_b_conformance.rs (target/debug/examples/phase_b_conformance-1c59ecf8ef018b24)
+
+running 4 tests
+test tests::complete_phase_b_corpus_matches_both_profiles ... ignored, requires both hash-pinned local model snapshots under reference/.cache
+test tests::non_finite_float_mismatches_never_pass_a_numeric_bound ... ok
+test tests::final_pixel_diagnostic_decodes_every_patch_coordinate ... ok
+test tests::committed_fixture_authenticates_without_python_or_model_assets ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running unittests examples/resize_quality_v2_candidates.rs (target/debug/examples/resize_quality_v2_candidates-defe9a6b1612c769)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/resize_stage_report.rs (target/debug/examples/resize_stage_report-2ecede9825ca104d)
+
+running 1 test
+test tests::comparisons_reject_prefixes_and_non_finite_values ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/still_resize_bakeoff.rs (target/debug/examples/still_resize_bakeoff-d4b7b7da71745752)
+
+running 1 test
+test tests::exact_and_contract_results_are_distinct ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/qwen_mm_native-b27d5dd1da3e22f7)
+
+running 9 tests
+test input::tests::non_hwc_strides_remain_media_geometry_errors ... ignored, requires NumPy importable by embedded CPython
+test input::tests::positive_row_padding_is_copied_into_packed_owned_memory ... ignored, requires NumPy importable by embedded CPython
+test input::tests::raw_arrays_are_copied_after_strict_validation ... ignored, requires NumPy importable by embedded CPython
+test output::tests::vec_allocation_moves_into_two_dimensional_numpy_without_copy ... ignored, requires NumPy importable by embedded CPython
+test tests::detached_boundary_types_remain_send_and_sync ... ok
+test output::tests::impossible_output_allocation_fails_without_panicking ... ok
+test output::tests::numpy_dimensions_are_checked_before_transfer ... ok
+test tests::typed_errors_keep_category_and_context ... ok
+test errors::tests::every_stable_category_maps_to_its_specific_exception ... ok
+
+test result: ok. 5 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+PYO3_PYTHON="/Users/jim/code/qwen-mm/.venv/bin/python3" ./scripts/cargo.sh test --workspace --doc --locked
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.46s
+   Doc-tests qwen_mm_core
+
+running 1 test
+test crates/qwen-mm-core/src/lib.rs - (line 8) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.54s; merged doctests compilation took 0.38s
+   Doc-tests qwen_mm_native
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+/Library/Developer/CommandLineTools/usr/bin/make core-check
+./scripts/cargo.sh build --package qwen-mm-core --locked --offline
+   Compiling sha2 v0.10.9
+   Compiling tokenizers v0.22.2
+   Compiling qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.51s
+./scripts/with-cargo.sh uv sync --locked --inexact --package qwen-mm-reference
+Resolved 79 packages in 3ms
+Checked 47 packages in 7ms
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
+verify: 24 fixtures at 1023x767 (/Users/jim/code/qwen-mm/fixtures/baseline/manifest.json)
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m unittest discover -s reference/tests
+.....................................................................................................................................
+----------------------------------------------------------------------
+Ran 133 tests in 86.503s
+
+OK
+{"cases": 45, "status": "pass"}
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.golden validate reference/goldens/v1
+valid: reference/goldens/v1/qwen3-vl-8b/corrupt-image/manifest.json
+valid: reference/goldens/v1/qwen3-vl-8b/image24/manifest.json
+valid: reference/goldens/v1/qwen3-vl-8b/multimodal-smoke/manifest.json
+valid: reference/goldens/v1/qwen3-vl-8b/text-smoke/manifest.json
+valid: reference/goldens/v1/qwen3.5-9b/text-smoke/manifest.json
+/Library/Developer/CommandLineTools/usr/bin/make conformance-smoke
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.corpus validate
+valid corpus: 16 entries, 24 executable rules, 44 coverage tags
+./scripts/with-cargo.sh uv run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.conformance check reference/goldens/v1
+conformant golden: reference/goldens/v1/qwen3-vl-8b/corrupt-image/manifest.json
+conformant golden: reference/goldens/v1/qwen3-vl-8b/image24/manifest.json
+conformant golden: reference/goldens/v1/qwen3-vl-8b/multimodal-smoke/manifest.json
+conformant golden: reference/goldens/v1/qwen3-vl-8b/text-smoke/manifest.json
+conformant golden: reference/goldens/v1/qwen3.5-9b/text-smoke/manifest.json
+./scripts/smoke-wheel.sh
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/jim/code/qwen-mm/.venv/bin/python3
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.42s
+📦 Built wheel for abi3 Python ≥ 3.11 to /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-wheel-smoke.ebzuQv/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl
+Using CPython 3.11.15 interpreter at: .venv/bin/python3
+Creating virtual environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-wheel-smoke.ebzuQv/venv
+Activate with: source /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-wheel-smoke.ebzuQv/venv/bin/activate
+Using Python 3.11.15 environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-wheel-smoke.ebzuQv/venv
+Resolved 17 packages in 5ms
+Prepared 1 package in 28ms
+Installed 17 packages in 46ms
+ + anyio==4.15.1
+ + certifi==2026.7.22
+ + click==8.5.0
+ + filelock==3.32.5
+ + fsspec==2026.7.0
+ + h11==0.16.0
+ + hf-xet==1.6.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.26.0
+ + idna==3.19
+ + numpy==2.4.6
+ + packaging==26.3
+ + pyyaml==6.0.3
+ + qwen-mm==0.1.0 (from file:///var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-wheel-smoke.ebzuQv/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl)
+ + tqdm==4.70.0
+ + typing-extensions==4.16.0
+qwen-mm wheel smoke passed (0.1.0, NumPy 2.4.6)

@@ -192,3 +192,6 @@ and [ROADMAP.md](ROADMAP.md) for release gates.
 
 qwen-mm is licensed under [Apache-2.0](LICENSE). Downloaded Qwen assets retain
 their upstream licenses; processor construction does not download model weights.
+
+For ordinary image requests to a prebuilt vLLM server, see the
+[external vLLM plugin](integrations/vllm/README.md).

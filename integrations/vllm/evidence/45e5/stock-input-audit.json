@@ -1,0 +1,31 @@
+{
+  "scope": "stock HTTP schema/content-parser harness and real Qwen data parser; no inference",
+  "packages": {
+    "vllm": "0.23.0+cpu",
+    "torch": "2.11.0+cpu",
+    "transformers": "5.14.1"
+  },
+  "stock_text": {
+    "status": 200,
+    "body": {
+      "schema_and_text_parser_only": true
+    }
+  },
+  "prepared_pixel_http": {
+    "status": 400,
+    "body": {
+      "detail": "8 validation errors for ValidatorIterator\n0.ChatCompletionContentPartTextParam.text\n  Field required [type=missing, input_value={'type': 'image_pixels', ..._grid_thw': [[1, 4, 4]]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\n0.ChatCompletionContentPartTextParam.type\n  Input should be 'text' [type=literal_error, input_value='image_pixels', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\n0.ChatCompletionContentPartImageParam.image_url\n  Field required [type=missing, input_value={'type': 'image_pixels', ..._grid_thw': [[1, 4, 4]]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\n0.ChatCompletionContentPartImageParam.type\n  Input should be 'image_url' [type=literal_error, input_value='image_pixels', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\n0.ChatCompletionContentPartInputAudioParam.input_audio\n  Field required [type=missing, input_value={'type': 'image_pixels', ..._grid_thw': [[1, 4, 4]]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\n0.ChatCompletionContentPartInputAudioParam.type\n  Input should be 'input_audio' [type=literal_error, input_value='image_pixels', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\n0.File.file\n  Field required [type=missing, input_value={'type': 'image_pixels', ..._grid_thw': [[1, 4, 4]]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\n0.File.type\n  Input should be 'file' [type=literal_error, input_value='image_pixels', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error"
+    }
+  },
+  "prepared_pixel_engine_parser": {
+    "rejected": true,
+    "reason": "The data should contain the fields: {'image_grid_thw', 'image_embeds'}, but only found the following keys: {'pixel_values', 'image_grid_thw'}"
+  },
+  "source_sha256": {
+    "entrypoints/chat_utils.py": "9561cf04c61d3a5910fe24db7db0dbbc88578094e3d0d7692e6abde5ea83ab8e",
+    "entrypoints/openai/chat_completion/protocol.py": "c4bfefd3ae9898b77fbe075fe1719d33b4d4f57a14ab75aff818b05b64d8c9ac",
+    "model_executor/models/qwen2_vl.py": "f2a6bc6de8d353558e4612ae512316c0fff801c27e4b24936a181d5e3fbb39d4",
+    "model_executor/models/qwen3_vl.py": "2935e09be47a893f09176cddb1beb6ed2e73666459de2bfbb08aca50b3e08969"
+  },
+  "conclusion": "No stock prepared-pixel chat type; Qwen tensor dictionary requires post-encoder image_embeds"
+}

@@ -3,16 +3,19 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "qwen-mm-vllm-seam"
-version = "0.0.1"
-description = "Pinned vLLM prepared-pixel seam prototype for qwen-mm"
+name = "qwen-mm-vllm"
+version = "0.1.0"
+description = "Native still-image processing for pinned prebuilt vLLM"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "vllm==0.23.0",
+    "qwen-mm==0.1.0",
+    "transformers==5.14.1",
 ]
 
 [project.entry-points."vllm.general_plugins"]
-qwen_mm_prepared_pixels = "qwen_mm_vllm:register"
+qwen_mm_serving_audit = "qwen_mm_vllm.audit:register_audit"
+qwen_mm_native_images = "qwen_mm_vllm.native:register_native"
 
 [dependency-groups]
 dev = [
