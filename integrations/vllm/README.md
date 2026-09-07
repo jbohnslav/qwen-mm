@@ -18,9 +18,12 @@ See `scripts/audit_server_inputs.py` for the executable schema rejection.
 ## Install and launch
 
 Use Linux x86_64, Python 3.11 and an NVIDIA GPU supported by the published vLLM
-wheel. Build qwen-mm itself from this checkout, or supply its matching Linux
-wheel. The earlier release-candidate wheel pins NumPy 2.4.6 and cannot coexist
-with vLLM 0.23.0; this checkout supports NumPy 2.3.5 through 2.x.
+wheel. The refreshed v0.1 candidate includes a matching Linux core wheel and
+`qwen_mm_vllm-0.1.0-py3-none-any.whl`. Verify their hashes against the release
+manifests and install both into a fresh environment. The original September 5
+core wheel pins NumPy 2.4.6 and is incompatible; use the refreshed bundle.
+After publication, both packages will be installable by version from the index.
+The equivalent source-build recipe is:
 
 ```bash
 # In the repository; builds qwen-mm, not vLLM.

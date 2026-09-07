@@ -14,6 +14,8 @@ import zipfile
 from email.parser import BytesParser
 from pathlib import Path
 
+from packaging.requirements import Requirement
+
 ROOT = Path(__file__).resolve().parents[1]
 UV = [str(ROOT / "scripts/with-cargo.sh"), "uv"]
 
@@ -52,11 +54,47 @@ def inspect_wheel(wheel: Path) -> dict:
             "<3.12",
         }
         assert metadata["License-Expression"] == "Apache-2.0"
+        assert {str(Requirement(item)) for item in metadata.get_all("Requires-Dist", [])} == {
+            str(Requirement("numpy>=2.3.5,<3")),
+            str(Requirement("huggingface-hub==1.26.0")),
+        }
         assert any(name.endswith("/licenses/LICENSE") for name in names)
         assert not any(".cache/" in name or ".kd/" in name for name in names)
         assert "linux_x86_64.whl" not in wheel.name or "manylinux" in wheel.name
         for path in (ROOT / "crates/qwen-mm-python/python/qwen_mm").glob("*.py"):
             assert archive.read(f"qwen_mm/{path.name}") == path.read_bytes()
+        return {"name": wheel.name, "sha256": sha256(wheel), "bytes": wheel.stat().st_size}
+
+
+def inspect_plugin_wheel(wheel: Path) -> dict:
+    """Verify the installed distribution includes exactly the reviewed plugin sources."""
+    import configparser
+
+    with zipfile.ZipFile(wheel) as archive:
+        prefix = "qwen_mm_vllm-0.1.0.dist-info/"
+        metadata = BytesParser().parsebytes(archive.read(prefix + "METADATA"))
+        assert wheel.name == "qwen_mm_vllm-0.1.0-py3-none-any.whl"
+        assert metadata["Name"] == "qwen-mm-vllm"
+        assert metadata["Version"] == "0.1.0"
+        assert metadata["License-Expression"] == "Apache-2.0"
+        assert set(metadata["Requires-Python"].replace(" ", "").split(",")) == {">=3.11", "<3.12"}
+        assert {str(Requirement(item)) for item in metadata.get_all("Requires-Dist", [])} == {
+            "qwen-mm==0.1.0",
+            "vllm==0.23.0",
+            "transformers==5.14.1",
+        }
+        assert archive.read(prefix + "licenses/LICENSE") == (ROOT / "LICENSE").read_bytes()
+        entry_points = configparser.ConfigParser()
+        entry_points.read_string(archive.read(prefix + "entry_points.txt").decode())
+        assert dict(entry_points["vllm.general_plugins"]) == {
+            "qwen_mm_native_images": "qwen_mm_vllm.native:register_native",
+            "qwen_mm_serving_audit": "qwen_mm_vllm.audit:register_audit",
+        }
+        sources = ROOT / "integrations/vllm/qwen_mm_vllm"
+        expected = {f"qwen_mm_vllm/{path.name}" for path in sources.glob("*.py")}
+        assert {name for name in archive.namelist() if not name.startswith(prefix)} == expected
+        for path in sources.glob("*.py"):
+            assert archive.read(f"qwen_mm_vllm/{path.name}") == path.read_bytes()
         return {"name": wheel.name, "sha256": sha256(wheel), "bytes": wheel.stat().st_size}
 
 
@@ -162,9 +200,50 @@ def main() -> None:
             report["reproducibility"] = (
                 "two separate Cargo target directories; identical wheel SHA-256"
             )
+            plugin_wheels = []
+            for index in (1, 2):
+                builder = work / f"plugin-builder-{index}"
+                run(
+                    f"plugin-environment-{index}",
+                    UV + ["venv", "--python", sys.executable, str(builder)],
+                )
+                run(
+                    f"plugin-build-dependencies-{index}",
+                    UV
+                    + [
+                        "pip",
+                        "install",
+                        "--python",
+                        str(builder / "bin/python"),
+                        "--require-hashes",
+                        "-r",
+                        "integrations/vllm/build-requirements.txt",
+                    ],
+                )
+                run(
+                    f"plugin-build-{index}",
+                    UV
+                    + [
+                        "build",
+                        "integrations/vllm",
+                        "--wheel",
+                        "--no-build-isolation",
+                        "--python",
+                        str(builder / "bin/python"),
+                        "--out-dir",
+                        str(output / f"plugin-build-{index}"),
+                    ],
+                )
+                built = list((output / f"plugin-build-{index}").glob("*.whl"))
+                assert len(built) == 1
+                plugin_wheels.append(built[0])
+            report["plugin_artifact"] = inspect_plugin_wheel(plugin_wheels[0])
+            assert sha256(plugin_wheels[0]) == sha256(plugin_wheels[1])
+            report["plugin_reproducibility"] = "two isolated build environments; identical SHA-256"
             run("create-environment", UV + ["venv", "--python", sys.executable, str(work / "venv")])
             python = str(work / "venv/bin/python")
             run("install", UV + ["pip", "install", "--python", python, str(wheels[0])])
+            run("runtime-dependencies", UV + ["pip", "freeze", "--python", python])
             run(
                 "fetch-pinned-processors",
                 [
@@ -273,6 +352,7 @@ def main() -> None:
             )
             run("binding-with-gil-hooks", ["make", "python-binding-test"])
             run("publish-dry-run", publish_dry_run_command(wheels[0]))
+            run("plugin-publish-dry-run", publish_dry_run_command(plugin_wheels[0]))
             assert source_identity() == source, "source changed during verification"
             report["status"] = "passed"
     finally:

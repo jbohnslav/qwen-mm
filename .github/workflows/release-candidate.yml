@@ -33,9 +33,20 @@ jobs:
           uv sync --locked --all-packages
       - name: Build twice, verify, and rehearse publishing
         run: uv run --locked python scripts/release.py --output dist/${{ matrix.name }}
+      - name: Verify packaged plugin and dependency compatibility
+        if: runner.os == 'Linux'
+        run: |
+          uv run --locked python scripts/release_vllm.py \
+            --core-wheel dist/${{ matrix.name }}/build-1/*.whl \
+            --plugin-wheel dist/${{ matrix.name }}/plugin-build-1/*.whl \
+            --output dist/${{ matrix.name }}-vllm
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: release-candidate-${{ matrix.name }}
-          path: dist/${{ matrix.name }}/
+          path: |
+            dist/${{ matrix.name }}/
+            dist/${{ matrix.name }}-vllm/*.log
+            dist/${{ matrix.name }}-vllm/*.json
+            dist/${{ matrix.name }}-vllm/*.txt
           retention-days: 30

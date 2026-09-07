@@ -40,7 +40,35 @@ Markdown Rosetta comparisons on both profiles and all 43 public resize-v2
 geometries. Full `make check`, all script unit tests, and the full hooked
 binding suite also run. No model weights or paid hosted APIs are required.
 
-Each output directory retains both wheels, command logs, exported oracle
+The runner also builds the optional `qwen-mm-vllm` wheel twice using separate
+build environments and the hash-locked `integrations/vllm/build-requirements.txt`.
+It verifies matching bytes, exact Python sources, Apache-2.0 license, dependency
+pins, and both vLLM entry points. Its manifest includes `plugin_artifact`.
+Select just one plugin wheel for publication; its hash must match on both hosts.
+
+On Linux, additionally verify both selected wheels in a fresh vLLM environment:
+
+```sh
+uv run --locked python scripts/release_vllm.py \
+  --core-wheel dist/candidate/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl \
+  --plugin-wheel dist/candidate/plugin-build-1/qwen_mm_vllm-0.1.0-py3-none-any.whl \
+  --output dist/candidate-vllm
+```
+
+Use the actual audited core filename if its glibc tag differs. This check
+resolves the normal published GPU dependency set without installing it, then
+installs both candidate wheels with prebuilt CPU vLLM and NumPy 2.3.5 in a
+fresh environment. CPU versions are constrained to the retained 45e5 runtime
+snapshot; installation and dependency checks must succeed without bypassing
+requirements. Tests exercise installed plugin entry points, both-profile native
+preprocessing/caching, public API behavior, and the HTTP input schema. A CPU
+wheel is used only for this verification; the plugin dependency remains the
+normal `vllm==0.23.0` requirement. Previous L40S generation evidence retains its
+original artifact provenance. No new GPU run or performance claim is implied.
+The verification environment stays under ignored `dist/` for inspection; retain
+its logs, resolved dependencies and manifest, not the environment itself.
+
+Each output directory retains both core/plugin build copies, command logs, exported oracle
 requirements, Rosetta JSON, resize JSON/ZIP, and `manifest.json`. The manifest
 records the exact candidate Git commit/tree, tools, host, every command result,
 and SHA-256 of every retained file. `status: passed` is written only after all
@@ -60,12 +88,13 @@ The runner uses uv's built-in dry run against a closed loopback endpoint, which 
 without sending package files or requiring credentials. uv 0.11.29 rejects
 combining `--offline` with `publish`, even for a dry run; the loopback-only
 destination ensures a mistaken upload cannot reach a public index. Repeat it for both
-selected wheels (one per platform, not their duplicate build copies):
+selected wheels (one core wheel per platform and one plugin wheel):
 
 ```sh
 uv publish --dry-run --no-config --trusted-publishing never \
   --publish-url http://127.0.0.1:9/legacy/ \
-  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl
+  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl \
+  dist/linux-x86_64/plugin-build-1/*.whl
 ```
 
 This does not establish ownership of the PyPI project name, validate a token,
@@ -81,13 +110,16 @@ kd status --check
 git tag -a v0.1.0 "$CANDIDATE_COMMIT" -m 'qwen-mm 0.1.0'
 git push origin v0.1.0
 uv publish --no-config --trusted-publishing never \
-  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl
+  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl \
+  dist/linux-x86_64/plugin-build-1/*.whl
 ```
 
 Supply the PyPI token through `UV_PUBLISH_TOKEN` in the environment or use a
 separately configured trusted publisher; never put credentials in evidence.
 After publication, verify a new CPython 3.11 install of `qwen-mm==0.1.0` on both
-native platforms and execute the public smoke/examples again.
+native platforms and execute the public smoke/examples again. Also install
+`qwen-mm-vllm==0.1.0` in a fresh supported Linux server environment and verify
+its entry points and dependency compatibility.
 
 Before upload, rollback is simply discarding the candidate bundle and deleting
 an unpushed local tag with `git tag -d v0.1.0`. After upload, treat the release
