@@ -1,0 +1,444 @@
+{
+  "schema": "qwen-mm-release-v1",
+  "version": "0.1.0",
+  "source": {
+    "commit": "4c9f72a7123cd077421c20cc97ac815d13f0dcb9",
+    "tree": "bade9da7b12547832848761a382f04fcaefa1b87",
+    "source_date_epoch": "1788792305"
+  },
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.15 (main, Mar  3 2026, 15:47:15) [Clang 21.1.4 ]",
+    "rust": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "uv": "uv 0.11.29 (901092ee1 2026-07-15 aarch64-apple-darwin)",
+    "libc": [
+      "",
+      ""
+    ],
+    "build_environment": "native host"
+  },
+  "steps": [
+    {
+      "name": "build-1",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "maturin",
+        "build",
+        "--release",
+        "--locked",
+        "--compatibility",
+        "pypi",
+        "--interpreter",
+        "/Users/jim/code/qwen-mm/.venv/bin/python3",
+        "--out",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/build-1"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "build-2",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "maturin",
+        "build",
+        "--release",
+        "--locked",
+        "--compatibility",
+        "pypi",
+        "--interpreter",
+        "/Users/jim/code/qwen-mm/.venv/bin/python3",
+        "--out",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/build-2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-environment-1",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jim/code/qwen-mm/.venv/bin/python3",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-1"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-build-dependencies-1",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-1/bin/python",
+        "--require-hashes",
+        "-r",
+        "integrations/vllm/build-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-build-1",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "build",
+        "integrations/vllm",
+        "--wheel",
+        "--no-build-isolation",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-1/bin/python",
+        "--out-dir",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/plugin-build-1"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-environment-2",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jim/code/qwen-mm/.venv/bin/python3",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-build-dependencies-2",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-2/bin/python",
+        "--require-hashes",
+        "-r",
+        "integrations/vllm/build-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-build-2",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "build",
+        "integrations/vllm",
+        "--wheel",
+        "--no-build-isolation",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/plugin-builder-2/bin/python",
+        "--out-dir",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/plugin-build-2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "create-environment",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jim/code/qwen-mm/.venv/bin/python3",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "install",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/build-1/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "runtime-dependencies",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "freeze",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "fetch-pinned-processors",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "-c",
+        "from qwen_mm import Processor; [Processor.from_pretrained(p['model_id'], cache_dir='reference/.cache/huggingface') for p in Processor.supported_profiles()]"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/smoke.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "pretrained",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/pretrained.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "docs_examples",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/docs_examples.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "media_sources",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/media_sources.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "usability",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/usability.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta_regressions",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/rosetta_regressions.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ownership",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "-c",
+        "import runpy; import qwen_mm._native as n; assert not hasattr(n, '_test_native_batch_active'); suite=runpy.run_path('/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/binding.py'); [(print(name, flush=True), fn()) for name, fn in suite.items() if name.startswith('test_') and name != 'test_exact_24_image_shape_and_gil_release']"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "export-oracle",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "export",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "--no-emit-workspace",
+        "--no-dev",
+        "--format",
+        "requirements-txt",
+        "--output-file",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/oracle-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "install-oracle",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "--require-hashes",
+        "-r",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/oracle-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta-ergonomics",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "/Users/jim/code/qwen-mm/crates/qwen-mm-python/tests/rosetta_ergonomics.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "rosetta",
+      "command": [
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "scripts/rosetta_suite.py",
+        "--output",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/rosetta.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "resize",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "python",
+        "scripts/verify_rosetta_resize.py",
+        "--candidate-python",
+        "/var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-release-bed_n88x/venv/bin/python",
+        "--wheel",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/build-1/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+        "--output",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/resize.zip"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "repository-check",
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "script-tests",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "run",
+        "--locked",
+        "--package",
+        "qwen-mm-reference",
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "binding-with-gil-hooks",
+      "command": [
+        "make",
+        "python-binding-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "publish-dry-run",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "publish",
+        "--dry-run",
+        "--no-config",
+        "--trusted-publishing",
+        "never",
+        "--publish-url",
+        "http://127.0.0.1:9/legacy/",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/build-1/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "plugin-publish-dry-run",
+      "command": [
+        "/Users/jim/code/qwen-mm/scripts/with-cargo.sh",
+        "uv",
+        "publish",
+        "--dry-run",
+        "--no-config",
+        "--trusted-publishing",
+        "never",
+        "--publish-url",
+        "http://127.0.0.1:9/legacy/",
+        "/Users/jim/code/qwen-mm/dist/v0.1.0-refresh-macos-arm64/plugin-build-1/qwen_mm_vllm-0.1.0-py3-none-any.whl"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "status": "passed",
+  "artifact": {
+    "name": "qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "sha256": "fc7c47749efacbe549807dd49fd8632918c1de894a62648fb32ba9154b62646f",
+    "bytes": 2558334
+  },
+  "reproducibility": "two separate Cargo target directories; identical wheel SHA-256",
+  "plugin_artifact": {
+    "name": "qwen_mm_vllm-0.1.0-py3-none-any.whl",
+    "sha256": "284f4f2a950534b30db157ab108bab45ba5a392385fd5d5d0bb055dbca152cce",
+    "bytes": 17637
+  },
+  "plugin_reproducibility": "two isolated build environments; identical SHA-256",
+  "files": {
+    "binding-with-gil-hooks.log": "7fa7d7842a7d92487a92874052b9adfc13ab9bd505c4aea2228f43839bac8f4d",
+    "build-1/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl": "fc7c47749efacbe549807dd49fd8632918c1de894a62648fb32ba9154b62646f",
+    "build-1.log": "7f5ca95284ec02c83c68f9f0bd323ce04a3b81abacbd541b1e2d2a0f2f2f0b00",
+    "build-2/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl": "fc7c47749efacbe549807dd49fd8632918c1de894a62648fb32ba9154b62646f",
+    "build-2.log": "58756bfae695893918610162bf646fd501f08ff078939eedc452b869a234c3e4",
+    "create-environment.log": "34f5a00a18f63336fba0573178f7ee81001f880644184d3edc3e376e794d6025",
+    "docs_examples.log": "89d009e7c0e184f968ff160a405eb908c8b794fdff3e7598f78d002ad9de77db",
+    "export-oracle.log": "05929cdea440448a72d47a8109bb3e08722f8dcb491f6ec1d86cd3d373a2ab21",
+    "fetch-pinned-processors.log": "9bce6cc4e7463ba1c542a385f75d238a8be9c57a69a9edb04f37a4c0726d8972",
+    "install-oracle.log": "277f69b951c8a82854c09bdd93dc0a96efe74ddc082bc3b6b07484fe1fd542fb",
+    "install.log": "aba56b15c10df9b69b152cc8a8676f7584687566c1a9e0c57581f9724556f98b",
+    "media_sources.log": "ad86f74241b7b76e7b2da8d1ad8751ff230728608f574fd293c7f785fb07f8c9",
+    "oracle-requirements.txt": "cf82ec834831f02d75a835744a7d734a235f2fb974c26620c8f22d2f0aedc7ce",
+    "ownership.log": "e54d2b2944ba1d44191bedb6169765e64302996be3cf4934be92c122b52c7d36",
+    "plugin-build-1/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+    "plugin-build-1/qwen_mm_vllm-0.1.0-py3-none-any.whl": "284f4f2a950534b30db157ab108bab45ba5a392385fd5d5d0bb055dbca152cce",
+    "plugin-build-1.log": "3b8ec64274495f4e8839e58e18129dd751abad055304cc2697b60a94a3cc53aa",
+    "plugin-build-2/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+    "plugin-build-2/qwen_mm_vllm-0.1.0-py3-none-any.whl": "284f4f2a950534b30db157ab108bab45ba5a392385fd5d5d0bb055dbca152cce",
+    "plugin-build-2.log": "c312dea324d4cacb5b57324af7f72ebd4b85cec790fd9a01a61910355a2d9c68",
+    "plugin-build-dependencies-1.log": "ac45dec213ce74a1104a17c762eb1de5465e8df69a455ff034a3cf78943dd5fe",
+    "plugin-build-dependencies-2.log": "6092eedbe9fc8c4ad1504364139e222f11cde4fe7a1694d34269e0e3b0d1bbba",
+    "plugin-environment-1.log": "bcf1c0e43ffcdc97c5af0eb6a521f79ddb862513f4ef16f382c4ef935974c982",
+    "plugin-environment-2.log": "602b97dbd8b1a2bade4ddebe673301506d56e9d247423c40fdf38394191c4aef",
+    "plugin-publish-dry-run.log": "8ec19ebf35ab1cfc6b96415459734eb9179f3905ee3872808afd8b246175418f",
+    "pretrained.log": "76927b076e02d753b66770f171aeb2ceca986308e8df4de91df8261ff31dbd37",
+    "publish-dry-run.log": "4c83dc694e085be33b53cbf16821c384e340b52ba096c3b45f8f46e227d82fd1",
+    "repository-check.log": "7f2098951d0bfd732712461573609f1e098f36260cdfc6121c8b70eb4f4b16bc",
+    "resize.json": "efe45e40d55919be3858330dabdb230276ff1938e1766c6dadd18e83fb12eeb8",
+    "resize.log": "aebf698a4b5b23d76e3cfdceda5e442ba8b131b2e06dd252c2c97d8a8b2aab90",
+    "resize.zip": "0a33017c0c854cf70eed18e4a982417519de8bae94978a371995f6b2ee5bc89e",
+    "rosetta-ergonomics.log": "53ef2da2a2b11993adc19f63858cc3e6d117b7280337283e997e60a1c17901ba",
+    "rosetta.json": "175113c37ee075ad039017e42771a8b1c84b67a1aabd25f27d25bdb8f61fee56",
+    "rosetta.log": "d50932a9e533899e1ea658aaac1fd209ac1f5dcedfd9c80772c15d7e5012563a",
+    "rosetta_regressions.log": "4dd9335d3c34f90aff1ad1b6c9ad6495f4b68a76404a6548947a92080cead5fb",
+    "runtime-dependencies.log": "08661c78c9f8190e6a03603e229b755f1a76ff1953742396371c2fbd7d5e1c12",
+    "script-tests.log": "4b747c3d2afe247bdcc8447248ba47a4e9ecb27e283d0a5d0752cd40439136d9",
+    "smoke.log": "8e3a38199648ac3fdcadd34263214d9fa0506917deb8fbb998223a10761907a7",
+    "usability.log": "02f616273dd58b8a207452121dda3110f1a8000cd1c6d138d75b2151e50db536"
+  }
+}

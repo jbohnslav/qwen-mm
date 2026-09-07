@@ -1,0 +1,11 @@
+{
+  "gpu_evidence": "integrations/vllm/evidence/45e5/gpu-20260907/manifest.json",
+  "plugin_source_hashes_match": {
+    "integrations/vllm/qwen_mm_vllm/__init__.py": true,
+    "integrations/vllm/qwen_mm_vllm/adapter.py": true,
+    "integrations/vllm/qwen_mm_vllm/audit.py": true,
+    "integrations/vllm/qwen_mm_vllm/native.py": true
+  },
+  "core_source_unchanged_since": "eab9121",
+  "core_diff": ""
+}

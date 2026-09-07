@@ -1,0 +1,148 @@
+{
+  "source": {
+    "commit": "4c9f72a7123cd077421c20cc97ac815d13f0dcb9",
+    "tree": "bade9da7b12547832848761a382f04fcaefa1b87",
+    "source_date_epoch": "1788792305"
+  },
+  "core_artifact": {
+    "name": "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+    "sha256": "0d71e01364939ee3b0375510f86dd9a12c8b8afa0dfb793cfdc8843d8d59a242",
+    "bytes": 2931595
+  },
+  "plugin_artifact": {
+    "name": "qwen_mm_vllm-0.1.0-py3-none-any.whl",
+    "sha256": "284f4f2a950534b30db157ab108bab45ba5a392385fd5d5d0bb055dbca152cce",
+    "bytes": 17637
+  },
+  "status": "passed",
+  "steps": [
+    {
+      "name": "gpu-dependency-resolution",
+      "command": [
+        "/refresh/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "compile",
+        "/refresh/dist/v0.1.0-refresh-vllm/gpu-requirements.in",
+        "--python-version",
+        "3.11",
+        "--only-binary",
+        ":all:",
+        "--output-file",
+        "/refresh/dist/v0.1.0-refresh-vllm/gpu-requirements.txt"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "create-environment",
+      "command": [
+        "/refresh/scripts/with-cargo.sh",
+        "uv",
+        "venv",
+        "--python",
+        "/refresh/.venv/bin/python",
+        "/refresh/dist/v0.1.0-refresh-vllm/venv"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "install",
+      "command": [
+        "/refresh/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python",
+        "--only-binary",
+        ":all:",
+        "--extra-index-url",
+        "https://download.pytorch.org/whl/cpu",
+        "--index-strategy",
+        "unsafe-best-match",
+        "--constraint",
+        "integrations/vllm/release-cpu-constraints.txt",
+        "/refresh/dist/v0.1.0-refresh-linux-x86_64/build-1/qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+        "/refresh/dist/v0.1.0-refresh-linux-x86_64/plugin-build-1/qwen_mm_vllm-0.1.0-py3-none-any.whl",
+        "pytest"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "dependency-check",
+      "command": [
+        "/refresh/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "runtime-dependencies",
+      "command": [
+        "/refresh/scripts/with-cargo.sh",
+        "uv",
+        "pip",
+        "freeze",
+        "--python",
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "installed-entry-points",
+      "command": [
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python",
+        "-c",
+        "\nfrom importlib.metadata import distribution\nfrom pathlib import Path\nimport qwen_mm, qwen_mm_vllm, numpy\nassert numpy.__version__ == '2.3.5'\nassert '/site-packages/' in str(Path(qwen_mm.__file__))\nassert '/site-packages/' in str(Path(qwen_mm_vllm.__file__))\ndist = distribution('qwen-mm-vllm')\nentries = {ep.name: ep for ep in dist.entry_points if ep.group == 'vllm.general_plugins'}\nassert set(entries) == {'qwen_mm_native_images', 'qwen_mm_serving_audit'}\nfor name, ep in entries.items():\n    print(name, ep.value)\n    ep.load()()\nprint('Installed wheel imports and plugin registration passed')\n"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "integration-tests",
+      "command": [
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python",
+        "-m",
+        "pytest",
+        "integrations/vllm/tests",
+        "-q"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "public-api",
+      "command": [
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python",
+        "crates/qwen-mm-python/tests/usability.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "http-input-audit",
+      "command": [
+        "/refresh/dist/v0.1.0-refresh-vllm/venv/bin/python",
+        "integrations/vllm/scripts/audit_server_inputs.py",
+        "--output",
+        "/refresh/dist/v0.1.0-refresh-vllm/http-input-audit.json"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "files": {
+    "public-api.log": "02f616273dd58b8a207452121dda3110f1a8000cd1c6d138d75b2151e50db536",
+    "gpu-requirements.txt": "3b93e3f81eca4df75ffb9b5b43695a2669faab9abe4c393e8c507857de0e1c26",
+    "dependency-check.log": "31a41719363d5605c3234b93f3c0281b129857cdb770881959db3cca5472705f",
+    "install.log": "a49057f1cf9ddc683991e5e87548ddd85b0352c9dcf3019b9c52c5f039ed450c",
+    "create-environment.log": "6c110d69c0dcf50584752a5c95924e07007023dbade6e4d0108fbf8ebbc71b5f",
+    "http-input-audit.json": "97f36f8cae07f0942582cb0e55d5f2432f831f0afeb159ec1e50638283e650d9",
+    "gpu-requirements.in": "ca22dc5e2b700054386dd02e76f8b64fa92b019da38f99e78e99689c77cd90bd",
+    "gpu-dependency-resolution.log": "5b99d86690dfa2867edd493b2e2287f80917d4c374ec8f5a1304d5b7149f35b4",
+    "integration-tests.log": "9efd6e161f3759c589b33f649ba64de8d9907e6ec765291d3e6b48176cdcbcad",
+    "runtime-dependencies.log": "fe23d4bbf90cd565659eff3b74c00b96a4cdfe463be65e0767f424a1add9f9d3",
+    "http-input-audit.log": "e273b64fbf91382f085d8808ceed7502a76095f85df6d889262cddc4f793047f",
+    "installed-entry-points.log": "20dd4a12d41e89352dea98a1c91e985a3d0c2f453de6727e5b6a936bd401c2c0"
+  }
+}
