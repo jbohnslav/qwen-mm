@@ -1,0 +1,35 @@
+{
+  "gpu_run": "ap-893XraaKaN0grT125ahrQ9",
+  "note": "Executed source hashes are retained in serving.tar.gz/results/results.json; final source adds reporting/resize diagnostics.",
+  "artifacts": {
+    "README.md": "233a2972c6b1e6c026c1367efa0da36a25c225c4cf0715ee9a0c526d8f781793",
+    "cpu-tests.txt": "125de70ca4cda06e5bc8613097b25428afa823f025462d2c5b5c5bb3a45d1030",
+    "failed-mixed-cuda-toolkit.txt.gz": "de1610d1ccb64ce9e57f94276f346837c78e7fa1a11618e24ed9e2ef5d9e9b10",
+    "failed-sampler-startup.tar.gz": "a5dc76ecceaa5f748cab68b4a53d169d3aae3228b34b05035195055824a9c6f6",
+    "failed-server-image-budget.tar.gz": "c46518867487b0590c07ccbdb6a78d431b0c45418e64d39a54cb4814fcb4c967",
+    "flashinfer.json": "b78c77862d316569015d766e3adb85e2e171ac16e1d89025820750ec8db9fa96",
+    "measurements.md": "2f908baf6a7e1cf589e4d9cd01467c0f412c6d55d65fc83f2f27e103a5c10b8c",
+    "repository-check.txt": "30821ae82f0dbedbc0eb6760e61d6aa56f0277f45888f0ef0aa33ec5506eaee7",
+    "resize-witness.json": "493a8e679c5a45b73e00322888f2bc31a46502aac1f7c93c6a2ace9a5ecea925",
+    "script-tests.txt": "60859bf8b7bb2c408fb3cb1938a1b40b3d8edb19754d6316e4ff3506bd9212e5",
+    "serving.tar.gz": "a1136566eddee50c01fd7ccb24b47f5da526b46e6338fdb18e5513bfe7285ad0"
+  },
+  "final_source": {
+    "integrations/vllm/qwen_mm_vllm/__init__.py": "5215255ab9797eec1da1637fe4781896630a73af2fd1d67a7984e41685246edd",
+    "integrations/vllm/qwen_mm_vllm/adapter.py": "35141716fb85f954053b6a4664f48f53da52ba53567fb51076bf62c2efb46050",
+    "integrations/vllm/qwen_mm_vllm/audit.py": "c509c8ea30e07720516491914eda361e6f191d8ba43a9c94a6897a87f0f7f86e",
+    "integrations/vllm/qwen_mm_vllm/native.py": "513250e4767181e5e94141190ff087728f21eb7126af1f3e6eb2d90b24275e89",
+    "integrations/vllm/scripts/audit_server_inputs.py": "5a9637e51d5bbbdcb64e9b7bcbd022b0588a92da98edc7675732db7075a213ef",
+    "integrations/vllm/scripts/client.py": "0bc50eda9054c310ae5105aa27c79f518f19fd5845506eee4d9895b2bbe00dc1",
+    "integrations/vllm/scripts/flashinfer_probe.py": "ab441bb887d39a9448822cbb49fe3ee0cbf5d7aa6cf6b95cc048b863e664b952",
+    "integrations/vllm/scripts/modal_serve.py": "d5ab3b3a9c33ec96a74b298dde75fa2dd875970700d8eddad1cf3aa8d445d89c",
+    "integrations/vllm/scripts/resize_witness.py": "4426258543fb1f5466ec72d00b38b7d6d59cdeffada2398d338f786e3663373d",
+    "integrations/vllm/scripts/serve_experiment.py": "ff703ddfc38026dc01931f813ce5c22a20f4fce6c0c2fc0d3038bde6163aa733",
+    "integrations/vllm/scripts/summarize_serving.py": "e339aa2f7065c52ccc29168228a2c84d3a9ad686704cfa8fa2f5c39ddf5cacd1",
+    "integrations/vllm/scripts/verify_vllm_pin.py": "0192e63d5ccd05202ca71b37365ec6095bd35f89a9ea93a6d81e9b3886cdf429",
+    "integrations/vllm/tests/test_modal_serve.py": "105de769523848cac98fc1c0c5a7caea03403ca60582f391c44dda695c5427dc",
+    "integrations/vllm/tests/test_native_processor.py": "858f40a8d175c946caa6eb89ecdf7de3d19128acf68ce9fe5f1e850962c48ee4",
+    "integrations/vllm/tests/test_prepared_processor.py": "e5949b563927f7fc42e4a3b682b038cd5293156b7b11e9dbc437cccb54be1e21",
+    "integrations/vllm/tests/test_serve_experiment.py": "57bd55f4db758b111a789a644a51b7967eaaf8c26d3fde956af6aa75b4ad158c"
+  }
+}

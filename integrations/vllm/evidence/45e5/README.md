@@ -1,8 +1,9 @@
 # vLLM integration evidence — 45e5
 
-Status: **CPU integration verified; real GPU serving and benefit unverified.**
-The ticket remains open. This is not a production certification or an adoption
-recommendation based on serving performance.
+Status: **Real GPU serving verified on 7 September 2026.** See the
+[completed serving report](gpu-20260907/README.md) for measured benefits and
+limitations. The sections below preserve the earlier CPU evidence and blocked
+attempts. This is not a production certification.
 
 ## What passed
 

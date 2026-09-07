@@ -1,7 +1,8 @@
 # qwen-mm for a prebuilt vLLM server
 
-**Status:** CPU integration is verified; real GPU serving is pending Modal billing.
-See [the evidence and remaining work](evidence/45e5/README.md).
+**Status:** Real Qwen3.5-9B serving is verified on Modal with a prebuilt vLLM wheel.
+See [the measurements and limitations](evidence/45e5/gpu-20260907/README.md).
+Resized pixels follow the approximate resize-v2 contract and can change generated text.
 
 This external plugin replaces still-image resize, normalization and patch layout
 inside vLLM. Clients send ordinary OpenAI-compatible `image_url` requests. vLLM
@@ -30,7 +31,7 @@ uv pip install --python .venv-vllm/bin/python --only-binary=:all: \
 uv pip install --python .venv-vllm/bin/python \
   dist/native/qwen_mm-*.whl ./integrations/vllm
 
-VLLM_PLUGINS=qwen_mm_native_images QWEN_MM_THREADS=1 \
+VLLM_PLUGINS=qwen_mm_native_images QWEN_MM_THREADS=1 VLLM_USE_FLASHINFER_SAMPLER=0 \
 .venv-vllm/bin/vllm serve Qwen/Qwen3.5-9B \
   --revision c202236235762e1c871ad0ccb60c8ee5ba337b9a \
   --dtype bfloat16 --max-model-len 4096 --max-num-seqs 4 \
@@ -40,6 +41,14 @@ VLLM_PLUGINS=qwen_mm_native_images QWEN_MM_THREADS=1 \
 
 python integrations/vllm/scripts/client.py example.png
 ```
+
+The Modal runner builds on NVIDIA's CUDA 13.0.2 development image (pinned
+by digest in the script), adds Python 3.11 and installs published vLLM wheels.
+It sets `CUDA_HOME=/usr/local/cuda` and tests FlashInfer sampling before model
+startup. That custom image uses `VLLM_USE_FLASHINFER_SAMPLER=1`; the generic
+launch above selects vLLM's built-in sampler for environments without a matching
+CUDA compiler. Building runtime kernels is separate from building vLLM itself.
+Do not point FlashInfer at a mixture of pip CUDA compiler/header versions.
 
 The other supported profile is `Qwen/Qwen3-VL-8B-Instruct` at revision
 `0c351dd01ed87e9c1b53cbc748cba10e6187ff3b`. Model IDs and revisions are checked
@@ -83,6 +92,8 @@ uv pip install --python .venv-vllm/bin/python pytest
 # Requires a locally built Linux wheel at the path documented by the script.
 # Allocates one L40S, 8 CPU, 32 GiB RAM, maximum 2400 seconds.
 modal run integrations/vllm/scripts/modal_serve.py
+# Optional: only validate CUDA/FlashInfer, without loading model weights.
+modal run integrations/vllm/scripts/modal_serve.py --probe-only
 ```
 
 `serve_experiment.py` runs stock/native/native/stock on the same allocated GPU,

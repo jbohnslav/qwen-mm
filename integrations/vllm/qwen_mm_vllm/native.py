@@ -129,7 +129,7 @@ class NativeImageProcessor(Qwen3VLMultiModalProcessor):
         return _image_field_config(hf_inputs)
 
     def _call_hf_processor(self, prompt, mm_data, mm_kwargs, tok_kwargs):
-        minimum, maximum = pixel_budgets(mm_kwargs)
+        minimum, maximum = pixel_budgets(self.info.ctx.get_merged_mm_kwargs(mm_kwargs))
         if set(mm_data) - {"images"}:
             raise ValueError("qwen-mm native server accepts only still-image processor data")
         result = {

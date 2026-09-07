@@ -79,7 +79,9 @@ def request(body):
             headers={"Content-Type": "application/json"},
         ) as response,
     ):
-        response.raise_for_status()
+        if response.is_error:
+            response.read()
+            raise RuntimeError(f"HTTP {response.status_code}: {response.text[:2000]}")
         for line in response.iter_lines():
             if not line.startswith("data: ") or line == "data: [DONE]":
                 continue
@@ -159,6 +161,8 @@ def run(output):
             "QWEN_MM_THREADS": "1",
             "OMP_NUM_THREADS": "1",
             "TOKENIZERS_PARALLELISM": "false",
+            # The Modal image supplies the matching CUDA development toolkit.
+            "VLLM_USE_FLASHINFER_SAMPLER": "1",
         }
         command = [
             sys.executable,

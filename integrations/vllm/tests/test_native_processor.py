@@ -28,6 +28,9 @@ class CountingNative:
 def processor(request):
     model, token = request.param
     info = SpyInfo(image_token_id=token)
+    from types import SimpleNamespace
+
+    info.ctx = SimpleNamespace(get_merged_mm_kwargs=lambda kwargs: kwargs)
     info.model_id = model
     info.data_parser = NativeImageParser()
     info.native_processor = CountingNative(model)
@@ -170,3 +173,16 @@ def test_repeated_images_keep_distinct_placeholder_occurrences(processor):
         result["mm_kwargs"]["image"][0]["pixel_values"].data,
         result["mm_kwargs"]["image"][1]["pixel_values"].data,
     )
+
+
+def test_server_pixel_limits_apply_and_request_options_override(processor):
+    from types import SimpleNamespace
+
+    processor.info.ctx = SimpleNamespace(
+        get_merged_mm_kwargs=lambda kwargs: {"max_pixels": 65536, **kwargs}
+    )
+    image = Image.new("RGB", (512, 512), "red")
+    server_default = apply(processor, [image])
+    assert server_default["mm_kwargs"]["image"][0]["image_grid_thw"].data.tolist() == [1, 16, 16]
+    override = apply(processor, [image], {"max_pixels": 262144})
+    assert override["mm_kwargs"]["image"][0]["image_grid_thw"].data.tolist() == [1, 32, 32]
