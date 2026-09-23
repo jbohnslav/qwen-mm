@@ -12,6 +12,7 @@
 CARGO_CMD ?= ./scripts/cargo.sh
 UV_CMD ?= ./scripts/with-cargo.sh uv
 PYO3_PYTHON ?= $(shell $(UV_CMD) python find)
+PYTHON_LIB_DIR = $(shell "$(PYO3_PYTHON)" -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR") or "")')
 CONFORMANCE_SEED ?= 1364677966
 CONFORMANCE_CASES ?= 16
 CONFORMANCE_OUTPUT ?= reference/results/conformance-local
@@ -59,8 +60,8 @@ pre-commit-check:
 rust-check:
 	$(CARGO_CMD) fmt --all -- --check
 	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) clippy --workspace --all-targets --locked -- -D warnings
-	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --all-targets --locked
-	PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --doc --locked
+	LD_LIBRARY_PATH="$(PYTHON_LIB_DIR):$(LD_LIBRARY_PATH)" PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --all-targets --locked
+	LD_LIBRARY_PATH="$(PYTHON_LIB_DIR):$(LD_LIBRARY_PATH)" PYO3_PYTHON="$(PYO3_PYTHON)" $(CARGO_CMD) test --workspace --doc --locked
 	$(MAKE) core-check
 
 core-check:
