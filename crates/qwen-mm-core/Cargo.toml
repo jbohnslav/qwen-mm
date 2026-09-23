@@ -16,6 +16,7 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokenizers.workspace = true
+tk-serialize.workspace = true
 
 [dev-dependencies]
 fast_image_resize.workspace = true

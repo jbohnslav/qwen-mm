@@ -1,0 +1,106 @@
+./scripts/test-python-binding.sh
+    Blocking waiting for file lock on package cache
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/jim/code/qwen-mm/.venv/bin/python3
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling memchr v2.8.3
+   Compiling bitflags v2.13.1
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling getrandom v0.3.4
+   Compiling ahash v0.8.12
+   Compiling radium v0.7.0
+   Compiling rustix v1.1.5
+   Compiling errno v0.3.14
+   Compiling foldhash v0.2.0
+   Compiling equivalent v1.0.2
+   Compiling tap v1.0.1
+   Compiling allocator-api2 v0.2.21
+   Compiling chacha20 v0.10.2
+   Compiling aho-corasick v1.1.4
+   Compiling wyz v0.5.1
+   Compiling mem_dbg-derive v0.3.4
+   Compiling partition v0.1.2
+   Compiling arbitrary-chunks v0.4.1
+   Compiling hashbrown v0.16.1
+   Compiling byteorder v1.5.0
+   Compiling bit-vec v0.8.0
+   Compiling fastrand v2.5.0
+   Compiling regex-syntax v0.8.11
+   Compiling funty v2.0.0
+   Compiling nom v7.1.3
+   Compiling fxhash v0.2.1
+   Compiling bit-set v0.8.0
+   Compiling rand v0.10.3
+   Compiling mem_dbg v0.4.4
+   Compiling bitcannon v0.1.0-rc.2
+   Compiling rdst v0.20.14
+   Compiling rand_chacha v0.10.0
+   Compiling bitvec v1.1.1
+   Compiling serde v1.0.229
+   Compiling pyo3-ffi v0.29.0
+   Compiling itertools v0.15.0
+   Compiling xxhash-rust v0.8.18
+   Compiling tempfile v3.27.0
+   Compiling colored v3.1.1
+   Compiling prefetch-index v0.2.1
+   Compiling tinyvec v1.13.3
+   Compiling wide v1.7.1
+   Compiling dary_heap v0.3.9
+   Compiling yada v0.7.0
+   Compiling unicode-normalization v0.1.25
+   Compiling serde_json v1.0.151
+   Compiling pyo3 v0.29.0
+   Compiling hifijson v0.5.0
+   Compiling base64 v0.22.1
+   Compiling png v0.18.1
+   Compiling numpy v0.29.0
+   Compiling regex-automata v0.4.16
+   Compiling spm_precompiled v0.1.4
+   Compiling tk-convert v0.1.0-rc.2
+   Compiling image v0.25.10
+   Compiling ptr_hash v2.1.1
+   Compiling fancy-regex v0.19.2
+   Compiling tk-encode v0.1.0-rc.2
+   Compiling tk-serialize v0.1.0-rc.2 (/Users/jim/code/qwen-mm/vendor/tk-serialize)
+   Compiling tokenizers v1.0.0-rc.2
+   Compiling qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.28s
+📦 Built wheel for abi3 Python ≥ 3.11 to /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-python-binding.VyxDfa/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl
+Using CPython 3.11.15 interpreter at: .venv/bin/python3
+Creating virtual environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T//qwen-mm-python-binding.VyxDfa/venv
+Activate with: source /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-python-binding.VyxDfa/venv/bin/activate
+Using Python 3.11.15 environment at: /var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-python-binding.VyxDfa/venv
+Resolved 17 packages in 38ms
+Prepared 1 package in 28ms
+Installed 17 packages in 37ms
+ + anyio==4.15.1
+ + certifi==2026.7.22
+ + click==8.5.0
+ + filelock==4.0.1
+ + fsspec==2026.9.0
+ + h11==0.16.0
+ + hf-xet==1.6.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.26.0
+ + idna==3.20
+ + numpy==2.4.6
+ + packaging==26.3
+ + pyyaml==6.0.3
+ + qwen-mm==0.1.0 (from file:///var/folders/4k/33n4pf5d33z_vd4yk3phjpxc0000gn/T/qwen-mm-python-binding.VyxDfa/dist/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl)
+ + tqdm==4.70.1
+ + typing-extensions==4.16.0
+qwen-mm installed pretrained-construction tests passed
+qwen-mm installed documentation examples passed
+qwen-mm installed media-source tests passed
+qwen-mm installed usability tests passed
+..
+----------------------------------------------------------------------
+Ran 2 tests in 21.612s
+
+OK
+qwen-mm installed binding tests passed

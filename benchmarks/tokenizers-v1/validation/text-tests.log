@@ -1,0 +1,23 @@
+    Blocking waiting for file lock on build directory
+   Compiling qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+    Finished `release` profile [optimized] target(s) in 14.36s
+     Running unittests src/lib.rs (target/release/deps/qwen_mm_core-ffd402438f9e1641)
+
+running 15 tests
+test text::tests::ordered_json_matches_python_tojson_spacing_and_order ... ok
+test text::tests::chat_smoke_rendering_is_always_on_for_both_profiles ... ok
+test text::tests::qwen35_reasoning_extraction_and_thinking_rendering_are_always_on ... ok
+test text::tests::tool_calls_consecutive_responses_and_reasoning_render_exactly ... ok
+test text::tests::tools_are_rendered_without_jinja_or_python ... ok
+test text::tests::changed_or_missing_assets_are_profile_mismatches ... ok
+test text::tests::visual_expansion_and_literal_placeholder_errors_are_always_on ... ok
+test text::tests::literal_visual_tokens_and_plan_mismatches_are_rejected ... ok
+test text::tests::rendered_token_limits_fail_with_the_stable_category ... ok
+test text::tests::multimodal_smoke_matches_render_expansion_ids_and_ranges ... ok
+test text::tests::right_padding_and_masks_use_profile_ids ... ok
+test text::tests::qwen35_extracts_reasoning_and_honors_thinking_toggle_exactly ... ok
+test text::tests::normalized_unicode_preserves_image_and_video_token_ranges ... ok
+test text::tests::interleaved_image_video_expansion_matches_both_live_oracles ... ok
+test text::tests::text_smoke_matches_both_committed_goldens ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 110 filtered out; finished in 1.28s

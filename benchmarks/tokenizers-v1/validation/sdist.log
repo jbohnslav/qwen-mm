@@ -1,0 +1,13 @@
+🍹 Building a mixed python/rust project
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+From `cargo package --list --allow-dirty --manifest-path /Users/jim/code/qwen-mm/crates/qwen-mm-core/Cargo.toml`:
+warning: manifest has no documentation, homepage or repository
+  |
+  = note: see https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info
+From `cargo package --list --allow-dirty --manifest-path /Users/jim/code/qwen-mm/crates/qwen-mm-python/Cargo.toml`:
+warning: manifest has no documentation, homepage or repository
+  |
+  = note: see https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info
+📦 Including files matching "vendor/tk-serialize/**/*"
+📦 Built source distribution to /private/tmp/qwen-tokenizers-sdist/qwen_mm-0.1.0.tar.gz

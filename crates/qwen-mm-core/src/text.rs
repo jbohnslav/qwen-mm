@@ -7,7 +7,10 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
 };
 use sha2::{Digest, Sha256};
-use tokenizers::Tokenizer;
+use tokenizers::{
+    normalizers::unicode::NFC,
+    pipeline::{EncodeOptions, Normalizer, PipelineTokenizer},
+};
 
 use crate::{
     error::{ErrorCategory, QwenError, Result},
@@ -119,7 +122,8 @@ pub struct PreparedTextBatch {
 /// A hash-validated, profile-bound tokenizer and chat renderer.
 pub struct TextProcessor {
     profile: Profile,
-    tokenizer: Tokenizer,
+    tokenizer: PipelineTokenizer,
+    token_byte_lengths: Vec<usize>,
 }
 
 pub(crate) struct SingleTextPlan {
@@ -200,16 +204,22 @@ impl TextProcessor {
         validate_tokenizer_config(profile, &directory.join("tokenizer_config.json"))?;
 
         let tokenizer_path = directory.join("tokenizer.json");
-        let tokenizer = Tokenizer::from_file(&tokenizer_path).map_err(|_| {
+        let canonical = tokenizers::canonicalize_file(&tokenizer_path).map_err(|_| {
+            profile_error("pinned tokenizer asset could not be canonicalized")
+                .with_context("asset", "tokenizer.json")
+        })?;
+        let tokenizer = tk_serialize::from_json(&canonical).map_err(|_| {
             profile_error("pinned tokenizer asset could not be parsed")
                 .with_context("asset", "tokenizer.json")
                 .with_context("profile", profile.alias.as_str())
         })?;
         validate_tokenizer_semantics(profile, &tokenizer)?;
+        let token_byte_lengths = token_byte_lengths(&tokenizer_path)?;
 
         Ok(Self {
             profile: profile.clone(),
             tokenizer,
+            token_byte_lengths,
         })
     }
 
@@ -421,6 +431,7 @@ impl TextProcessor {
                 })?;
                 let replacements = Self::locate_replacement_tokens(
                     &token_row.offsets,
+                    &expanded_prompt,
                     replacements,
                     request_index,
                 )?;
@@ -573,8 +584,12 @@ impl TextProcessor {
         let mut prepared_requests = Vec::with_capacity(rows);
 
         for (row_index, (row, request)) in token_rows.into_iter().zip(pending).enumerate() {
-            let replacements =
-                Self::locate_replacement_tokens(&row.offsets, request.replacements, row_index)?;
+            let replacements = Self::locate_replacement_tokens(
+                &row.offsets,
+                &request.expanded_prompt,
+                request.replacements,
+                row_index,
+            )?;
             let ids = row.ids;
 
             for &id in &ids {
@@ -610,12 +625,37 @@ impl TextProcessor {
 
     fn locate_replacement_tokens(
         offsets: &[(usize, usize)],
+        expanded_prompt: &str,
         pending: Vec<PendingReplacement>,
         request_index: usize,
     ) -> Result<Vec<TextReplacement>> {
         let mut replacements = Vec::with_capacity(pending.len());
         let mut token_cursor = 0;
-        for replacement in pending {
+        let mut original_cursor = 0;
+        let mut normalized_cursor = 0;
+        for mut replacement in pending {
+            // v1 emits IDs without offsets. Our pinned Qwen assets use NFC and byte-level
+            // BPE, so byte lengths locate spans in normalized text. Visual boundaries
+            // are ASCII and cannot split a Unicode normalization sequence.
+            let original_end = replacement.expanded_byte_end;
+            let gap_length = NFC
+                .normalize(
+                    &expanded_prompt[original_cursor..replacement.expanded_byte_start],
+                    0,
+                )
+                .map_err(|_| invariant("NFC normalization failed"))?
+                .len();
+            let span_length = NFC
+                .normalize(
+                    &expanded_prompt[replacement.expanded_byte_start..original_end],
+                    0,
+                )
+                .map_err(|_| invariant("NFC normalization failed"))?
+                .len();
+            replacement.expanded_byte_start = normalized_cursor + gap_length;
+            replacement.expanded_byte_end = replacement.expanded_byte_start + span_length;
+            original_cursor = original_end;
+            normalized_cursor = replacement.expanded_byte_end;
             let start = offsets
                 .iter()
                 .enumerate()
@@ -664,17 +704,43 @@ impl TextProcessor {
         expanded_prompt: &str,
         request_index: usize,
     ) -> Result<EncodedTokenRow> {
-        let encoding = self.tokenizer.encode(expanded_prompt, true).map_err(|_| {
-            QwenError::new(
-                ErrorCategory::InternalInvariant,
-                "pinned tokenizer failed to encode a validated prompt",
-            )
-            .with_context("request_index", request_index)
-        })?;
-        Ok(EncodedTokenRow {
-            ids: encoding.get_ids().to_vec(),
-            offsets: encoding.get_offsets().to_vec(),
-        })
+        let mut tokens = Vec::new();
+        self.tokenizer
+            .encode_into(expanded_prompt, &EncodeOptions::default(), &mut tokens)
+            .map_err(|_| {
+                QwenError::new(
+                    ErrorCategory::InternalInvariant,
+                    "pinned tokenizer failed to encode a validated prompt",
+                )
+                .with_context("request_index", request_index)
+            })?;
+        let ids: Vec<u32> = tokens.into_iter().map(u32::from).collect();
+        let mut end = 0;
+        let offsets = ids
+            .iter()
+            .map(|&id| {
+                let length = self
+                    .token_byte_lengths
+                    .get(id as usize)
+                    .copied()
+                    .filter(|&length| length > 0)
+                    .ok_or_else(|| invariant("encoded token has no byte length"))?;
+                let start = end;
+                end += length;
+                Ok((start, end))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        if end
+            != NFC
+                .normalize(expanded_prompt, 0)
+                .map_err(|_| invariant("NFC normalization failed"))?
+                .len()
+        {
+            return Err(invariant(
+                "encoded token lengths do not cover the normalized prompt",
+            ));
+        }
+        Ok(EncodedTokenRow { ids, offsets })
     }
 }
 
@@ -843,7 +909,43 @@ fn validate_tokenizer_config(profile: &Profile, path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn validate_tokenizer_semantics(profile: &Profile, tokenizer: &Tokenizer) -> Result<()> {
+/// Recover decoded byte lengths from the hash-validated, legacy byte-level vocabulary.
+/// Every base-vocabulary character represents one byte, including partial UTF-8 tokens;
+/// added tokens instead contain their literal UTF-8 text. Never decode individual tokens
+/// through a lossy UTF-8 decoder when deriving these lengths.
+fn token_byte_lengths(path: &Path) -> Result<Vec<usize>> {
+    let value: serde_json::Value = serde_json::from_slice(
+        &fs::read(path).map_err(|_| profile_error("tokenizer vocabulary could not be read"))?,
+    )
+    .map_err(|_| profile_error("tokenizer vocabulary could not be parsed"))?;
+    let vocab = value["model"]["vocab"]
+        .as_object()
+        .ok_or_else(|| profile_error("tokenizer has no byte-level vocabulary"))?;
+    let mut lengths = Vec::new();
+    let mut insert = |id: &serde_json::Value, length| -> Result<()> {
+        let id = id
+            .as_u64()
+            .and_then(|id| usize::try_from(id).ok())
+            .ok_or_else(|| profile_error("invalid tokenizer vocabulary ID"))?;
+        lengths.resize(lengths.len().max(id + 1), 0);
+        lengths[id] = length;
+        Ok(())
+    };
+    for (token, id) in vocab {
+        insert(id, token.chars().count())?;
+    }
+    if let Some(added) = value["added_tokens"].as_array() {
+        for token in added {
+            let content = token["content"]
+                .as_str()
+                .ok_or_else(|| profile_error("invalid added token"))?;
+            insert(&token["id"], content.len())?;
+        }
+    }
+    Ok(lengths)
+}
+
+fn validate_tokenizer_semantics(profile: &Profile, tokenizer: &PipelineTokenizer) -> Result<()> {
     let expected = [
         ("<|endoftext|>", profile.tokenizer.pad_token_id),
         ("<|im_end|>", profile.tokenizer.eos_token_id),
@@ -853,7 +955,11 @@ fn validate_tokenizer_semantics(profile: &Profile, tokenizer: &Tokenizer) -> Res
         (VISION_END_TOKEN, profile.tokenizer.vision_end_token_id),
     ];
     for (token, expected_id) in expected {
-        if tokenizer.token_to_id(token).map(i64::from) != Some(expected_id) {
+        let mut encoded = Vec::new();
+        tokenizer
+            .encode_into(token, &EncodeOptions::default(), &mut encoded)
+            .map_err(|_| profile_error("special token could not be encoded"))?;
+        if encoded.len() != 1 || i64::from(encoded[0].id()) != expected_id {
             return Err(
                 profile_error("tokenizer special-token identity does not match profile")
                     .with_context("profile", profile.alias.as_str())
@@ -1603,6 +1709,8 @@ mod tests {
         path::{Path, PathBuf},
     };
 
+    use tokenizers::{normalizers::unicode::NFC, pipeline::Normalizer};
+
     use super::{
         IMAGE_TOKEN, PlannedTextRequest, TextProcessor, VisualExpansion, VisualModality,
         expand_visuals, parse_ordered_json, render_chat,
@@ -2089,6 +2197,58 @@ mod tests {
                     .count(),
                 4
             );
+        }
+    }
+
+    #[test]
+    #[ignore = "requires the hash-pinned local model snapshots under reference/.cache"]
+    fn normalized_unicode_preserves_image_and_video_token_ranges() {
+        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+            let processor = processor(alias);
+            let rendered = "Cafe\u{301} 👩🏽‍💻 中文<|image_pad|> A\u{30a}<|video_pad|> fin";
+            let timestamps = [0.0, 1.5];
+            let visuals = [
+                VisualExpansion::Image {
+                    input_index: 0,
+                    grid_thw: [1, 4, 4],
+                },
+                VisualExpansion::Video {
+                    input_index: 0,
+                    grid_thw: [2, 4, 4],
+                    timestamps: &timestamps,
+                },
+            ];
+            let (expanded, pending) =
+                expand_visuals(processor.profile(), rendered, &visuals, 0).expect("expand");
+            let expected: Vec<_> = pending
+                .iter()
+                .map(|span| expanded[span.expanded_byte_start..span.expanded_byte_end].to_owned())
+                .collect();
+            let row = processor
+                .encode_prompt_once(&expanded, 0)
+                .expect("encode Unicode");
+            let normalized = NFC.normalize(&expanded, 0).expect("NFC");
+            assert_ne!(expanded, normalized);
+            assert_eq!(
+                row.ids,
+                processor
+                    .encode_prompt_once(&normalized, 0)
+                    .expect("encode NFC")
+                    .ids
+            );
+            let spans =
+                TextProcessor::locate_replacement_tokens(&row.offsets, &expanded, pending, 0)
+                    .expect("locate normalized spans");
+            for (span, expected) in spans.iter().zip(expected) {
+                let start = usize::try_from(span.expanded_tokens.start).expect("start");
+                let end = usize::try_from(span.expanded_tokens.end).expect("end");
+                assert_eq!(
+                    processor
+                        .decode(&row.ids[start..end], false)
+                        .expect("decode span"),
+                    expected
+                );
+            }
         }
     }
 

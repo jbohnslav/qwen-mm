@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/jim/code/qwen-mm/reference/src/qwen_mm_reference/phase_c_overlay_v2.py", line 993, in <module>
+    main()
+  File "/Users/jim/code/qwen-mm/reference/src/qwen_mm_reference/phase_c_overlay_v2.py", line 981, in main
+    report = build_overlay(
+             ^^^^^^^^^^^^^^
+  File "/Users/jim/code/qwen-mm/reference/src/qwen_mm_reference/phase_c_overlay_v2.py", line 684, in build_overlay
+    validate_overlay(report, wheel_path=wheel_path, evidence_root=capture_evidence_root)
+  File "/Users/jim/code/qwen-mm/reference/src/qwen_mm_reference/phase_c_overlay_v2.py", line 768, in validate_overlay
+    raise ValueError("production delta exceeds the resize-v2 overlay scope")
+ValueError: production delta exceeds the resize-v2 overlay scope

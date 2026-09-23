@@ -45,6 +45,7 @@ features = ["extension-module"]
 manifest-path = "crates/qwen-mm-python/Cargo.toml"
 module-name = "qwen_mm._native"
 python-source = "crates/qwen-mm-python/python"
+include = [{ path = "vendor/tk-serialize/**/*", format = "sdist" }]
 
 [tool.ruff]
 target-version = "py311"

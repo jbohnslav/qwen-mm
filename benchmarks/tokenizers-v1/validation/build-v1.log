@@ -1,0 +1,14 @@
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling pyo3-ffi v0.29.0
+   Compiling sha2-asm v0.6.4
+   Compiling pyo3 v0.29.0
+   Compiling sha2 v0.10.9
+   Compiling numpy v0.29.0
+   Compiling qwen-mm-core v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-core)
+   Compiling qwen-mm-python v0.1.0 (/Users/jim/code/qwen-mm/crates/qwen-mm-python)
+    Finished `release` profile [optimized] target(s) in 4.04s
+📦 Built wheel for abi3 Python ≥ 3.11 to /tmp/qwen-tokenizers-wheels/v1/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl

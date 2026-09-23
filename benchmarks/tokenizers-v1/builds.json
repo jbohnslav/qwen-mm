@@ -1,0 +1,17 @@
+{
+  "host": "Apple M4, 24 GiB RAM, macOS arm64",
+  "baseline_commit": "ac80172760d1a61cfc2bc3f34783039472236964",
+  "baseline_rust_tokenizers": "0.22.2",
+  "candidate_rust_tokenizers": "1.0.0-rc.2",
+  "candidate_reader": "tk-serialize 0.1.0-rc.2 + local regex initialization patch",
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "candidate_files_sha256": {
+    "Cargo.toml": "179fa69041a6e4577b470436a13735a6f35af228d6fe8fc35f58028ce75d8f00",
+    "Cargo.lock": "18ecf8cc80203c71b93744c95377591d56c9e847f10e25cb477a5bd74a28f47e",
+    "crates/qwen-mm-core/Cargo.toml": "14db1fcac3986b33f50337a4106ccf9e05d32f74d6a67280590a54d391ae4b5d",
+    "crates/qwen-mm-core/src/text.rs": "a74ce0340b2d4a2efa68c160ab82e1c78507ed5f0ca7a8f6e7c7b7921330a6ca",
+    "vendor/tk-serialize/src/from_json/pre_tokenizers.rs": "861df765590135c124e708bf5050480a6eead01e49c45814551a3e9b96a35c3e",
+    "pyproject.toml": "84590466c41a1c8e44e85ac5fe3c327cd7afbd36e893c5faa5890ad773beb0aa"
+  },
+  "reference_python_tokenizers": "0.22.2 (unchanged official oracle)"
+}

@@ -1,0 +1,13 @@
+{
+  "rust_check": "passed",
+  "local_asset_text_tests": 15,
+  "python_binding_suites": "passed",
+  "lint": "passed",
+  "paired_reports_validated_against_measured_wheels": true,
+  "exact_before_after_output_pairs": 16,
+  "phase_b_case_reports_identical_before_after": 10,
+  "phase_b_legacy_pixel_failures": "unchanged from baseline",
+  "resize_only_overlay": "rejects tokenizer changes by design; not a release certification",
+  "sdist_patched_reader_present": true,
+  "sdist_locked_offline_cargo_metadata": "passed"
+}

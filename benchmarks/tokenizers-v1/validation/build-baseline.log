@@ -1,0 +1,15 @@
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/jim/code/qwen-mm/.venv/bin/python
+🔗 Found pyo3 bindings with abi3-py3.11 support
+📡 Using build options features, bindings from pyproject.toml
+💻 Using `MACOSX_DEPLOYMENT_TARGET=11.0` for aarch64-apple-darwin by default
+   Compiling pyo3-ffi v0.29.0
+   Compiling onig_sys v69.9.3
+   Compiling pyo3 v0.29.0
+   Compiling numpy v0.29.0
+   Compiling onig v6.5.3
+   Compiling tokenizers v0.22.2
+   Compiling qwen-mm-core v0.1.0 (/private/tmp/qwen-mm-tokenizers-baseline/crates/qwen-mm-core)
+   Compiling qwen-mm-python v0.1.0 (/private/tmp/qwen-mm-tokenizers-baseline/crates/qwen-mm-python)
+    Finished `release` profile [optimized] target(s) in 11.20s
+📦 Built wheel for abi3 Python ≥ 3.11 to /tmp/qwen-tokenizers-wheels/baseline/qwen_mm-0.1.0-cp311-abi3-macosx_11_0_arm64.whl

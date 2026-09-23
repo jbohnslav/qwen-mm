@@ -1,0 +1,4 @@
+./scripts/with-cargo.sh uv run --locked ruff check .
+All checks passed!
+./scripts/with-cargo.sh uv run --locked ruff format --check .
+152 files already formatted
