@@ -99,7 +99,7 @@ phase-b-conformance-regenerate:
 	$(MAKE) phase-b-conformance
 
 reference-smoke:
-	$(UV_CMD) sync --locked --inexact --package qwen-mm-reference
+	$(UV_CMD) sync --locked --inexact --all-packages
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.fixtures verify
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m unittest discover -s reference/tests
 	$(UV_CMD) run --locked --no-sync --package qwen-mm-reference python -m qwen_mm_reference.golden validate reference/goldens/v1
