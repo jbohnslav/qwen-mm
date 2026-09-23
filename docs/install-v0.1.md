@@ -1,8 +1,8 @@
 # Install and support: v0.1.0
 
-This candidate is not yet published. Obtain the native wheel and matching
-`manifest.json` from the candidate bundle described in
-[the release procedure](releasing-v0.1.md). Verify the wheel's SHA-256 against
+Download the native wheel, platform manifest, and `SHA256SUMS` from
+[the v0.1.0 GitHub release](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.1.0).
+PyPI publication is pending trusted-publisher account setup. Verify the wheel's SHA-256 against
 `artifact.sha256` before installing into a fresh environment:
 
 ```sh
@@ -11,15 +11,14 @@ uv pip install --python .venv/bin/python /path/to/qwen_mm-0.1.0-cp311-abi3-PLATF
 .venv/bin/python -c 'from qwen_mm import Processor; print(Processor.supported_profiles())'
 ```
 
-Use the actual wheel filename in place of `PLATFORM`. Once the release is
-approved and published, use `uv pip install --python .venv/bin/python
+Use the actual wheel filename in place of `PLATFORM`. After PyPI publication, use `uv pip install --python .venv/bin/python
 qwen-mm==0.1.0` or `python3.11 -m pip install qwen-mm==0.1.0`.
 
 | Dimension | v0.1 contract |
 | --- | --- |
 | Python | CPython 3.11 only (`>=3.11,<3.12`); the `abi3` filename does not extend this support claim |
 | macOS | Native Apple Silicon ARM64; wheel deployment floor 11.0; exercised on the macOS version recorded in the manifest |
-| Linux | Native x86_64 with glibc; required glibc floor is encoded in the audited `manylinux` filename; tested Debian 12/glibc 2.36 |
+| Linux | Native x86_64 with glibc; required glibc floor is encoded in the audited `manylinux` filename; release verified on Ubuntu 24.04; earlier native evidence used Debian 12/glibc 2.36 |
 | Dependencies | `numpy>=2.3.5,<3` (reference lock: 2.4.6; vLLM environment: 2.3.5), `huggingface-hub==1.26.0`, and their resolved transitive dependencies |
 | Optional interoperability | Torch must be installed separately for `return_tensors="pt"`; reference tests use the versions in `uv.lock` |
 | Qwen3 | `Qwen/Qwen3-VL-8B-Instruct`, revision `0c351dd01ed87e9c1b53cbc748cba10e6187ff3b` |

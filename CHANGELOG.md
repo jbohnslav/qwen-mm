@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 — release candidate (unreleased)
+## 0.1.0 — 2026-09-23 (GitHub release; PyPI pending)
 
-First Python release candidate for CPU text and still-image preprocessing with
+First Python release for CPU text and still-image preprocessing with
 `Qwen/Qwen3-VL-8B-Instruct` and `Qwen/Qwen3.5-9B`, at the immutable revisions
 listed in the [support matrix](docs/install-v0.1.md).
 

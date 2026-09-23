@@ -72,9 +72,9 @@ The optional vLLM plugin is not part of the initial PyPI publication: its pinned
 vLLM dependency needs a security upgrade. Installing core `qwen-mm` does not install vLLM.
 
 qwen-mm is public on [GitHub](https://github.com/jbohnslav/qwen-mm).
-Version 0.1.0 is undergoing native release verification before PyPI publication. It
-supports CPython 3.11 on native macOS ARM64 and Linux x86_64 with glibc.
-Install the matching candidate wheel from the release artifact bundle:
+Version 0.1.0 is available from [GitHub Releases](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.1.0);
+PyPI publication is pending account setup. It supports CPython 3.11 on native
+macOS ARM64 and Linux x86_64 with glibc. Download and install the matching wheel:
 
 ```shell
 python3.11 -m pip install /path/to/qwen_mm-0.1.0-cp311-abi3-<platform>.whl
