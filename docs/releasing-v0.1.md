@@ -84,7 +84,8 @@ The v0.1 artifact makes no new performance claim. See
 
 `ci.yml` runs repository hooks, Rust tests, Python smoke checks, and installed
 Rosetta examples on pushes and pull requests. `release-candidate.yml` is a manual
-and reusable workflow that runs the complete native checks above. Its Linux job
+and reusable workflow that runs the complete native checks above. It also runs
+on master when release workflows or publishing scripts change. Its Linux job
 also runs the installed vLLM verification. Artifacts are retained for 30 days.
 
 Before the first upload, register a pending PyPI trusted publisher for each of

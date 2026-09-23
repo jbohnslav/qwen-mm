@@ -1,6 +1,13 @@
 name: Release candidate (no publishing)
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/release*.yml"
+      - "scripts/release*.py"
+      - "scripts/assemble_release.py"
+      - "scripts/verify_published.py"
   workflow_call:
   workflow_dispatch:
 
