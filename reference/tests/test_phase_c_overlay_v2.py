@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from qwen_mm_reference import phase_c_overlay_v2 as overlay
+from qwen_mm_reference import resize_quality_v2
 from qwen_mm_reference.benchmark_v2 import evaluate_image_release_gate
 from qwen_mm_reference.phase_c_overlay_v2 import REPORT_PATH, repository_root, validate_overlay
 
@@ -17,14 +19,40 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
     def setUp(self) -> None:
         self.report_path = repository_root() / REPORT_PATH
         self.report = json.loads(self.report_path.read_text(encoding="utf-8"))
+        # This report certifies its recorded resize-only revision, not today's
+        # tokenizer/dependency tree. Materialize its source records while keeping
+        # the real Git history and hash-authenticated archived evidence available.
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.fixture_root = Path(temporary.name)
+        root = repository_root()
+        for name in (".git", "reference", "docs", "fixtures"):
+            (self.fixture_root / name).symlink_to(root / name)
+        current = self.report["current_candidate"]
+        for key in ("backend_source", "dependency_lock"):
+            record = current[key]
+            path = self.fixture_root / record["path"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(
+                subprocess.check_output(
+                    ["git", "show", f"{current['revision']}:{record['path']}"],
+                    cwd=root,
+                )
+            )
+        for patcher in (
+            mock.patch.object(overlay, "repository_root", return_value=self.fixture_root),
+            mock.patch.object(resize_quality_v2, "ROOT", self.fixture_root),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def validate(self, report: dict[str, object]) -> None:
         validate_overlay(report, evidence_root=self.report_path.parent.resolve())
 
-    def test_committed_overlay_is_current_and_passing(self) -> None:
+    def test_archived_overlay_is_authentic_and_passing(self) -> None:
         self.validate(self.report)
 
-    def test_current_overlay_satisfies_the_benchmark_correctness_gate(self) -> None:
+    def test_archived_overlay_satisfies_the_gate_for_its_recorded_runtime(self) -> None:
         runtime = self.report["current_candidate"]["capture"]["runtime_identity"]
         eligibility = evaluate_image_release_gate(
             mode="smoke",
@@ -38,6 +66,12 @@ class PhaseCOverlayV2Tests(unittest.TestCase):
             eligibility["phase_c"]["evidence"]["schema_id"],
             "qwen-mm-phase-c-conformance-overlay-v2",
         )
+
+    def test_archived_overlay_rejects_different_dependency_lock(self) -> None:
+        path = self.fixture_root / self.report["current_candidate"]["dependency_lock"]["path"]
+        path.write_bytes(path.read_bytes() + b"\n# changed dependency tree\n")
+        with self.assertRaisesRegex(ValueError, "dependency lock authentication failed"):
+            self.validate(self.report)
 
     def test_cannot_substitute_old_report(self) -> None:
         hostile = copy.deepcopy(self.report)
