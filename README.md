@@ -1,5 +1,7 @@
 # qwen-mm
 
+[![CI](https://github.com/jbohnslav/qwen-mm/actions/workflows/ci.yml/badge.svg)](https://github.com/jbohnslav/qwen-mm/actions/workflows/ci.yml)
+
 **Qwen's image preprocessing pipeline, consolidated and accelerated in Rust.**
 
 `qwen-mm` puts the preprocessing best practices for pinned Qwen3-VL and Qwen3.5
