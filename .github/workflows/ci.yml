@@ -48,6 +48,13 @@ jobs:
         run: uv python install
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
+      - name: Fetch pinned tokenizer assets for processor tests
+        run: |
+          uv run --locked python - <<'PYTHON'
+          from qwen_mm import Processor
+          for profile in Processor.supported_profiles():
+              Processor.from_pretrained(profile["model_id"], cache_dir="reference/.cache/huggingface")
+          PYTHON
       - name: Run Rust correctness checks
         run: make rust-check
 
