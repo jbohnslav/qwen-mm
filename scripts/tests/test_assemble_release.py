@@ -54,7 +54,14 @@ class AssemblyTests(unittest.TestCase):
         }
 
     def run_assembly(self):
-        assemble(self.artifacts, self.output, commit="expected", version="0.1.0", tag="v0.1.0")
+        assemble(
+            self.artifacts,
+            self.output,
+            commit="expected",
+            version="0.1.0",
+            tag="v0.1.0",
+            include_plugin=True,
+        )
 
     def change_manifest(self, target, key, value):
         path = self.artifacts / target / "manifest.json"
@@ -66,6 +73,13 @@ class AssemblyTests(unittest.TestCase):
         self.run_assembly()
         self.assertEqual(len(list((self.output / "dist").glob("*.whl"))), 3)
         self.assertEqual(len((self.output / "SHA256SUMS").read_text().splitlines()), 3)
+
+    def test_core_publication_does_not_include_deferred_plugin(self):
+        (self.artifacts / "vllm" / "manifest.json").unlink()
+        assemble(self.artifacts, self.output, commit="expected", version="0.1.0", tag="v0.1.0")
+        wheels = list((self.output / "dist").glob("*.whl"))
+        self.assertEqual(len(wheels), 2)
+        self.assertFalse(any("vllm" in wheel.name for wheel in wheels))
 
     def test_rejects_tampered_wheel(self):
         next((self.artifacts / "Linux" / "build-1").glob("*.whl")).write_bytes(b"tampered")

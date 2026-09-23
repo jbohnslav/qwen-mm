@@ -9,7 +9,16 @@ on:
       - "scripts/assemble_release.py"
       - "scripts/verify_published.py"
   workflow_call:
+    inputs:
+      verify-vllm:
+        type: boolean
+        default: false
   workflow_dispatch:
+    inputs:
+      verify-vllm:
+        description: Verify the deferred optional plugin (does not publish it)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -43,7 +52,7 @@ jobs:
       - name: Build twice, verify, and rehearse publishing
         run: uv run --locked python scripts/release.py --output dist/${{ matrix.name }}
       - name: Verify packaged plugin and dependency compatibility
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && inputs.verify-vllm
         run: |
           uv run --locked python scripts/release_vllm.py \
             --core-wheel dist/${{ matrix.name }}/build-1/*.whl \

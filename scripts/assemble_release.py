@@ -26,7 +26,15 @@ def verified_file(root: Path, subdirectory: str, artifact: dict) -> Path:
     return path
 
 
-def assemble(artifacts: Path, output: Path, *, commit: str, version: str, tag: str) -> None:
+def assemble(
+    artifacts: Path,
+    output: Path,
+    *,
+    commit: str,
+    version: str,
+    tag: str,
+    include_plugin: bool = False,
+) -> None:
     if tag != f"v{version}":
         raise ValueError("release tag does not match package version")
     manifests = {}
@@ -42,8 +50,10 @@ def assemble(artifacts: Path, output: Path, *, commit: str, version: str, tag: s
             if plugin_check is not None:
                 raise ValueError("duplicate vLLM verification manifest")
             plugin_check = (path, data)
-    if set(manifests) != set(TARGETS.values()) or plugin_check is None:
-        raise ValueError("both native manifests and installed vLLM verification are required")
+    if set(manifests) != set(TARGETS.values()) or (include_plugin and plugin_check is None):
+        raise ValueError(
+            "both native manifests (and vLLM verification when publishing the plugin) are required"
+        )
     selected = []
     plugin_hashes = set()
     for target, (path, data) in manifests.items():
@@ -67,27 +77,29 @@ def assemble(artifacts: Path, output: Path, *, commit: str, version: str, tag: s
         if plugin.name != f"qwen_mm_vllm-{version}-py3-none-any.whl":
             raise ValueError("unexpected plugin wheel")
         plugin_hashes.add(data["plugin_artifact"]["sha256"])
-        if target == "linux-x86_64":
+        if include_plugin and target == "linux-x86_64":
             selected.append(plugin)
     if len(plugin_hashes) != 1:
         raise ValueError("plugin differs between hosts")
-    check_path, check = plugin_check
-    linux = manifests["linux-x86_64"][1]
-    if (
-        check["status"] != "passed"
-        or check["source"]["commit"] != commit
-        or check["core_artifact"] != linux["artifact"]
-        or check["plugin_artifact"] != linux["plugin_artifact"]
-    ):
-        raise ValueError("vLLM check is not bound to the selected wheels")
-    if not check.get("steps") or any(step["exit_code"] != 0 for step in check["steps"]):
-        raise ValueError("vLLM verification contains failed or missing steps")
+    if include_plugin:
+        check_path, check = plugin_check
+        linux = manifests["linux-x86_64"][1]
+        if (
+            check["status"] != "passed"
+            or check["source"]["commit"] != commit
+            or check["core_artifact"] != linux["artifact"]
+            or check["plugin_artifact"] != linux["plugin_artifact"]
+        ):
+            raise ValueError("vLLM check is not bound to the selected wheels")
+        if not check.get("steps") or any(step["exit_code"] != 0 for step in check["steps"]):
+            raise ValueError("vLLM verification contains failed or missing steps")
     (output / "dist").mkdir(parents=True, exist_ok=False)
     for source in selected:
         shutil.copyfile(source, output / "dist" / source.name)
     for target, (path, _) in manifests.items():
         shutil.copyfile(path, output / f"{target}-manifest.json")
-    shutil.copyfile(check_path, output / "vllm-manifest.json")
+    if include_plugin:
+        shutil.copyfile(check_path, output / "vllm-manifest.json")
     (output / "SHA256SUMS").write_text(
         "".join(
             f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n"
@@ -98,7 +110,7 @@ def assemble(artifacts: Path, output: Path, *, commit: str, version: str, tag: s
         f"qwen-mm {version}\n\nSource commit: `{commit}`.\n\n"
         "Apache-2.0. CPython 3.11 on native macOS ARM64 and manylinux x86_64. "
         "Supports the pinned Qwen3-VL and Qwen3.5 text/still-image profiles. "
-        "The optional qwen-mm-vllm wheel targets the documented pinned Linux vLLM stack.\n\n"
+        "The optional vLLM plugin is deferred pending its dependency security upgrade.\n\n"
         "Includes tokenizers 1.0.0-rc.2 with the documented Qwen3.5 reader patch. "
         "Native release jobs built each wheel twice and verified installed APIs, "
         "ownership, examples, and current resize conformance. "

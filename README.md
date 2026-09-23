@@ -68,6 +68,9 @@ throughput has not been benchmarked.**
 
 ## Install
 
+The optional vLLM plugin is not part of the initial PyPI publication: its pinned
+vLLM dependency needs a security upgrade. Installing core `qwen-mm` does not install vLLM.
+
 qwen-mm is public on [GitHub](https://github.com/jbohnslav/qwen-mm).
 Version 0.1.0 is undergoing native release verification before PyPI publication. It
 supports CPython 3.11 on native macOS ARM64 and Linux x86_64 with glibc.

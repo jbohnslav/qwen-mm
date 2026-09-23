@@ -85,11 +85,11 @@ The v0.1 artifact makes no new performance claim. See
 `ci.yml` runs repository hooks, Rust tests, Python smoke checks, and installed
 Rosetta examples on pushes and pull requests. `release-candidate.yml` is a manual
 and reusable workflow that runs the complete native checks above. It also runs
-on master when release workflows or publishing scripts change. Its Linux job
-also runs the installed vLLM verification. Artifacts are retained for 30 days.
+on master when release workflows or publishing scripts change. Its optional `verify-vllm` input
+also runs installed vLLM verification on Linux. Artifacts are retained for 30 days.
 
-Before the first upload, register a pending PyPI trusted publisher for each of
-`qwen-mm` and `qwen-mm-vllm` with these exact values:
+Before the first upload, register a pending PyPI trusted publisher for
+`qwen-mm` with these exact values:
 
 - GitHub owner: `jbohnslav`
 - Repository: `qwen-mm`
@@ -110,12 +110,15 @@ git push origin v0.1.0
 
 The tag triggers `release.yml`, which repeats native verification, checks manifest
 commit/version/status and wheel digests, and requires identical plugin wheels on
-both hosts. It selects two core wheels and one plugin wheel. The Linux vLLM check
-must refer to exactly those selected artifacts. A mismatched tag/version fails.
+both hosts. It selects two core wheels. The optional plugin is deferred pending its vLLM
+security upgrade (ticket `b270`) and is excluded from publication. The assembly
+helper retains an explicit plugin path for future revalidated releases; that path
+requires the installed Linux vLLM check to match the selected wheels.
+A mismatched tag/version fails.
 
 The workflow creates a GitHub release containing wheels, manifests, and SHA256SUMS,
 then publishes the wheels to PyPI using trusted publishing. Finally, both native
-platforms install the core package from PyPI and run its smoke test, and all three
+platforms install the core package from PyPI and run its smoke test, and both
 index artifact hashes are compared with the verified wheels. Manually dispatching
 `release.yml` on an ordinary branch verifies candidates without publishing.
 
