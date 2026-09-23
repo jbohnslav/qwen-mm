@@ -66,7 +66,8 @@ throughput has not been benchmarked.**
 
 ## Install
 
-qwen-mm 0.1.0 is a release candidate, awaiting approval and publication. It
+qwen-mm is public on [GitHub](https://github.com/jbohnslav/qwen-mm).
+Version 0.1.0 is undergoing native release verification before PyPI publication. It
 supports CPython 3.11 on native macOS ARM64 and Linux x86_64 with glibc.
 Install the matching candidate wheel from the release artifact bundle:
 

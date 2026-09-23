@@ -1,0 +1,15 @@
+qwen-mm
+Copyright 2026 qwen-mm contributors
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+This distribution includes third-party Rust components. Their copyright and
+license notices are reproduced in THIRD_PARTY_LICENSES.txt. Source locations,
+versions, and SPDX license expressions are listed with each component.
+
+The tk-serialize 0.1.0-rc.2 source from Hugging Face Tokenizers is modified to
+initialize the regex fallback for Qwen3.5. See vendor/tk-serialize/PATCH.md.
+
+Qwen model weights and downloaded processor/tokenizer assets are not included
+in this distribution and retain their own upstream licenses. This project is
+not affiliated with or endorsed by the Qwen or Hugging Face teams.

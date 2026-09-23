@@ -18,6 +18,11 @@ listed in the [support matrix](docs/install-v0.1.md).
   on Modal. See the [measurements and limitations](integrations/vllm/evidence/45e5/gpu-20260907/README.md).
 - Core NumPy requirement widened to `>=2.3.5,<3` for vLLM compatibility;
   standalone reference tests retain NumPy 2.4.6 and vLLM uses 2.3.5.
+- Default Rust tokenizer upgraded to tokenizers 1.0.0-rc.2, with the vendored
+  Qwen3.5 regex reader fix. Matched text benchmarks and memory tradeoffs are in
+  [the tokenizer report](benchmarks/tokenizers-v1/README.md).
+- Public GitHub CI, verified release wheels, and PyPI trusted-publishing automation;
+  distributions include Apache-2.0 and third-party license notices.
 - Native macOS ARM64 and Linux x86_64 wheels for CPython 3.11; Apache-2.0 license.
 
 The composed qwen-vl-utils default minimum is 4096 pixels. Direct Transformers

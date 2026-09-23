@@ -1,0 +1,7 @@
+{
+  "repository": "huggingface/tokenizers",
+  "revision": "7616272a1b0b580fb43e3a06701fd11db9a2706a",
+  "files": {
+    "LICENSE": "https://github.com/huggingface/tokenizers/blob/7616272a1b0b580fb43e3a06701fd11db9a2706a/LICENSE"
+  }
+}

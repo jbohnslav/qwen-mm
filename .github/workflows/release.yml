@@ -1,0 +1,108 @@
+name: Publish release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/release-candidate.yml
+
+  assemble:
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: release-candidate-*
+          path: candidate-artifacts
+      - name: Verify provenance and select publication artifacts
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: python3 scripts/assemble_release.py --artifacts candidate-artifacts --output publication
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: publication
+          path: publication/
+          if-no-files-found: error
+
+  github-release:
+    needs: assemble
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: publication
+          path: publication
+      - name: Publish verified GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            mkdir -p existing-release
+            gh release download "$RELEASE_TAG" --pattern SHA256SUMS --dir existing-release
+            cmp publication/SHA256SUMS existing-release/SHA256SUMS
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --title "qwen-mm $RELEASE_TAG" \
+              --notes-file publication/RELEASE_NOTES.md publication/dist/*.whl \
+              publication/SHA256SUMS publication/*manifest.json
+          fi
+
+  pypi:
+    needs: [assemble, github-release]
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/qwen-mm/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: publication
+          path: publication
+      - name: Publish to PyPI with trusted publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: publication/dist/
+          skip-existing: true
+
+  verify-install:
+    needs: pypi
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.29"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: publication
+          path: publication
+      - name: Verify index hashes and install from PyPI
+        run: |
+          uv python install 3.11
+          uv venv --python 3.11 /tmp/qwen-mm-published
+          uv pip install --python /tmp/qwen-mm-published/bin/python --only-binary=:all: \
+            --index-url https://pypi.org/simple 'qwen-mm==0.1.0'
+          /tmp/qwen-mm-published/bin/python crates/qwen-mm-python/tests/smoke.py
+          /tmp/qwen-mm-published/bin/python scripts/verify_published.py publication/dist

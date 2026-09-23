@@ -1,12 +1,10 @@
 # Reproduce and rehearse the v0.1.0 release
 
-This procedure prepares artifacts without publishing, tagging, or spending on
-benchmark compute. Product approval remains ticket `7544`; final release
-approval remains `57e6`. The candidate source commit and artifact hashes in the
-retained release manifests identify the bits to approve. A later evidence-only
-commit may record those manifests; it is not a replacement candidate source.
-Any implementation, metadata, runner, or release-document change requires a new
-candidate commit and a complete rerun on both platforms.
+The source repository is public at [jbohnslav/qwen-mm](https://github.com/jbohnslav/qwen-mm).
+The maintainer authorized initial publication on September 23, 2026 (ticket `769d`).
+GitHub Actions builds and verifies both native platforms before publishing; candidate
+manifests bind every wheel to its source commit. Changes to shipping source require
+fresh verification. No model weights or paid benchmark compute are needed.
 
 ## Native build and verification
 
@@ -82,55 +80,54 @@ original provenance. In particular the strict D4 MISS, legacy v1's unchanged
 The v0.1 artifact makes no new performance claim. See
 [the changelog](../CHANGELOG.md) and [support matrix](install-v0.1.md).
 
-## Publishing rehearsal and approval commands
+## GitHub Actions and PyPI
 
-The runner uses uv's built-in dry run against a closed loopback endpoint, which validates the upload plan
-without sending package files or requiring credentials. uv 0.11.29 rejects
-combining `--offline` with `publish`, even for a dry run; the loopback-only
-destination ensures a mistaken upload cannot reach a public index. Repeat it for both
-selected wheels (one core wheel per platform and one plugin wheel):
+`ci.yml` runs repository hooks, Rust tests, Python smoke checks, and installed
+Rosetta examples on pushes and pull requests. `release-candidate.yml` is a manual
+and reusable workflow that runs the complete native checks above. Its Linux job
+also runs the installed vLLM verification. Artifacts are retained for 30 days.
+
+Before the first upload, register a pending PyPI trusted publisher for each of
+`qwen-mm` and `qwen-mm-vllm` with these exact values:
+
+- GitHub owner: `jbohnslav`
+- Repository: `qwen-mm`
+- Workflow: `release.yml`
+- Environment: `pypi`
+
+Create the corresponding GitHub environment. Publishing uses short-lived OIDC
+credentials; no stored PyPI API token is required. The publishing job alone has
+`id-token: write`. The GitHub release job alone has `contents: write`.
+
+Run the release-candidate workflow on the intended commit and inspect both native
+jobs before tagging. Then publish the same verified commit:
 
 ```sh
-uv publish --dry-run --no-config --trusted-publishing never \
-  --publish-url http://127.0.0.1:9/legacy/ \
-  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl \
-  dist/linux-x86_64/plugin-build-1/*.whl
-```
-
-This does not establish ownership of the PyPI project name, validate a token,
-or test a live index. No remote is configured in this checkout; configure the
-intended Git remote and package-index account before the actual cut.
-
-Only after `7544`, `e8d1`, and the release-epic gates are satisfied and Jim
-approves the recorded candidate, verify hashes against both manifests, then
-execute the following with `CANDIDATE_COMMIT` set to their common source commit:
-
-```sh
-kd status --check
-git tag -a v0.1.0 "$CANDIDATE_COMMIT" -m 'qwen-mm 0.1.0'
+git tag -a v0.1.0 CANDIDATE_COMMIT -m 'qwen-mm 0.1.0'
 git push origin v0.1.0
-uv publish --no-config --trusted-publishing never \
-  dist/macos-arm64/build-1/*.whl dist/linux-x86_64/build-1/*.whl \
-  dist/linux-x86_64/plugin-build-1/*.whl
 ```
 
-Supply the PyPI token through `UV_PUBLISH_TOKEN` in the environment or use a
-separately configured trusted publisher; never put credentials in evidence.
-After publication, verify a new CPython 3.11 install of `qwen-mm==0.1.0` on both
-native platforms and execute the public smoke/examples again. Also install
-`qwen-mm-vllm==0.1.0` in a fresh supported Linux server environment and verify
-its entry points and dependency compatibility.
+The tag triggers `release.yml`, which repeats native verification, checks manifest
+commit/version/status and wheel digests, and requires identical plugin wheels on
+both hosts. It selects two core wheels and one plugin wheel. The Linux vLLM check
+must refer to exactly those selected artifacts. A mismatched tag/version fails.
 
-Before upload, rollback is simply discarding the candidate bundle and deleting
-an unpushed local tag with `git tag -d v0.1.0`. After upload, treat the release
-as immutable: use the PyPI project's version controls to yank a defective
-release with a reason, communicate the issue, and issue a corrected version.
-Do not delete and try to reuse the same version or silently move a public tag.
-If only one platform upload succeeds, preserve its hash and upload the already
-verified missing wheel after diagnosing the error. Rehearsal does not upload,
-so it needs no remote rollback.
+The workflow creates a GitHub release containing wheels, manifests, and SHA256SUMS,
+then publishes the wheels to PyPI using trusted publishing. Finally, both native
+platforms install the core package from PyPI and run its smoke test, and all three
+index artifact hashes are compared with the verified wheels. Manually dispatching
+`release.yml` on an ordinary branch verifies candidates without publishing.
 
-The manual `release-candidate.yml` workflow mirrors the native runner and
-retains artifacts. It cannot publish. Its Linux runner may require a newer
-glibc floor than the Debian 12 local build; its filename and manifest are
-authoritative for that bundle, and it must be separately approved if selected.
+The release runner also rehearses uploads with `uv publish --dry-run` against a
+closed loopback endpoint. This validates package upload plans without credentials
+or public writes; it does not prove PyPI publisher configuration.
+
+## Failed or partial publication
+
+Before upload, discard failed candidates and correct the source. Do not move an
+already public tag or replace an uploaded version. For a defective published
+release, yank it with a reason and issue a corrected version. If publication is
+partially complete, rerun using the same verified artifacts: existing GitHub
+checksums must match, and PyPI skips existing files. The final index hash check
+rejects mismatches. A rebuild with different hashes needs investigation, not a
+checksum override. The native wheel filename declares its actual glibc floor.

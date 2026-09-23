@@ -27,6 +27,10 @@ dependencies = [
 qwen_mm_serving_audit = "qwen_mm_vllm.audit:register_audit"
 qwen_mm_native_images = "qwen_mm_vllm.native:register_native"
 
+[project.urls]
+Repository = "https://github.com/jbohnslav/qwen-mm"
+Issues = "https://github.com/jbohnslav/qwen-mm/issues"
+
 [dependency-groups]
 dev = [
     "pytest>=8.4",

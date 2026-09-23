@@ -99,6 +99,9 @@ class ReleaseTests(unittest.TestCase):
                 "License-Expression: Apache-2.0\n"
                 f"Requires-Dist: {numpy}\nRequires-Dist: huggingface-hub==1.26.0\n",
             )
-            archive.writestr("qwen_mm-0.1.0.dist-info/licenses/LICENSE", "license")
+            for document in ("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.txt"):
+                archive.write(
+                    release.ROOT / document, f"qwen_mm-0.1.0.dist-info/licenses/{document}"
+                )
             for source in (release.ROOT / "crates/qwen-mm-python/python/qwen_mm").glob("*.py"):
                 archive.write(source, f"qwen_mm/{source.name}")

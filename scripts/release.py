@@ -58,7 +58,11 @@ def inspect_wheel(wheel: Path) -> dict:
             str(Requirement("numpy>=2.3.5,<3")),
             str(Requirement("huggingface-hub==1.26.0")),
         }
-        assert any(name.endswith("/licenses/LICENSE") for name in names)
+        for document in ("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.txt"):
+            assert (
+                archive.read(f"qwen_mm-0.1.0.dist-info/licenses/{document}")
+                == (ROOT / document).read_bytes()
+            )
         assert not any(".cache/" in name or ".kd/" in name for name in names)
         assert "linux_x86_64.whl" not in wheel.name or "manylinux" in wheel.name
         for path in (ROOT / "crates/qwen-mm-python/python/qwen_mm").glob("*.py"):
