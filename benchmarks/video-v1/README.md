@@ -6,6 +6,11 @@ TorchCodec witness use the same native binary and Python facades; their SHA-256
 values are recorded in each report. [validation.json](validation.json) ties those
 hashes to the local production wheel, source files and completed validation gates.
 
+The [v0.2.0 release](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0)
+includes native verification manifests and checksums. Both release jobs pass
+120 video checks; their artifacts are authenticated separately from the local
+timing and model witnesses below.
+
 ## Evidence
 
 | Report | What it establishes |
@@ -17,6 +22,7 @@ hashes to the local production wheel, source files and completed validation gate
 | [benchmark.json](benchmark.json) | Generated CPU preprocessing timings with output parity checked before timing. |
 | [consumer.json](consumer.json) | Eight Qwen3.5-0.8B CPU model-consumer cases using the 9B processor assets, including odd-frame video and mixed image/video input, with input, first-token-logit and generation comparisons. |
 | [rosetta.json](rosetta.json) | Executable published Rosetta recipes, with only placeholder paths, image URLs and cache locations bound to fixtures; every required recipe passed. This is a documentation recipe report. |
+| [public-install.json](public-install.json) | Downloaded public macOS wheel installed with its declared video extra and no Torch: six mixed/Pillow/real-MP4 calls pass on both profiles, plus package smoke and 13 source regressions. |
 | [validation.json](validation.json) | Local wheel/source provenance and the native, binding, scripts, installed-wheel, formatting and packaging gates. Remote CI and release results are tracked separately by their GitHub manifests. |
 
 The consumer and recipe reports identify their installed production wheel;

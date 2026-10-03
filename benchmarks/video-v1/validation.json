@@ -77,5 +77,19 @@
       "benchmark.py": "333ad8b2fa5ded6a75e30a9f8890a1874ce467b2181beffd850c2244214b7b22"
     },
     "execution": "linux/amd64 Docker emulation on macOS ARM64; rust:1.97.1-bookworm; Torch CPU AVX2"
+  },
+  "release_verification": {
+    "source_commit": "d9483f0fbc931130a19b208494b1d7a6bc812f15",
+    "release": "https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0",
+    "workflow": "https://github.com/jbohnslav/qwen-mm/actions/runs/37102276933",
+    "native_targets": [
+      "linux-x86_64",
+      "macos-arm64"
+    ],
+    "steps_passed_per_target": 31,
+    "video_checks_per_target": 120,
+    "public_checksums_verified": true,
+    "clean_public_install_report": "public-install.json",
+    "pypi": "invalid-publisher; account setup remains in existing ticket 769d; index checks skipped"
   }
 }

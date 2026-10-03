@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — video release candidate
+## 0.2.0 — 2026-10-03 (GitHub release; PyPI pending)
 
 - Video files/URLs/encoded buffers, Pillow frame lists, decoded NumPy/Torch
   clips, TorchCodec decoders/frame batches, and VL Utils prepared tuples.
@@ -13,8 +13,10 @@
 - Fresh-wheel generated-fixture comparisons and reproducible video benchmarks
   for both pinned profiles. See [video usage and scope](docs/video-v0.2.md).
 
-The vLLM plugin remains at its v0.1 still-image scope. Public release status and
-architecture-specific validation are reported with the shipping artifacts.
+[Verified Linux and macOS wheels](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0)
+are published with manifests and checksums; both native gates pass 120 video
+checks. PyPI publication awaits matching trusted-publisher setup. The vLLM
+plugin remains at its v0.1 still-image scope and is excluded.
 
 ## 0.1.0 — 2026-09-23 (GitHub release; PyPI pending)
 

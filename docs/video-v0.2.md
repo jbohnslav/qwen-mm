@@ -5,7 +5,10 @@ Both pinned Qwen3-VL and Qwen3.5 profiles produce `pixel_values_videos`,
 `video_grid_thw`, and timestamp-expanded chat tokens. Images and videos can
 appear together in any supported user/tool content list.
 
-Install the v0.2 wheel with its optional file/image dependencies:
+Download the matching CPython 3.11 wheel from the
+[v0.2.0 GitHub release](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0)
+for macOS ARM64 or Linux x86_64 (glibc 2.34+). PyPI publication is pending
+trusted-publisher setup. Install its optional file/image dependencies:
 
 ```shell
 python3.11 -m pip install '/path/to/qwen_mm-0.2.0-cp311-abi3-<platform>.whl[video]'
@@ -84,6 +87,27 @@ its frame is repeated for the temporal patch. Clip endpoints are inclusive in
 frame-index space. Decoded clips use `sample_fps`, `raw_fps`, or explicit
 metadata; file sampling options on a decoded clip raise an error.
 
+Direct file paths, URLs, and encoded video bytes share the 64 MiB per-item
+encoded-source ceiling and the 1 GiB batch ceiling. For a larger local file,
+pass a TorchCodec decoder object so qwen-mm retrieves a bounded selection
+without materializing the encoded source:
+
+```python
+from torchcodec.decoders import VideoDecoder
+
+video = VideoDecoder("long-inspection.mp4", num_ffmpeg_threads=4)
+prepared = processor.prepare(
+    [{"role": "user", "content": [
+        {"type": "video", "video": video, "nframes": 16},
+        {"type": "text", "text": "Summarize the inspection."},
+    ]}],
+    add_generation_prompt=True,
+    return_tensors="pt",
+)
+```
+
+Decoded frames and model outputs remain subject to their pixel/frame ceilings.
+
 Every video occurrence accepts `min_pixels`, `max_pixels`, `total_pixels`, and
 paired `resized_height`/`resized_width`. Pixel budgets are per frame, with the
 total budget used to derive the per-frame maximum. Defaults follow composed
@@ -106,8 +130,9 @@ atomically. File decode errors use `MediaDecodeError`; bad timing and geometry
 use `MediaGeometryError`; malformed options use `InvalidRequestError`.
 Remote sources share the existing encoded-byte budget and timeout behavior.
 PyAV converts only selected frames to RGB but decodes preceding frames
-sequentially. TorchCodec can retrieve sparse indices directly. Decoder threads
-and Rust worker threads use the processor's bounded `thread_budget`.
+sequentially. TorchCodec can retrieve sparse indices directly. Decoders created
+for file inputs and Rust worker threads use the processor's bounded `thread_budget`. Configure
+a caller-provided decoder's thread count when constructing it.
 
 Run `make video-test` to build a fresh production wheel and execute the
 generated-fixture oracle, including lossless MP4s, both profiles, mixed media,

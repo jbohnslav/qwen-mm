@@ -68,24 +68,27 @@ throughput has not been benchmarked.**
 
 ## Install
 
-The optional vLLM plugin is not part of the initial PyPI publication: its pinned
-vLLM dependency needs a security upgrade. Installing core `qwen-mm` does not install vLLM.
-
-qwen-mm is public on [GitHub](https://github.com/jbohnslav/qwen-mm).
-The previous still-image version 0.1.0 is available from [GitHub Releases](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.1.0);
-PyPI publication is pending account setup. It supports CPython 3.11 on native
-macOS ARM64 and Linux x86_64 with glibc. Download and install the matching wheel:
+qwen-mm **0.2.0** is available from [GitHub Releases](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0), with verified CPython 3.11 wheels for native macOS ARM64 and Linux x86_64 (glibc 2.34 or newer).
+Download the matching wheel and install its video dependencies:
 
 ```shell
-python3.11 -m pip install /path/to/qwen_mm-0.1.0-cp311-abi3-<platform>.whl
+python3.11 -m pip install '/path/to/qwen_mm-0.2.0-cp311-abi3-<platform>.whl[video]'
 ```
 
-Replace `<platform>` with the actual filename. After publication, the equivalent
-index install will be `python3.11 -m pip install qwen-mm==0.1.0`.
-Video development wheels use version **0.2.0**. Install the matching wheel with
-its `[video]` extra as shown in the [video guide](docs/video-v0.2.md).
-See the [v0.1 install and support guide](docs/install-v0.1.md),
-[release notes](CHANGELOG.md), and [release procedure](docs/releasing-v0.1.md).
+Replace `<platform>` with the actual filename. The `video` extra supplies PyAV
+and Pillow; install Torch separately for tensor input/output and a matching
+TorchCodec/FFmpeg environment for that decoder. See the [video guide](docs/video-v0.2.md)
+for Pillow lists, MP4 files, decoded clips, larger-file decoder inputs and mixed prompts.
+
+Both native release jobs passed all verification steps, including 120 video
+oracle checks each. Attached manifests and SHA256SUMS authenticate the wheels.
+PyPI publication is pending trusted-publisher account setup: its upload rejected
+an unmatched publisher, so install the GitHub wheel directly.
+
+The optional vLLM plugin retains its previous still-image scope and is excluded
+pending its dependency security upgrade. See the [release notes](CHANGELOG.md),
+[video verification and timings](benchmarks/video-v1/README.md), and
+[historical v0.1 support certification](docs/install-v0.1.md).
 
 ## Quickstart
 

@@ -1,0 +1,66 @@
+{
+  "schema_id": "qwen-mm-public-video-install-v1",
+  "scope": "macOS ARM64 clean public GitHub wheel installation with declared video extra and no Torch; cached processor assets, no model weights",
+  "source_commit": "d9483f0fbc931130a19b208494b1d7a6bc812f15",
+  "wheel": {
+    "name": "qwen_mm-0.2.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "sha256": "bd2083d08856b540d317f68aa43ac47a9b05e4101b36828612949f1ba6b33731"
+  },
+  "script_sha256": "879b917e0957812ea84b51fc8280ea8e5b834a96941003690b3b8d6e760627b7",
+  "package": "/tmp/qwen-mm-c910-public-install/lib/python3.11/site-packages/qwen_mm/__init__.py",
+  "versions": {
+    "qwen-mm": "0.2.0",
+    "numpy": "2.4.6",
+    "huggingface-hub": "1.26.0",
+    "av": "18.1.0",
+    "pillow": "12.3.0"
+  },
+  "torch_installed": false,
+  "cases": [
+    {
+      "profile": "Qwen3",
+      "case": "pillow_list",
+      "passed": true
+    },
+    {
+      "profile": "Qwen3",
+      "case": "mp4_auto_without_torch",
+      "passed": true
+    },
+    {
+      "profile": "Qwen3",
+      "case": "mp4_explicit_pyav",
+      "passed": true
+    },
+    {
+      "profile": "Qwen3.5",
+      "case": "pillow_list",
+      "passed": true
+    },
+    {
+      "profile": "Qwen3.5",
+      "case": "mp4_auto_without_torch",
+      "passed": true
+    },
+    {
+      "profile": "Qwen3.5",
+      "case": "mp4_explicit_pyav",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "additional_checks": {
+    "package_smoke": "passed",
+    "source_regressions": {
+      "passed": true,
+      "count": 13
+    }
+  },
+  "native_sha256": "376a7e157790c665cd0a03324583442a52e813dc33f0954c6a3f18bb2a7789ed",
+  "publication": {
+    "github_url": "https://github.com/jbohnslav/qwen-mm/releases/tag/v0.2.0",
+    "workflow": "https://github.com/jbohnslav/qwen-mm/actions/runs/37102276933",
+    "native_verification": "passed both platforms; 31 steps and 120 video checks each",
+    "pypi": "invalid-publisher; account setup pending; index install checks skipped"
+  }
+}
