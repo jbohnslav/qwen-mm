@@ -633,6 +633,8 @@ fn invariant(message: &'static str) -> QwenError {
 
 #[cfg(test)]
 mod tests {
+    use sha2::{Digest, Sha256};
+
     use super::{execute_video_plan, patchify_video_into, plan_video_rgb8, video_cache_key};
     use crate::{
         ErrorCategory, LimitOverrides, ProfileAlias, ProfileRegistry, ResourceLimits, Rgb8,
@@ -652,6 +654,96 @@ mod tests {
             resized_height: Some(height),
             resized_width: Some(width),
             ..VideoOptions::default()
+        }
+    }
+
+    #[test]
+    fn four_dimensional_clip_resize_matches_pinned_platform_rounding() {
+        // The official Torch 2.13.0 / TorchVision 0.28.0 four-dimensional
+        // CPU resize differs at four uint8 half-boundaries between ARM and
+        // x86. These independently captured hashes cover every prepared pixel.
+        let data = (0..4)
+            .map(|time| {
+                (0..177 * 259)
+                    .flat_map(|pixel| {
+                        let y = pixel / 259;
+                        let x = pixel % 259;
+                        let values = if y < 8 && x < 8 {
+                            [time * 31, 101, 233]
+                        } else {
+                            [
+                                (3 * x + y + time * 17) % 256,
+                                (x + 5 * y + time * 43) % 256,
+                                (7 * x + 2 * y + time * 79) % 256,
+                            ]
+                        };
+                        values.map(|value| u8::try_from(value).expect("RGB8"))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let mut source_hash = Sha256::new();
+        for frame in &data {
+            source_hash.update(frame);
+        }
+        assert_eq!(
+            format!("{:x}", source_hash.finalize()),
+            "b25e8b6db7e7252f2e3a6ddc40e75488e35ca020be8db782c80d5163e9b07847"
+        );
+        let frames = data
+            .iter()
+            .map(|data| Rgb8 {
+                data,
+                height: 177,
+                width: 259,
+                row_stride: 259 * 3,
+            })
+            .collect::<Vec<_>>();
+        let visual = visual();
+        let plan = plan_video_rgb8(
+            VideoInput {
+                frames: &frames,
+                ..VideoInput::default()
+            },
+            &visual,
+            fixed_size(96, 160),
+            ResourceLimits::default(),
+        )
+        .expect("clip plan");
+        assert_eq!(plan.geometry.video_grid_thw, [2, 6, 10]);
+        for parallel in [false, true] {
+            let video = execute_video_plan(plan.clone(), parallel).expect("clip resize");
+            let expected_blue = if cfg!(target_arch = "x86_64") {
+                [59.0_f32, 98.0, 177.0, 216.0, 79.0]
+            } else {
+                [59.0_f32, 99.0, 178.0, 217.0, 78.0]
+            };
+            for ((frame, y, x), expected) in [
+                (0, 42, 59),
+                (2, 10, 59),
+                (3, 10, 59),
+                (2, 42, 59),
+                (2, 74, 59),
+            ]
+            .into_iter()
+            .zip(expected_blue)
+            {
+                assert_eq!(
+                    video.frames[frame][(y * 160 + x) * 3 + 2].to_bits(),
+                    expected.to_bits(),
+                    "frame={frame} y={y} x={x} parallel={parallel}"
+                );
+            }
+            let mut prepared_hash = Sha256::new();
+            for value in video.frames.iter().flatten() {
+                prepared_hash.update(value.to_le_bytes());
+            }
+            let expected_hash = if cfg!(target_arch = "x86_64") {
+                "cfdde9cc2b12def43f100b2bb4c707c4186d58b743f41ac7dd87d4fd2bd21f23"
+            } else {
+                "bbdf6240753911f50c135fb3c2a4f36e1e1edc58e89062cdcb0764b3fdf45988"
+            };
+            assert_eq!(format!("{:x}", prepared_hash.finalize()), expected_hash);
         }
     }
 

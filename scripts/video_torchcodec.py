@@ -144,6 +144,78 @@ def small_layout_cases(
     return cases
 
 
+def rounding_resize_cases(
+    native: Any, official: Any, profile: str, directory: Path, thread_budget: int
+) -> list[dict]:
+    """Exercise half-rounding boundaries through real decoder, batch and file sources."""
+    rgb = make_frames(4, 177, 259)
+    path = directory / "rounding boundary.mp4"
+    write_mp4(path, rgb, fps=12)
+    indices = [0, 1, 2, 3]
+    metadata = {"fps": 12, "frames_indices": indices, "total_num_frames": 4}
+    sizing = {"resized_height": 96, "resized_width": 160}
+    options = {**sizing, "nframes": 4}
+    independent = torch.from_numpy(rgb).permute(0, 3, 1, 2)
+    expected, _ = official_inputs(
+        official,
+        Case(
+            "rounding_reference", [request(conversation(video((independent, metadata), **sizing)))]
+        ),
+    )
+    fixture = {
+        "source_thwc": list(rgb.shape),
+        "target_hw": [96, 160],
+        "source_rgb_sha256": hashlib.sha256(rgb.tobytes()).hexdigest(),
+        "fixture_mp4_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+    results = []
+
+    def capture(name: str, actual: Any, reference: dict) -> None:
+        differences = compare_arrays(reference, actual)
+        prepared = actual.metadata["videos"][0]
+        np.testing.assert_allclose(prepared["timestamps"], [1 / 24, 5 / 24], rtol=0, atol=1e-12)
+        results.append(
+            {
+                "profile": profile,
+                "case": name,
+                "passed": True,
+                "source_rgb_exact": True,
+                **fixture,
+                **differences,
+                "metadata": prepared,
+            }
+        )
+
+    for order in ("NCHW", "NHWC"):
+        decoder = VideoDecoder(str(path), dimension_order=order, num_ffmpeg_threads=thread_budget)
+        batch = source_witness(decoder, rgb, indices, order)
+        actual = native.prepare_batch([request(conversation(video(decoder, **options)))])
+        capture(f"rounding_spatial_resize_decoder_{order}", actual, expected)
+        expected_batch, _ = official_inputs(
+            official,
+            Case(
+                "rounding_batch_reference",
+                [
+                    request(
+                        conversation(
+                            video(
+                                SimpleNamespace(data=independent, pts_seconds=batch.pts_seconds),
+                                **sizing,
+                            )
+                        )
+                    )
+                ],
+            ),
+        )
+        actual = native.prepare_batch([request(conversation(video(batch, **sizing)))])
+        capture(f"rounding_spatial_resize_framebatch_{order}", actual, expected_batch)
+    actual = native.prepare_batch(
+        [request(conversation(video(str(path), video_backend="torchcodec", **options)))]
+    )
+    capture("rounding_spatial_resize_explicit_torchcodec_file", actual, expected)
+    return results
+
+
 def run_suite(cache: Path, *, thread_budget: int = 2) -> dict:
     from qwen_mm._media import _ReadBudget
     from qwen_mm._video import normalize_video
@@ -253,6 +325,9 @@ def run_suite(cache: Path, *, thread_budget: int = 2) -> dict:
             results.extend(
                 small_layout_cases(native, official, profile, Path(temporary), thread_budget)
             )
+            results.extend(
+                rounding_resize_cases(native, official, profile, Path(temporary), thread_budget)
+            )
     return {
         "schema_id": "qwen-mm-video-torchcodec-v1",
         "passed": True,
@@ -273,6 +348,7 @@ def run_suite(cache: Path, *, thread_budget: int = 2) -> dict:
             "torch_threads": torch.get_num_threads(),
             "timestamp_atol": 1e-12,
             "ambiguous_layout_sources": "6 RGB frames of size 3x32 and 3x3; resized to 64x64",
+            "rounding_regression_sources": "4 RGB frames of size 177x259; resized to 96x160 through NCHW/NHWC decoders, FrameBatch and explicit file backend",
             "scope": "real CPU TorchCodec decoder, FrameBatch and file backend; both profiles",
         },
         "cases": results,

@@ -1,6 +1,6 @@
 # Video v0.2 verification and timings
 
-The installed qwen-mm 0.2.0 wheel passed 114 video profile/case checks against
+The installed qwen-mm 0.2.0 wheel passed 120 video profile/case checks against
 Transformers 5.14.1 and qwen-vl-utils 0.0.14. The final oracle, benchmark and real
 TorchCodec witness use the same native binary and Python facades; their SHA-256
 values are recorded in each report. [validation.json](validation.json) ties those
@@ -10,18 +10,19 @@ hashes to the local production wheel, source files and completed validation gate
 
 | Report | What it establishes |
 | --- | --- |
-| [oracle.json](oracle.json) | 114 checks across `qwen3-vl-8b` and `qwen3.5-9b`: 39 generated success cases, shared-processor concurrency and 17 error/resource/recovery checks per profile. |
-| [torchcodec.json](torchcodec.json) | 30 checks with real TorchCodec 0.17.0: decoded FrameBatch, selective VideoDecoder and file routes, including mixed prompts and timestamp metadata. |
+| [oracle.json](oracle.json) | 120 checks across `qwen3-vl-8b` and `qwen3.5-9b`: 42 generated success cases, shared-processor concurrency and 17 error/resource/recovery checks per profile. |
+| [oracle-linux-docker.json](oracle-linux-docker.json) | The same 120 checks on the final Linux x86_64 wheel under Docker emulation on macOS ARM64; native CI is recorded separately. |
+| [rounding-linux-before.json](rounding-linux-before.json), [rounding-linux-after.json](rounding-linux-after.json) | Independent float/impulse witnesses: four strict-tolerance mismatches before the correction, zero after, with the same diagnostic source and reference environment. |
+| [torchcodec.json](torchcodec.json) | 40 checks with real TorchCodec 0.17.0: decoded FrameBatch, selective VideoDecoder and file routes, including resized clips and timestamp metadata. |
 | [benchmark.json](benchmark.json) | Generated CPU preprocessing timings with output parity checked before timing. |
 | [consumer.json](consumer.json) | Eight Qwen3.5-0.8B CPU model-consumer cases using the 9B processor assets, including odd-frame video and mixed image/video input, with input, first-token-logit and generation comparisons. |
 | [rosetta.json](rosetta.json) | Executable published Rosetta recipes, with only placeholder paths, image URLs and cache locations bound to fixtures; every required recipe passed. This is a documentation recipe report. |
 | [validation.json](validation.json) | Local wheel/source provenance and the native, binding, scripts, installed-wheel, formatting and packaging gates. Remote CI and release results are tracked separately by their GitHub manifests. |
 
-The consumer and recipe reports were captured before the final Python sampling
-and resource-validation fixes. Their native binary is unchanged. The final
-oracle and TorchCodec reports exercise the final Python facades, including those
-fixes. The 0.8B consumer is a witness for the matching processor assets, rather
-than an additional supported profile or an inference-speed measurement.
+The consumer and recipe reports identify their installed production wheel;
+validation records the final wheel's native, facade and source hashes. The 0.8B
+consumer is a witness for the matching processor assets, rather than an
+additional supported profile or an inference-speed measurement.
 
 ## Contract coverage
 
@@ -44,6 +45,25 @@ The tests also check original frame indices, effective sampling rates, total
 frame counts and temporal-pair timestamps, including the distinct upstream
 padding rules for plain image lists and decoded clips.
 
+The Linux gate exposed four one-level uint8 differences when resizing the
+generated 177×259 clip to 96×160. The pinned Linux Torch CPU build's GCC-generated
+loop rounds grouped products separately before accumulating them, then contracts
+the scalar tail; the ARM build contracts the products throughout. Those
+different float32
+accumulation orders can place the same pixel on opposite sides of a half-integer
+rounding boundary. Native video resize follows the corresponding pinned CPU
+contraction schedule for standalone frames and clips. This regression was fixed
+in the resize implementation with the
+video tolerance unchanged at `2e-6`.
+
+[`video_resize_diagnostic.py`](../../scripts/video_resize_diagnostic.py) reports
+the source/target geometry, uint8 mismatch coordinates, official float32 values
+before rounding, horizontal intermediates and independent impulse-derived
+coefficients. It always emits the original rounding-boundary witnesses, even on
+a host where output parity passes. Its two-dimensional impulse probes avoid the
+upstream width-one antialias edge path. The diagnostic is separate from the
+acceptance gate.
+
 Pillow lists run through actual pinned `fetch_video`. Decoded clips use the
 pinned geometry and TorchVision resize followed by the actual Transformers
 processor with resizing and sampling disabled. For MP4 parity, the oracle
@@ -63,14 +83,14 @@ with all outputs materialized. They exclude model loading and inference.
 
 | Profile | Workload | Reference median ms | qwen-mm median ms | Speedup |
 | --- | --- | ---: | ---: | ---: |
-| qwen3-vl-8b | Decoded, no resize | 2.461 | 1.054 | 2.33× |
-| qwen3-vl-8b | Decoded, resize | 6.372 | 3.156 | 2.02× |
-| qwen3-vl-8b | Pillow frame list | 2.145 | 1.250 | 1.72× |
-| qwen3-vl-8b | MP4 including decode | 19.948 | 12.282 | 1.62× |
-| qwen3.5-9b | Decoded, no resize | 2.446 | 1.055 | 2.32× |
-| qwen3.5-9b | Decoded, resize | 6.650 | 3.196 | 2.08× |
-| qwen3.5-9b | Pillow frame list | 2.198 | 1.263 | 1.74× |
-| qwen3.5-9b | MP4 including decode | 20.088 | 12.218 | 1.64× |
+| qwen3-vl-8b | Decoded, no resize | 2.400 | 1.039 | 2.31× |
+| qwen3-vl-8b | Decoded, resize | 6.266 | 3.212 | 1.95× |
+| qwen3-vl-8b | Pillow frame list | 2.127 | 1.244 | 1.71× |
+| qwen3-vl-8b | MP4 including decode | 19.730 | 12.034 | 1.64× |
+| qwen3.5-9b | Decoded, no resize | 2.475 | 1.031 | 2.40× |
+| qwen3.5-9b | Decoded, resize | 6.356 | 3.198 | 1.99× |
+| qwen3.5-9b | Pillow frame list | 2.137 | 1.246 | 1.72× |
+| qwen3.5-9b | MP4 including decode | 19.862 | 12.077 | 1.64× |
 
 Decoded/list workloads have eight 192×256 RGB frames. The resize case targets
 224×320. The lossless MP4 contains 36 such frames at 12 fps and selects eight.
@@ -79,7 +99,7 @@ FFmpeg threading; qwen-mm converts the selected frames to RGB and uses the
 configured native worker budget. Thus the MP4 comparison includes both media
 adaptation and preprocessing. It does not measure a TorchCodec speedup.
 
-An independent full-RGB PyAV decode measured 17.066 ms median. That diagnostic
+An independent full-RGB PyAV decode measured 16.877 ms median. That diagnostic
 is recorded separately and is never subtracted from the end-to-end times.
 These measurements describe the generated workloads on this host. They make no
 general video, inference-speed or peak-RSS claim.

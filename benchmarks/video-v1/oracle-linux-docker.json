@@ -2,10 +2,10 @@
   "schema_id": "qwen-mm-video-oracle-v1",
   "passed": true,
   "runtime": {
-    "captured_at": "2026-10-03T05:42:10.650521+00:00",
-    "package": "/private/tmp/qwen-mm-video-verify/lib/python3.11/site-packages/qwen_mm/__init__.py",
-    "native_module": "/private/tmp/qwen-mm-video-verify/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
-    "native_sha256": "9392f7de96f917608adfb4a68f9f0c3b59a98a97d17f46e8b092829acafcc2ee",
+    "captured_at": "2026-10-03T05:43:18.654656+00:00",
+    "package": "/opt/video-venv/lib/python3.11/site-packages/qwen_mm/__init__.py",
+    "native_module": "/opt/video-venv/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+    "native_sha256": "97eb9bd7dfd43aa402e1460388e071e16a8682718c6b5035ee8cf691ed2c35e5",
     "facade_sha256": {
       "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
       "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
@@ -17,8 +17,8 @@
       "transformers": "5.14.1",
       "qwen-vl-utils": "0.0.14",
       "numpy": "2.4.6",
-      "torch": "2.13.0",
-      "torchvision": "0.28.0",
+      "torch": "2.13.0+cpu",
+      "torchvision": "0.28.0+cpu",
       "pillow": "12.3.0"
     },
     "optional_versions": {
@@ -26,9 +26,9 @@
       "torchcodec": null
     },
     "host": {
-      "system": "Darwin",
-      "machine": "arm64",
-      "python": "3.11.15",
+      "system": "Linux",
+      "machine": "x86_64",
+      "python": "3.11.2",
       "logical_cpus": 10
     }
   },
@@ -9149,5 +9149,6 @@
       "case": "failed_batch_recovery",
       "passed": true
     }
-  ]
+  ],
+  "execution_note": "linux/amd64 Docker emulation on macOS ARM64; native GitHub Linux validation is tracked separately"
 }

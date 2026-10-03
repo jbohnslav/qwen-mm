@@ -4,7 +4,7 @@
   "processor_profile": "qwen3.5-9b",
   "processor_revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
   "processor_fingerprint": "4f870d0c41812a7f5fe318d9ab7db64a805bac569c9fa4570e957752fd69edb5",
-  "source_revision": "70112781924f284006cfb41dcc1b7f9f52088ebf",
+  "source_revision": "2ea065b62f9b1bcb563feee791c7b1ec495cc51d",
   "script_sha256": "1f732fb3ce99c7fa699be189a9a9137d28e50d84028382ffc993b9d7ea00fe55",
   "uv_lock_sha256": "72fe971752c8ea2f29eb6b50e7c736bdd8e8c998f52b733a8de0b7d29274cab4",
   "platform": "macOS-26.6.2-arm64-arm-64bit",
@@ -94,8 +94,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 10.967,
-        "qwen_mm": 10.557
+        "official": 11.616,
+        "qwen_mm": 9.966
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -169,8 +169,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 10.706,
-        "qwen_mm": 10.322
+        "official": 9.466,
+        "qwen_mm": 9.421
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -244,8 +244,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 10.524,
-        "qwen_mm": 10.412
+        "official": 9.46,
+        "qwen_mm": 9.453
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -319,8 +319,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 10.572,
-        "qwen_mm": 9.948
+        "official": 9.589,
+        "qwen_mm": 9.676
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -416,8 +416,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 18.398,
-        "qwen_mm": 18.028
+        "official": 18.169,
+        "qwen_mm": 18.541
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -491,8 +491,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 9.311,
-        "qwen_mm": 9.339
+        "official": 9.268,
+        "qwen_mm": 9.353
       },
       "equivalence": "structural only; resize-v2 owns pixel fidelity"
     },
@@ -566,8 +566,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 9.645,
-        "qwen_mm": 9.481
+        "official": 9.655,
+        "qwen_mm": 9.579
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     },
@@ -651,8 +651,8 @@
         }
       },
       "inference_seconds_diagnostic_only": {
-        "official": 9.543,
-        "qwen_mm": 11.966
+        "official": 9.591,
+        "qwen_mm": 9.524
       },
       "equivalence": "exact inputs, first-token logits, and greedy token IDs"
     }

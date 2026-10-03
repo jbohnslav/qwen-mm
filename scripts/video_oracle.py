@@ -357,6 +357,32 @@ def cases(directory: Path, *, include_files: bool = True) -> list[Case]:
             ],
         ),
         Case(
+            "torch_contiguous_spatial_resize",
+            [
+                request(
+                    conversation(
+                        video(
+                            torch.from_numpy(make_frames(4, 177, 259))
+                            .permute(0, 3, 1, 2)
+                            .contiguous(),
+                            resized_height=96,
+                            resized_width=160,
+                        )
+                    )
+                )
+            ],
+        ),
+        Case(
+            "decoded_single_spatial_resize",
+            [
+                request(
+                    conversation(
+                        video(make_frames(1, 177, 259), resized_height=96, resized_width=160)
+                    )
+                )
+            ],
+        ),
+        Case(
             "decoded_total_pixel_budget",
             [
                 request(
@@ -475,8 +501,26 @@ def cases(directory: Path, *, include_files: bool = True) -> list[Case]:
     if include_files:
         path = directory / "generated lossless.mp4"
         write_mp4(path, make_frames(36), fps=12)
+        resized_path = directory / "rounding boundary.mp4"
+        write_mp4(resized_path, make_frames(4, 177, 259), fps=12)
         out.extend(
             [
+                Case(
+                    "mp4_spatial_resize",
+                    [
+                        request(
+                            conversation(
+                                video(
+                                    resized_path,
+                                    video_backend="pyav",
+                                    nframes=4,
+                                    resized_height=96,
+                                    resized_width=160,
+                                )
+                            )
+                        )
+                    ],
+                ),
                 Case("mp4_default_fps", [request(conversation(video(path, **sized)))]),
                 Case(
                     "mp4_file_uri",

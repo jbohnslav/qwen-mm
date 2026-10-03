@@ -463,10 +463,7 @@ fn convolve_horizontal_f32(
                 [output_x * weights.kernel_size..output_x * weights.kernel_size + count];
             for channel in 0..3 {
                 let first_source = (row * source_width + minimum) * 3 + channel;
-                let mut value = source[first_source] * coefficients[0];
-                for (index, &coefficient) in coefficients.iter().enumerate().skip(1) {
-                    value = source[first_source + index * 3].mul_add(coefficient, value);
-                }
+                let value = convolve_float_samples(source, first_source, 3, coefficients);
                 destination[(row * destination_width + output_x) * 3 + channel] = value;
             }
         }
@@ -495,14 +492,36 @@ fn convolve_vertical_f32(
             [output_y * weights.kernel_size..output_y * weights.kernel_size + count];
         for element in 0..row_elements {
             let first_source = minimum * row_elements + element;
-            let mut value = source[first_source] * coefficients[0];
-            for (index, &coefficient) in coefficients.iter().enumerate().skip(1) {
-                value = source[first_source + index * row_elements].mul_add(coefficient, value);
-            }
+            let value = convolve_float_samples(source, first_source, row_elements, coefficients);
             destination[output_y * row_elements + element] = value;
         }
     }
     Ok(destination)
+}
+
+#[inline]
+fn convolve_float_samples(
+    source: &[f32],
+    first_source: usize,
+    source_stride: usize,
+    coefficients: &[f32],
+) -> f32 {
+    let mut value = source[first_source] * coefficients[0];
+    // Pinned Torch 2.13.0's GCC x86 kernel vectorizes four products at a time,
+    // rounding each before its ordered addition, then contracts the scalar
+    // tail. ARM contracts every term. The difference matters at uint8 halves.
+    let scalar_tail = if cfg!(target_arch = "x86_64") {
+        1 + (coefficients.len() - 1) / 4 * 4
+    } else {
+        1
+    };
+    for (index, &coefficient) in coefficients.iter().enumerate().take(scalar_tail).skip(1) {
+        value += source[first_source + index * source_stride] * coefficient;
+    }
+    for (index, &coefficient) in coefficients.iter().enumerate().skip(scalar_tail) {
+        value = source[first_source + index * source_stride].mul_add(coefficient, value);
+    }
+    value
 }
 
 #[cfg(test)]

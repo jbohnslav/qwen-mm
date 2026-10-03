@@ -1,0 +1,2858 @@
+{
+  "schema_id": "qwen-mm-video-resize-diagnostic-v1",
+  "runtime": {
+    "captured_at": "2026-10-03T05:49:51.459152+00:00",
+    "package": "/opt/video-venv/lib/python3.11/site-packages/qwen_mm/__init__.py",
+    "native_module": "/opt/video-venv/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+    "native_sha256": "97eb9bd7dfd43aa402e1460388e071e16a8682718c6b5035ee8cf691ed2c35e5",
+    "facade_sha256": {
+      "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+      "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+      "_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+      "_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025"
+    },
+    "versions": {
+      "qwen-mm": "0.2.0",
+      "transformers": "5.14.1",
+      "qwen-vl-utils": "0.0.14",
+      "numpy": "2.4.6",
+      "torch": "2.13.0+cpu",
+      "torchvision": "0.28.0+cpu",
+      "pillow": "12.3.0"
+    },
+    "optional_versions": {
+      "av": "18.0.0",
+      "torchcodec": null
+    },
+    "host": {
+      "system": "Linux",
+      "machine": "x86_64",
+      "python": "3.11.2",
+      "logical_cpus": 10
+    },
+    "torch_cpu_capability": "AVX2",
+    "aten_cpu_capability_override": null,
+    "diagnostic_script_sha256": "a3feb4a03f564fc711bce7f0f12e26d26d793fab1e24200da999b6c427a6ee90"
+  },
+  "video_oracle_atol_unchanged": 2e-06,
+  "scope": "diagnostic only; official float32 interpolation and uint8 rounding witnesses",
+  "result": {
+    "profile": "qwen3-vl-8b",
+    "case": "decoded_spatial_resize",
+    "reference_route": "decoded+pinned-qwen-resize",
+    "source_thwc": [
+      4,
+      177,
+      259,
+      3
+    ],
+    "target_tchw": [
+      4,
+      3,
+      96,
+      160
+    ],
+    "torch_strides": {
+      "source_tchw": [
+        137529,
+        1,
+        777,
+        3
+      ],
+      "source_float_tchw": [
+        137529,
+        1,
+        777,
+        3
+      ],
+      "official_output_tchw": [
+        46080,
+        1,
+        480,
+        3
+      ],
+      "official_horizontal_tchw": [
+        84960,
+        1,
+        480,
+        3
+      ]
+    },
+    "grid_thw": [
+      2,
+      6,
+      10
+    ],
+    "options": {
+      "resized_height": 96,
+      "resized_width": 160
+    },
+    "uint8_mismatch_count": 0,
+    "normalized_mismatch_count_at_oracle_tolerance": 0,
+    "max_normalized_absolute_difference": 0.0,
+    "official_whole_vs_separable_max_absolute_difference": 0.0,
+    "mismatches": [],
+    "known_linux_regression_points": [
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          10,
+          59
+        ],
+        "reference_u8": 98,
+        "native_u8": 98,
+        "official_float_before_u8_round": {
+          "float32": 98.5,
+          "float32_bits": "0x42c50000",
+          "nearest_half": 98.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 98
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 98.5,
+          "float32_bits": "0x42c50000",
+          "nearest_half": 98.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 98
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 16,
+            "horizontal_float": {
+              "float32": 92.76172637939453,
+              "float32_bits": "0x42b98601",
+              "nearest_half": 92.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 93
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              73,
+              80,
+              87,
+              94,
+              101,
+              108,
+              115
+            ]
+          },
+          {
+            "source_y": 17,
+            "horizontal_float": {
+              "float32": 94.76171112060547,
+              "float32_bits": "0x42bd85ff",
+              "nearest_half": 94.5,
+              "signed_distance_from_half": 0.26171112060546875,
+              "clamped_round_ties_even_u8": 95
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              75,
+              82,
+              89,
+              96,
+              103,
+              110,
+              117
+            ]
+          },
+          {
+            "source_y": 18,
+            "horizontal_float": {
+              "float32": 96.76172637939453,
+              "float32_bits": "0x42c18601",
+              "nearest_half": 96.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 97
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              77,
+              84,
+              91,
+              98,
+              105,
+              112,
+              119
+            ]
+          },
+          {
+            "source_y": 19,
+            "horizontal_float": {
+              "float32": 98.76172637939453,
+              "float32_bits": "0x42c58601",
+              "nearest_half": 98.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 99
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              79,
+              86,
+              93,
+              100,
+              107,
+              114,
+              121
+            ]
+          },
+          {
+            "source_y": 20,
+            "horizontal_float": {
+              "float32": 100.76172637939453,
+              "float32_bits": "0x42c98601",
+              "nearest_half": 100.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 101
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              81,
+              88,
+              95,
+              102,
+              109,
+              116,
+              123
+            ]
+          },
+          {
+            "source_y": 21,
+            "horizontal_float": {
+              "float32": 102.76172637939453,
+              "float32_bits": "0x42cd8601",
+              "nearest_half": 102.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 103
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              83,
+              90,
+              97,
+              104,
+              111,
+              118,
+              125
+            ]
+          },
+          {
+            "source_y": 22,
+            "horizontal_float": {
+              "float32": 104.76172637939453,
+              "float32_bits": "0x42d18601",
+              "nearest_half": 104.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 105
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              85,
+              92,
+              99,
+              106,
+              113,
+              120,
+              127
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          3,
+          2,
+          10,
+          59
+        ],
+        "reference_u8": 177,
+        "native_u8": 177,
+        "official_float_before_u8_round": {
+          "float32": 177.49996948242188,
+          "float32_bits": "0x43317ffe",
+          "nearest_half": 177.5,
+          "signed_distance_from_half": -3.0517578125e-05,
+          "clamped_round_ties_even_u8": 177
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 177.49996948242188,
+          "float32_bits": "0x43317ffe",
+          "nearest_half": 177.5,
+          "signed_distance_from_half": -3.0517578125e-05,
+          "clamped_round_ties_even_u8": 177
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 16,
+            "horizontal_float": {
+              "float32": 171.76171875,
+              "float32_bits": "0x432bc300",
+              "nearest_half": 171.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 172
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              152,
+              159,
+              166,
+              173,
+              180,
+              187,
+              194
+            ]
+          },
+          {
+            "source_y": 17,
+            "horizontal_float": {
+              "float32": 173.76171875,
+              "float32_bits": "0x432dc300",
+              "nearest_half": 173.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 174
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              154,
+              161,
+              168,
+              175,
+              182,
+              189,
+              196
+            ]
+          },
+          {
+            "source_y": 18,
+            "horizontal_float": {
+              "float32": 175.76173400878906,
+              "float32_bits": "0x432fc301",
+              "nearest_half": 175.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 176
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              156,
+              163,
+              170,
+              177,
+              184,
+              191,
+              198
+            ]
+          },
+          {
+            "source_y": 19,
+            "horizontal_float": {
+              "float32": 177.76170349121094,
+              "float32_bits": "0x4331c2ff",
+              "nearest_half": 177.5,
+              "signed_distance_from_half": 0.2617034912109375,
+              "clamped_round_ties_even_u8": 178
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              158,
+              165,
+              172,
+              179,
+              186,
+              193,
+              200
+            ]
+          },
+          {
+            "source_y": 20,
+            "horizontal_float": {
+              "float32": 179.76171875,
+              "float32_bits": "0x4333c300",
+              "nearest_half": 179.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 180
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              160,
+              167,
+              174,
+              181,
+              188,
+              195,
+              202
+            ]
+          },
+          {
+            "source_y": 21,
+            "horizontal_float": {
+              "float32": 181.76171875,
+              "float32_bits": "0x4335c300",
+              "nearest_half": 181.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 182
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              162,
+              169,
+              176,
+              183,
+              190,
+              197,
+              204
+            ]
+          },
+          {
+            "source_y": 22,
+            "horizontal_float": {
+              "float32": 183.76171875,
+              "float32_bits": "0x4337c300",
+              "nearest_half": 183.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 184
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              164,
+              171,
+              178,
+              185,
+              192,
+              199,
+              206
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          42,
+          59
+        ],
+        "reference_u8": 216,
+        "native_u8": 216,
+        "official_float_before_u8_round": {
+          "float32": 216.5,
+          "float32_bits": "0x43588000",
+          "nearest_half": 216.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 216
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 216.5,
+          "float32_bits": "0x43588000",
+          "nearest_half": 216.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 216
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 75,
+            "horizontal_float": {
+              "float32": 210.76171875,
+              "float32_bits": "0x4352c300",
+              "nearest_half": 210.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 211
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              191,
+              198,
+              205,
+              212,
+              219,
+              226,
+              233
+            ]
+          },
+          {
+            "source_y": 76,
+            "horizontal_float": {
+              "float32": 212.76173400878906,
+              "float32_bits": "0x4354c301",
+              "nearest_half": 212.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 213
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              193,
+              200,
+              207,
+              214,
+              221,
+              228,
+              235
+            ]
+          },
+          {
+            "source_y": 77,
+            "horizontal_float": {
+              "float32": 214.76171875,
+              "float32_bits": "0x4356c300",
+              "nearest_half": 214.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 215
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              195,
+              202,
+              209,
+              216,
+              223,
+              230,
+              237
+            ]
+          },
+          {
+            "source_y": 78,
+            "horizontal_float": {
+              "float32": 216.76171875,
+              "float32_bits": "0x4358c300",
+              "nearest_half": 216.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 217
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              197,
+              204,
+              211,
+              218,
+              225,
+              232,
+              239
+            ]
+          },
+          {
+            "source_y": 79,
+            "horizontal_float": {
+              "float32": 218.76171875,
+              "float32_bits": "0x435ac300",
+              "nearest_half": 218.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 219
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              199,
+              206,
+              213,
+              220,
+              227,
+              234,
+              241
+            ]
+          },
+          {
+            "source_y": 80,
+            "horizontal_float": {
+              "float32": 220.76171875,
+              "float32_bits": "0x435cc300",
+              "nearest_half": 220.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 221
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              201,
+              208,
+              215,
+              222,
+              229,
+              236,
+              243
+            ]
+          },
+          {
+            "source_y": 81,
+            "horizontal_float": {
+              "float32": 222.76170349121094,
+              "float32_bits": "0x435ec2ff",
+              "nearest_half": 222.5,
+              "signed_distance_from_half": 0.2617034912109375,
+              "clamped_round_ties_even_u8": 223
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              203,
+              210,
+              217,
+              224,
+              231,
+              238,
+              245
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          74,
+          59
+        ],
+        "reference_u8": 79,
+        "native_u8": 79,
+        "official_float_before_u8_round": {
+          "float32": 78.50000762939453,
+          "float32_bits": "0x429d0001",
+          "nearest_half": 78.5,
+          "signed_distance_from_half": 7.62939453125e-06,
+          "clamped_round_ties_even_u8": 79
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 78.50000762939453,
+          "float32_bits": "0x429d0001",
+          "nearest_half": 78.5,
+          "signed_distance_from_half": 7.62939453125e-06,
+          "clamped_round_ties_even_u8": 79
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 134,
+            "horizontal_float": {
+              "float32": 72.76172637939453,
+              "float32_bits": "0x42918601",
+              "nearest_half": 72.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 73
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              53,
+              60,
+              67,
+              74,
+              81,
+              88,
+              95
+            ]
+          },
+          {
+            "source_y": 135,
+            "horizontal_float": {
+              "float32": 74.76171875,
+              "float32_bits": "0x42958600",
+              "nearest_half": 74.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 75
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              55,
+              62,
+              69,
+              76,
+              83,
+              90,
+              97
+            ]
+          },
+          {
+            "source_y": 136,
+            "horizontal_float": {
+              "float32": 76.76172637939453,
+              "float32_bits": "0x42998601",
+              "nearest_half": 76.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 77
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              57,
+              64,
+              71,
+              78,
+              85,
+              92,
+              99
+            ]
+          },
+          {
+            "source_y": 137,
+            "horizontal_float": {
+              "float32": 78.76172637939453,
+              "float32_bits": "0x429d8601",
+              "nearest_half": 78.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 79
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              59,
+              66,
+              73,
+              80,
+              87,
+              94,
+              101
+            ]
+          },
+          {
+            "source_y": 138,
+            "horizontal_float": {
+              "float32": 80.76171875,
+              "float32_bits": "0x42a18600",
+              "nearest_half": 80.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 81
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              61,
+              68,
+              75,
+              82,
+              89,
+              96,
+              103
+            ]
+          },
+          {
+            "source_y": 139,
+            "horizontal_float": {
+              "float32": 82.76172637939453,
+              "float32_bits": "0x42a58601",
+              "nearest_half": 82.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 83
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              63,
+              70,
+              77,
+              84,
+              91,
+              98,
+              105
+            ]
+          },
+          {
+            "source_y": 140,
+            "horizontal_float": {
+              "float32": 84.76171875,
+              "float32_bits": "0x42a98600",
+              "nearest_half": 84.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 85
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              65,
+              72,
+              79,
+              86,
+              93,
+              100,
+              107
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          0,
+          2,
+          42,
+          59
+        ],
+        "reference_u8": 59,
+        "native_u8": 59,
+        "official_float_before_u8_round": {
+          "float32": 58.500003814697266,
+          "float32_bits": "0x426a0001",
+          "nearest_half": 58.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 59
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 58.500003814697266,
+          "float32_bits": "0x426a0001",
+          "nearest_half": 58.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 59
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 75,
+            "horizontal_float": {
+              "float32": 52.761722564697266,
+              "float32_bits": "0x42530c01",
+              "nearest_half": 52.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 53
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              33,
+              40,
+              47,
+              54,
+              61,
+              68,
+              75
+            ]
+          },
+          {
+            "source_y": 76,
+            "horizontal_float": {
+              "float32": 54.76171875,
+              "float32_bits": "0x425b0c00",
+              "nearest_half": 54.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 55
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              35,
+              42,
+              49,
+              56,
+              63,
+              70,
+              77
+            ]
+          },
+          {
+            "source_y": 77,
+            "horizontal_float": {
+              "float32": 56.761722564697266,
+              "float32_bits": "0x42630c01",
+              "nearest_half": 56.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 57
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              37,
+              44,
+              51,
+              58,
+              65,
+              72,
+              79
+            ]
+          },
+          {
+            "source_y": 78,
+            "horizontal_float": {
+              "float32": 58.761722564697266,
+              "float32_bits": "0x426b0c01",
+              "nearest_half": 58.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 59
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              39,
+              46,
+              53,
+              60,
+              67,
+              74,
+              81
+            ]
+          },
+          {
+            "source_y": 79,
+            "horizontal_float": {
+              "float32": 60.761722564697266,
+              "float32_bits": "0x42730c01",
+              "nearest_half": 60.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 61
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              41,
+              48,
+              55,
+              62,
+              69,
+              76,
+              83
+            ]
+          },
+          {
+            "source_y": 80,
+            "horizontal_float": {
+              "float32": 62.761722564697266,
+              "float32_bits": "0x427b0c01",
+              "nearest_half": 62.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 63
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              43,
+              50,
+              57,
+              64,
+              71,
+              78,
+              85
+            ]
+          },
+          {
+            "source_y": 81,
+            "horizontal_float": {
+              "float32": 64.76172637939453,
+              "float32_bits": "0x42818601",
+              "nearest_half": 64.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 65
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              45,
+              52,
+              59,
+              66,
+              73,
+              80,
+              87
+            ]
+          }
+        ]
+      }
+    ],
+    "nearest_half_rounding_points": [
+      {
+        "frame_channel_y_x": [
+          0,
+          2,
+          74,
+          59
+        ],
+        "reference_u8": 176,
+        "native_u8": 176,
+        "official_float_before_u8_round": {
+          "float32": 176.5,
+          "float32_bits": "0x43308000",
+          "nearest_half": 176.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 176
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 176.5,
+          "float32_bits": "0x43308000",
+          "nearest_half": 176.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 176
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 134,
+            "horizontal_float": {
+              "float32": 170.76170349121094,
+              "float32_bits": "0x432ac2ff",
+              "nearest_half": 170.5,
+              "signed_distance_from_half": 0.2617034912109375,
+              "clamped_round_ties_even_u8": 171
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              151,
+              158,
+              165,
+              172,
+              179,
+              186,
+              193
+            ]
+          },
+          {
+            "source_y": 135,
+            "horizontal_float": {
+              "float32": 172.76173400878906,
+              "float32_bits": "0x432cc301",
+              "nearest_half": 172.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 173
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              153,
+              160,
+              167,
+              174,
+              181,
+              188,
+              195
+            ]
+          },
+          {
+            "source_y": 136,
+            "horizontal_float": {
+              "float32": 174.76171875,
+              "float32_bits": "0x432ec300",
+              "nearest_half": 174.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 175
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              155,
+              162,
+              169,
+              176,
+              183,
+              190,
+              197
+            ]
+          },
+          {
+            "source_y": 137,
+            "horizontal_float": {
+              "float32": 176.76171875,
+              "float32_bits": "0x4330c300",
+              "nearest_half": 176.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 177
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              157,
+              164,
+              171,
+              178,
+              185,
+              192,
+              199
+            ]
+          },
+          {
+            "source_y": 138,
+            "horizontal_float": {
+              "float32": 178.76173400878906,
+              "float32_bits": "0x4332c301",
+              "nearest_half": 178.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 179
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              159,
+              166,
+              173,
+              180,
+              187,
+              194,
+              201
+            ]
+          },
+          {
+            "source_y": 139,
+            "horizontal_float": {
+              "float32": 180.76171875,
+              "float32_bits": "0x4334c300",
+              "nearest_half": 180.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 181
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              161,
+              168,
+              175,
+              182,
+              189,
+              196,
+              203
+            ]
+          },
+          {
+            "source_y": 140,
+            "horizontal_float": {
+              "float32": 182.76171875,
+              "float32_bits": "0x4336c300",
+              "nearest_half": 182.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 183
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              163,
+              170,
+              177,
+              184,
+              191,
+              198,
+              205
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          10,
+          59
+        ],
+        "reference_u8": 98,
+        "native_u8": 98,
+        "official_float_before_u8_round": {
+          "float32": 98.5,
+          "float32_bits": "0x42c50000",
+          "nearest_half": 98.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 98
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 98.5,
+          "float32_bits": "0x42c50000",
+          "nearest_half": 98.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 98
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 16,
+            "horizontal_float": {
+              "float32": 92.76172637939453,
+              "float32_bits": "0x42b98601",
+              "nearest_half": 92.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 93
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              73,
+              80,
+              87,
+              94,
+              101,
+              108,
+              115
+            ]
+          },
+          {
+            "source_y": 17,
+            "horizontal_float": {
+              "float32": 94.76171112060547,
+              "float32_bits": "0x42bd85ff",
+              "nearest_half": 94.5,
+              "signed_distance_from_half": 0.26171112060546875,
+              "clamped_round_ties_even_u8": 95
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              75,
+              82,
+              89,
+              96,
+              103,
+              110,
+              117
+            ]
+          },
+          {
+            "source_y": 18,
+            "horizontal_float": {
+              "float32": 96.76172637939453,
+              "float32_bits": "0x42c18601",
+              "nearest_half": 96.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 97
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              77,
+              84,
+              91,
+              98,
+              105,
+              112,
+              119
+            ]
+          },
+          {
+            "source_y": 19,
+            "horizontal_float": {
+              "float32": 98.76172637939453,
+              "float32_bits": "0x42c58601",
+              "nearest_half": 98.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 99
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              79,
+              86,
+              93,
+              100,
+              107,
+              114,
+              121
+            ]
+          },
+          {
+            "source_y": 20,
+            "horizontal_float": {
+              "float32": 100.76172637939453,
+              "float32_bits": "0x42c98601",
+              "nearest_half": 100.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 101
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              81,
+              88,
+              95,
+              102,
+              109,
+              116,
+              123
+            ]
+          },
+          {
+            "source_y": 21,
+            "horizontal_float": {
+              "float32": 102.76172637939453,
+              "float32_bits": "0x42cd8601",
+              "nearest_half": 102.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 103
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              83,
+              90,
+              97,
+              104,
+              111,
+              118,
+              125
+            ]
+          },
+          {
+            "source_y": 22,
+            "horizontal_float": {
+              "float32": 104.76172637939453,
+              "float32_bits": "0x42d18601",
+              "nearest_half": 104.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 105
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              85,
+              92,
+              99,
+              106,
+              113,
+              120,
+              127
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          42,
+          59
+        ],
+        "reference_u8": 216,
+        "native_u8": 216,
+        "official_float_before_u8_round": {
+          "float32": 216.5,
+          "float32_bits": "0x43588000",
+          "nearest_half": 216.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 216
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 216.5,
+          "float32_bits": "0x43588000",
+          "nearest_half": 216.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 216
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 75,
+            "horizontal_float": {
+              "float32": 210.76171875,
+              "float32_bits": "0x4352c300",
+              "nearest_half": 210.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 211
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              191,
+              198,
+              205,
+              212,
+              219,
+              226,
+              233
+            ]
+          },
+          {
+            "source_y": 76,
+            "horizontal_float": {
+              "float32": 212.76173400878906,
+              "float32_bits": "0x4354c301",
+              "nearest_half": 212.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 213
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              193,
+              200,
+              207,
+              214,
+              221,
+              228,
+              235
+            ]
+          },
+          {
+            "source_y": 77,
+            "horizontal_float": {
+              "float32": 214.76171875,
+              "float32_bits": "0x4356c300",
+              "nearest_half": 214.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 215
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              195,
+              202,
+              209,
+              216,
+              223,
+              230,
+              237
+            ]
+          },
+          {
+            "source_y": 78,
+            "horizontal_float": {
+              "float32": 216.76171875,
+              "float32_bits": "0x4358c300",
+              "nearest_half": 216.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 217
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              197,
+              204,
+              211,
+              218,
+              225,
+              232,
+              239
+            ]
+          },
+          {
+            "source_y": 79,
+            "horizontal_float": {
+              "float32": 218.76171875,
+              "float32_bits": "0x435ac300",
+              "nearest_half": 218.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 219
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              199,
+              206,
+              213,
+              220,
+              227,
+              234,
+              241
+            ]
+          },
+          {
+            "source_y": 80,
+            "horizontal_float": {
+              "float32": 220.76171875,
+              "float32_bits": "0x435cc300",
+              "nearest_half": 220.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 221
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              201,
+              208,
+              215,
+              222,
+              229,
+              236,
+              243
+            ]
+          },
+          {
+            "source_y": 81,
+            "horizontal_float": {
+              "float32": 222.76170349121094,
+              "float32_bits": "0x435ec2ff",
+              "nearest_half": 222.5,
+              "signed_distance_from_half": 0.2617034912109375,
+              "clamped_round_ties_even_u8": 223
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              203,
+              210,
+              217,
+              224,
+              231,
+              238,
+              245
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          3,
+          2,
+          74,
+          59
+        ],
+        "reference_u8": 158,
+        "native_u8": 158,
+        "official_float_before_u8_round": {
+          "float32": 157.5,
+          "float32_bits": "0x431d8000",
+          "nearest_half": 157.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 158
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 157.5,
+          "float32_bits": "0x431d8000",
+          "nearest_half": 157.5,
+          "signed_distance_from_half": 0.0,
+          "clamped_round_ties_even_u8": 158
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 134,
+            "horizontal_float": {
+              "float32": 151.76173400878906,
+              "float32_bits": "0x4317c301",
+              "nearest_half": 151.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 152
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              132,
+              139,
+              146,
+              153,
+              160,
+              167,
+              174
+            ]
+          },
+          {
+            "source_y": 135,
+            "horizontal_float": {
+              "float32": 153.76171875,
+              "float32_bits": "0x4319c300",
+              "nearest_half": 153.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 154
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              134,
+              141,
+              148,
+              155,
+              162,
+              169,
+              176
+            ]
+          },
+          {
+            "source_y": 136,
+            "horizontal_float": {
+              "float32": 155.76171875,
+              "float32_bits": "0x431bc300",
+              "nearest_half": 155.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 156
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              136,
+              143,
+              150,
+              157,
+              164,
+              171,
+              178
+            ]
+          },
+          {
+            "source_y": 137,
+            "horizontal_float": {
+              "float32": 157.76173400878906,
+              "float32_bits": "0x431dc301",
+              "nearest_half": 157.5,
+              "signed_distance_from_half": 0.2617340087890625,
+              "clamped_round_ties_even_u8": 158
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              138,
+              145,
+              152,
+              159,
+              166,
+              173,
+              180
+            ]
+          },
+          {
+            "source_y": 138,
+            "horizontal_float": {
+              "float32": 159.76171875,
+              "float32_bits": "0x431fc300",
+              "nearest_half": 159.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 160
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              140,
+              147,
+              154,
+              161,
+              168,
+              175,
+              182
+            ]
+          },
+          {
+            "source_y": 139,
+            "horizontal_float": {
+              "float32": 161.76171875,
+              "float32_bits": "0x4321c300",
+              "nearest_half": 161.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 162
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              142,
+              149,
+              156,
+              163,
+              170,
+              177,
+              184
+            ]
+          },
+          {
+            "source_y": 140,
+            "horizontal_float": {
+              "float32": 163.76171875,
+              "float32_bits": "0x4323c300",
+              "nearest_half": 163.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 164
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              144,
+              151,
+              158,
+              165,
+              172,
+              179,
+              186
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          0,
+          2,
+          42,
+          59
+        ],
+        "reference_u8": 59,
+        "native_u8": 59,
+        "official_float_before_u8_round": {
+          "float32": 58.500003814697266,
+          "float32_bits": "0x426a0001",
+          "nearest_half": 58.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 59
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 58.500003814697266,
+          "float32_bits": "0x426a0001",
+          "nearest_half": 58.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 59
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 75,
+            "horizontal_float": {
+              "float32": 52.761722564697266,
+              "float32_bits": "0x42530c01",
+              "nearest_half": 52.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 53
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              33,
+              40,
+              47,
+              54,
+              61,
+              68,
+              75
+            ]
+          },
+          {
+            "source_y": 76,
+            "horizontal_float": {
+              "float32": 54.76171875,
+              "float32_bits": "0x425b0c00",
+              "nearest_half": 54.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 55
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              35,
+              42,
+              49,
+              56,
+              63,
+              70,
+              77
+            ]
+          },
+          {
+            "source_y": 77,
+            "horizontal_float": {
+              "float32": 56.761722564697266,
+              "float32_bits": "0x42630c01",
+              "nearest_half": 56.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 57
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              37,
+              44,
+              51,
+              58,
+              65,
+              72,
+              79
+            ]
+          },
+          {
+            "source_y": 78,
+            "horizontal_float": {
+              "float32": 58.761722564697266,
+              "float32_bits": "0x426b0c01",
+              "nearest_half": 58.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 59
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              39,
+              46,
+              53,
+              60,
+              67,
+              74,
+              81
+            ]
+          },
+          {
+            "source_y": 79,
+            "horizontal_float": {
+              "float32": 60.761722564697266,
+              "float32_bits": "0x42730c01",
+              "nearest_half": 60.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 61
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              41,
+              48,
+              55,
+              62,
+              69,
+              76,
+              83
+            ]
+          },
+          {
+            "source_y": 80,
+            "horizontal_float": {
+              "float32": 62.761722564697266,
+              "float32_bits": "0x427b0c01",
+              "nearest_half": 62.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 63
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              43,
+              50,
+              57,
+              64,
+              71,
+              78,
+              85
+            ]
+          },
+          {
+            "source_y": 81,
+            "horizontal_float": {
+              "float32": 64.76172637939453,
+              "float32_bits": "0x42818601",
+              "nearest_half": 64.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 65
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              45,
+              52,
+              59,
+              66,
+              73,
+              80,
+              87
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          3,
+          2,
+          42,
+          59
+        ],
+        "reference_u8": 40,
+        "native_u8": 40,
+        "official_float_before_u8_round": {
+          "float32": 39.500003814697266,
+          "float32_bits": "0x421e0001",
+          "nearest_half": 39.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 40
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 39.500003814697266,
+          "float32_bits": "0x421e0001",
+          "nearest_half": 39.5,
+          "signed_distance_from_half": 3.814697265625e-06,
+          "clamped_round_ties_even_u8": 40
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 75,
+            "horizontal_float": {
+              "float32": 33.761722564697266,
+              "float32_bits": "0x42070c01",
+              "nearest_half": 33.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 34
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              14,
+              21,
+              28,
+              35,
+              42,
+              49,
+              56
+            ]
+          },
+          {
+            "source_y": 76,
+            "horizontal_float": {
+              "float32": 35.761722564697266,
+              "float32_bits": "0x420f0c01",
+              "nearest_half": 35.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 36
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              16,
+              23,
+              30,
+              37,
+              44,
+              51,
+              58
+            ]
+          },
+          {
+            "source_y": 77,
+            "horizontal_float": {
+              "float32": 37.76172637939453,
+              "float32_bits": "0x42170c02",
+              "nearest_half": 37.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 38
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              18,
+              25,
+              32,
+              39,
+              46,
+              53,
+              60
+            ]
+          },
+          {
+            "source_y": 78,
+            "horizontal_float": {
+              "float32": 39.761722564697266,
+              "float32_bits": "0x421f0c01",
+              "nearest_half": 39.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 40
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              20,
+              27,
+              34,
+              41,
+              48,
+              55,
+              62
+            ]
+          },
+          {
+            "source_y": 79,
+            "horizontal_float": {
+              "float32": 41.761722564697266,
+              "float32_bits": "0x42270c01",
+              "nearest_half": 41.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 42
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              22,
+              29,
+              36,
+              43,
+              50,
+              57,
+              64
+            ]
+          },
+          {
+            "source_y": 80,
+            "horizontal_float": {
+              "float32": 43.761722564697266,
+              "float32_bits": "0x422f0c01",
+              "nearest_half": 43.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 44
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              24,
+              31,
+              38,
+              45,
+              52,
+              59,
+              66
+            ]
+          },
+          {
+            "source_y": 81,
+            "horizontal_float": {
+              "float32": 45.761722564697266,
+              "float32_bits": "0x42370c01",
+              "nearest_half": 45.5,
+              "signed_distance_from_half": 0.2617225646972656,
+              "clamped_round_ties_even_u8": 46
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              26,
+              33,
+              40,
+              47,
+              54,
+              61,
+              68
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          2,
+          2,
+          74,
+          59
+        ],
+        "reference_u8": 79,
+        "native_u8": 79,
+        "official_float_before_u8_round": {
+          "float32": 78.50000762939453,
+          "float32_bits": "0x429d0001",
+          "nearest_half": 78.5,
+          "signed_distance_from_half": 7.62939453125e-06,
+          "clamped_round_ties_even_u8": 79
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 78.50000762939453,
+          "float32_bits": "0x429d0001",
+          "nearest_half": 78.5,
+          "signed_distance_from_half": 7.62939453125e-06,
+          "clamped_round_ties_even_u8": 79
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 93,
+            "coefficient_f32": -0.015408262610435486,
+            "coefficient_f32_bits": "0xbc7c72f0"
+          },
+          {
+            "source_x": 94,
+            "coefficient_f32": -0.02878957986831665,
+            "coefficient_f32_bits": "0xbcebd820"
+          },
+          {
+            "source_x": 95,
+            "coefficient_f32": 0.34190359711647034,
+            "coefficient_f32_bits": "0x3eaf0dfd"
+          },
+          {
+            "source_x": 96,
+            "coefficient_f32": 0.595077395439148,
+            "coefficient_f32_bits": "0x3f1856fe"
+          },
+          {
+            "source_x": 97,
+            "coefficient_f32": 0.15291132032871246,
+            "coefficient_f32_bits": "0x3e1c94c9"
+          },
+          {
+            "source_x": 98,
+            "coefficient_f32": -0.04537510499358177,
+            "coefficient_f32_bits": "0xbd39db3f"
+          },
+          {
+            "source_x": 99,
+            "coefficient_f32": -0.00031937420135363936,
+            "coefficient_f32_bits": "0xb9a771ae"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 134,
+            "horizontal_float": {
+              "float32": 72.76172637939453,
+              "float32_bits": "0x42918601",
+              "nearest_half": 72.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 73
+            },
+            "vertical_impulse_response_f32": -0.030101126059889793,
+            "vertical_impulse_response_f32_bits": "0xbcf696a3",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              53,
+              60,
+              67,
+              74,
+              81,
+              88,
+              95
+            ]
+          },
+          {
+            "source_y": 135,
+            "horizontal_float": {
+              "float32": 74.76171875,
+              "float32_bits": "0x42958600",
+              "nearest_half": 74.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 75
+            },
+            "vertical_impulse_response_f32": -0.0022567627020180225,
+            "vertical_impulse_response_f32_bits": "0xbb13e632",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              55,
+              62,
+              69,
+              76,
+              83,
+              90,
+              97
+            ]
+          },
+          {
+            "source_y": 136,
+            "horizontal_float": {
+              "float32": 76.76172637939453,
+              "float32_bits": "0x42998601",
+              "nearest_half": 76.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 77
+            },
+            "vertical_impulse_response_f32": 0.329793244600296,
+            "vertical_impulse_response_f32_bits": "0x3ea8daa9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              57,
+              64,
+              71,
+              78,
+              85,
+              92,
+              99
+            ]
+          },
+          {
+            "source_y": 137,
+            "horizontal_float": {
+              "float32": 78.76172637939453,
+              "float32_bits": "0x429d8601",
+              "nearest_half": 78.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 79
+            },
+            "vertical_impulse_response_f32": 0.5342237949371338,
+            "vertical_impulse_response_f32_bits": "0x3f08c2e4",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              59,
+              66,
+              73,
+              80,
+              87,
+              94,
+              101
+            ]
+          },
+          {
+            "source_y": 138,
+            "horizontal_float": {
+              "float32": 80.76171875,
+              "float32_bits": "0x42a18600",
+              "nearest_half": 80.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 81
+            },
+            "vertical_impulse_response_f32": 0.2158031463623047,
+            "vertical_impulse_response_f32_bits": "0x3e5cfb80",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              61,
+              68,
+              75,
+              82,
+              89,
+              96,
+              103
+            ]
+          },
+          {
+            "source_y": 139,
+            "horizontal_float": {
+              "float32": 82.76172637939453,
+              "float32_bits": "0x42a58601",
+              "nearest_half": 82.5,
+              "signed_distance_from_half": 0.26172637939453125,
+              "clamped_round_ties_even_u8": 83
+            },
+            "vertical_impulse_response_f32": -0.030700111761689186,
+            "vertical_impulse_response_f32_bits": "0xbcfb7ecd",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              63,
+              70,
+              77,
+              84,
+              91,
+              98,
+              105
+            ]
+          },
+          {
+            "source_y": 140,
+            "horizontal_float": {
+              "float32": 84.76171875,
+              "float32_bits": "0x42a98600",
+              "nearest_half": 84.5,
+              "signed_distance_from_half": 0.26171875,
+              "clamped_round_ties_even_u8": 85
+            },
+            "vertical_impulse_response_f32": -0.01676221936941147,
+            "vertical_impulse_response_f32_bits": "0xbc8950ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              65,
+              72,
+              79,
+              86,
+              93,
+              100,
+              107
+            ]
+          }
+        ]
+      },
+      {
+        "frame_channel_y_x": [
+          0,
+          1,
+          5,
+          124
+        ],
+        "reference_u8": 234,
+        "native_u8": 234,
+        "official_float_before_u8_round": {
+          "float32": 233.50001525878906,
+          "float32_bits": "0x43698001",
+          "nearest_half": 233.5,
+          "signed_distance_from_half": 1.52587890625e-05,
+          "clamped_round_ties_even_u8": 234
+        },
+        "official_separable_float_before_u8_round": {
+          "float32": 233.50001525878906,
+          "float32_bits": "0x43698001",
+          "nearest_half": 233.5,
+          "signed_distance_from_half": 1.52587890625e-05,
+          "clamped_round_ties_even_u8": 234
+        },
+        "horizontal_impulse_response": [
+          {
+            "source_x": 198,
+            "coefficient_f32": -0.00419166823849082,
+            "coefficient_f32_bits": "0xbb895a43"
+          },
+          {
+            "source_x": 199,
+            "coefficient_f32": -0.04317459836602211,
+            "coefficient_f32_bits": "0xbd30d7d9"
+          },
+          {
+            "source_x": 200,
+            "coefficient_f32": 0.22560590505599976,
+            "coefficient_f32_bits": "0x3e67053c"
+          },
+          {
+            "source_x": 201,
+            "coefficient_f32": 0.6081205010414124,
+            "coefficient_f32_bits": "0x3f1badc9"
+          },
+          {
+            "source_x": 202,
+            "coefficient_f32": 0.2610528767108917,
+            "coefficient_f32_bits": "0x3e85a8b9"
+          },
+          {
+            "source_x": 203,
+            "coefficient_f32": -0.04026840627193451,
+            "coefficient_f32_bits": "0xbd24f07c"
+          },
+          {
+            "source_x": 204,
+            "coefficient_f32": -0.007144681643694639,
+            "coefficient_f32_bits": "0xbbea1def"
+          }
+        ],
+        "horizontal_intermediates": [
+          {
+            "source_y": 6,
+            "horizontal_float": {
+              "float32": 231.03237915039062,
+              "float32_bits": "0x4367084a",
+              "nearest_half": 231.5,
+              "signed_distance_from_half": -0.467620849609375,
+              "clamped_round_ties_even_u8": 231
+            },
+            "vertical_impulse_response_f32": -0.00017105638107750565,
+            "vertical_impulse_response_f32_bits": "0xb9335d99",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              228,
+              229,
+              230,
+              231,
+              232,
+              233,
+              234
+            ]
+          },
+          {
+            "source_y": 7,
+            "horizontal_float": {
+              "float32": 236.0323944091797,
+              "float32_bits": "0x436c084b",
+              "nearest_half": 236.5,
+              "signed_distance_from_half": -0.4676055908203125,
+              "clamped_round_ties_even_u8": 236
+            },
+            "vertical_impulse_response_f32": -0.03783880174160004,
+            "vertical_impulse_response_f32_bits": "0xbd1afcdc",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              233,
+              234,
+              235,
+              236,
+              237,
+              238,
+              239
+            ]
+          },
+          {
+            "source_y": 8,
+            "horizontal_float": {
+              "float32": 241.0323944091797,
+              "float32_bits": "0x4371084b",
+              "nearest_half": 241.5,
+              "signed_distance_from_half": -0.4676055908203125,
+              "clamped_round_ties_even_u8": 241
+            },
+            "vertical_impulse_response_f32": 0.04201212152838707,
+            "vertical_impulse_response_f32_bits": "0x3d2c14e7",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              238,
+              239,
+              240,
+              241,
+              242,
+              243,
+              244
+            ]
+          },
+          {
+            "source_y": 9,
+            "horizontal_float": {
+              "float32": 246.03237915039062,
+              "float32_bits": "0x4376084a",
+              "nearest_half": 246.5,
+              "signed_distance_from_half": -0.467620849609375,
+              "clamped_round_ties_even_u8": 246
+            },
+            "vertical_impulse_response_f32": 0.41336941719055176,
+            "vertical_impulse_response_f32_bits": "0x3ed3a528",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              243,
+              244,
+              245,
+              246,
+              247,
+              248,
+              249
+            ]
+          },
+          {
+            "source_y": 10,
+            "horizontal_float": {
+              "float32": 251.03237915039062,
+              "float32_bits": "0x437b084a",
+              "nearest_half": 251.5,
+              "signed_distance_from_half": -0.467620849609375,
+              "clamped_round_ties_even_u8": 251
+            },
+            "vertical_impulse_response_f32": 0.4975656270980835,
+            "vertical_impulse_response_f32_bits": "0x3efec0ec",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              248,
+              249,
+              250,
+              251,
+              252,
+              253,
+              254
+            ]
+          },
+          {
+            "source_y": 11,
+            "horizontal_float": {
+              "float32": 45.661746978759766,
+              "float32_bits": "0x4236a5a1",
+              "nearest_half": 45.5,
+              "signed_distance_from_half": 0.16174697875976562,
+              "clamped_round_ties_even_u8": 46
+            },
+            "vertical_impulse_response_f32": 0.13153962790966034,
+            "vertical_impulse_response_f32_bits": "0x3e06b253",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              253,
+              254,
+              255,
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "source_y": 12,
+            "horizontal_float": {
+              "float32": 5.032399654388428,
+              "float32_bits": "0x40a1096b",
+              "nearest_half": 5.5,
+              "signed_distance_from_half": -0.46760034561157227,
+              "clamped_round_ties_even_u8": 5
+            },
+            "vertical_impulse_response_f32": -0.039406757801771164,
+            "vertical_impulse_response_f32_bits": "0xbd2168fb",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "source_y": 13,
+            "horizontal_float": {
+              "float32": 10.03239917755127,
+              "float32_bits": "0x412084b5",
+              "nearest_half": 10.5,
+              "signed_distance_from_half": -0.46760082244873047,
+              "clamped_round_ties_even_u8": 10
+            },
+            "vertical_impulse_response_f32": -0.007070180494338274,
+            "vertical_impulse_response_f32_bits": "0xbbe7acf9",
+            "source_channel_values_at_horizontal_kernel_columns": [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13
+            ]
+          }
+        ]
+      }
+    ],
+    "non_video_arrays_exact": {
+      "input_ids": true,
+      "attention_mask": true,
+      "mm_token_type_ids": true,
+      "video_grid_thw": true
+    }
+  },
+  "execution_note": "linux/amd64 Docker emulation on macOS ARM64; same pinned reference and diagnostic script before/after native correction"
+}

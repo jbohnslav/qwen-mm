@@ -101,9 +101,39 @@ class VideoOracleTests(unittest.TestCase):
                 "qwen_utils_prepared_tuple",
                 "heterogeneous_left_padding",
                 "heterogeneous_right_padding",
+                "torch_contiguous_spatial_resize",
+                "decoded_single_spatial_resize",
             }
             <= names
         )
+
+    def test_rounding_regression_cases_preserve_source_geometry_and_torch_layout(self) -> None:
+        if importlib.util.find_spec("av") is None:
+            self.skipTest("optional PyAV unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            generated = {
+                case.name: case for case in oracle.cases(Path(temporary), include_files=True)
+            }
+            for name, count in (
+                ("decoded_spatial_resize", 4),
+                ("torch_contiguous_spatial_resize", 4),
+                ("decoded_single_spatial_resize", 1),
+                ("mp4_spatial_resize", 4),
+            ):
+                with self.subTest(case=name):
+                    item = generated[name].requests[0]["messages"][0]["content"][0]
+                    self.assertEqual((item["resized_height"], item["resized_width"]), (96, 160))
+                    source = item["video"]
+                    if name == "mp4_spatial_resize":
+                        source, _ = oracle.decode_mp4(source)
+                        np.testing.assert_array_equal(
+                            source.numpy(),
+                            oracle.make_frames(count, 177, 259).transpose(0, 3, 1, 2),
+                        )
+                    elif name == "torch_contiguous_spatial_resize":
+                        self.assertTrue(source.is_contiguous())
+                    data, _, _ = oracle.reference_video(source, item)
+                    self.assertEqual(tuple(data.shape), (count, 3, 96, 160))
 
     def test_mp4_fixture_is_lossless_and_clipping_preserves_absolute_indices(self) -> None:
         if importlib.util.find_spec("av") is None:

@@ -1,12 +1,12 @@
 {
   "schema_id": "qwen-mm-video-local-verification-v1",
-  "scope": "macOS ARM64 local implementation verification; remote CI/release tracked by GitHub manifests",
+  "scope": "Final local macOS ARM64 verification plus Linux x86_64 Docker emulation; native GitHub CI/release tracked separately by workflow manifests",
   "baseline_commit": "70112781924f284006cfb41dcc1b7f9f52088ebf",
   "wheel": {
     "name": "qwen_mm-0.2.0-cp311-abi3-macosx_11_0_arm64.whl",
-    "sha256": "b5b5893b0ee7cee566b8e2a255adbd5f22c35a585608aa77faeffd9d77a1a0ae",
-    "bytes": 2794998,
-    "native_sha256": "74203730b15b9089a7351c7e86115497274d0560d2090539459efeaa972307a6",
+    "sha256": "cdfba17dda171d718b214c4c63f0c115e49757096748c71867d8b3887b546c53",
+    "bytes": 2795426,
+    "native_sha256": "9392f7de96f917608adfb4a68f9f0c3b59a98a97d17f46e8b092829acafcc2ee",
     "facade_sha256": {
       "__init__.py": "878b396eec363a22b653b90534ed029326a3dbe54ba50e8460bdc651cb94a2b4",
       "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
@@ -31,10 +31,10 @@
     "crates/qwen-mm-core/src/processor.rs": "4063bc45d260263efd22f5e180334f6f3c26af2dd54dd79cc96cc09d0c0b7e14",
     "crates/qwen-mm-core/src/profile.rs": "8b78b0edd8646c270d7777550063b99cfc350d604e5f4578d13157ae0d7bff46",
     "crates/qwen-mm-core/src/request.rs": "90e274cb97831bca56f0e511ddd4c9417f320c7273da4909c8f38fdfedeb9870",
-    "crates/qwen-mm-core/src/resize.rs": "536da814fd1bada5df644be2174fd536d41b83414d3c07778cadf9fb151bdf91",
+    "crates/qwen-mm-core/src/resize.rs": "139683786378853ae5fd06ec8955870401e4116f74d1c09a87c8f5a5cfc70e43",
     "crates/qwen-mm-core/src/text.rs": "a48e512b730cd0a7591d03d96813d38ceafd9e2532f143e0216ff1c678eb09db",
     "crates/qwen-mm-core/src/text_conformance_tests.rs": "ee05d6d606c69bff3f8ca16d4364c52bbd241dc544402c0214c79c8a38650739",
-    "crates/qwen-mm-core/src/video.rs": "29bc1ddd500646411664fa0ddcf453b9c8d09e0c01b0243be00c07d6e7513a77",
+    "crates/qwen-mm-core/src/video.rs": "fbf2d6a418e42401b8bec48bcd49b23de83c6c9575e3f01007fe14977c44a178",
     "crates/qwen-mm-python/python/qwen_mm/__init__.py": "878b396eec363a22b653b90534ed029326a3dbe54ba50e8460bdc651cb94a2b4",
     "crates/qwen-mm-python/python/qwen_mm/_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
     "crates/qwen-mm-python/python/qwen_mm/_pretrained.py": "24a63896a1e8057858a0a2b5d150f828580e3969dcb33e0db7c87a02c215b726",
@@ -48,15 +48,34 @@
     "crates/qwen-mm-python/src/output.rs": "933bda8d2face7c0ef191805ada76697423d164703101d099e84c45d33732e5c"
   },
   "checks": {
-    "make_check": "passed; includes 134 reference tests",
-    "native_core": "135 tests including cached snapshots; doctest passed",
-    "binding_unit": "12 including ownership passed; strict core/binding Clippy passed",
-    "scripts": "122 tests passed",
-    "installed_binding": "fresh test wheel passed all suites; 13 video-source regressions",
-    "standalone_video": "fresh production wheel passed 114 profile/case checks +13 source regressions",
-    "torchcodec": "30 real TorchCodec checks; see torchcodec.json",
-    "consumer": "8 CPU Qwen3.5-0.8B cases; video/mixed exact logits and tokens; see consumer.json",
+    "make_check": "Passed before focused Linux correction, including 134 reference tests; subsequent gates below cover final source",
+    "native_core": "Final 136 tests including cached snapshots plus doctest; direct Linux new regression and unchanged 17 frozen fixtures passed",
+    "binding_unit": "Final 12 including ownership passed; strict core/binding Clippy passed",
+    "scripts": "Final 123 tests passed",
+    "installed_binding": "Fresh feature test wheel passed all suites; 13 video source regressions; facades unchanged by native correction",
+    "video_oracle": "Final installed production wheels passed 120 profile/case checks on macOS and emulated Linux; see oracle.json and oracle-linux-docker.json",
+    "video_helpers": "Final nine independent oracle helper tests passed",
+    "torchcodec": "Final 40 real TorchCodec checks; see torchcodec.json",
+    "consumer": "Final eight CPU Qwen3.5-0.8B cases; video/mixed exact inputs, logits and tokens; see consumer.json",
+    "rosetta": "Final installed production wheel passed all required executable recipes; see rosetta.json",
     "formatting": "Ruff, Rust fmt, lock validation, git diff --check passed",
-    "wheel_inspection": "source, package metadata, licenses and optional video dependency contract passed"
+    "wheel_inspection": "Final production wheel source, package metadata, licenses and optional video dependency contract passed"
+  },
+  "source_head_before_correction_commit": "2ea065b62f9b1bcb563feee791c7b1ec495cc51d",
+  "linux_docker_wheel": {
+    "name": "qwen_mm-0.2.0-cp311-abi3-manylinux_2_34_x86_64.whl",
+    "sha256": "2a5df1ef5f4f6097c0a4d5a6dff7b40528765e479c0e51647b201f8c0e29c68f",
+    "bytes": 3155396,
+    "native_sha256": "97eb9bd7dfd43aa402e1460388e071e16a8682718c6b5035ee8cf691ed2c35e5",
+    "facade_sha256": {
+      "__init__.py": "878b396eec363a22b653b90534ed029326a3dbe54ba50e8460bdc651cb94a2b4",
+      "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+      "_pretrained.py": "24a63896a1e8057858a0a2b5d150f828580e3969dcb33e0db7c87a02c215b726",
+      "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+      "_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025",
+      "_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+      "benchmark.py": "333ad8b2fa5ded6a75e30a9f8890a1874ce467b2181beffd850c2244214b7b22"
+    },
+    "execution": "linux/amd64 Docker emulation on macOS ARM64; rust:1.97.1-bookworm; Torch CPU AVX2"
   }
 }
