@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — video release candidate
+
+- Video files/URLs/encoded buffers, Pillow frame lists, decoded NumPy/Torch
+  clips, TorchCodec decoders/frame batches, and VL Utils prepared tuples.
+- Mixed image/video prompts, repeated references and heterogeneous batches;
+  video grids, temporal padding, prompt timestamps, NumPy/Torch model outputs.
+- Bounded native video resize and fused normalization/patch packing; shared
+  resize coefficients across a clip and batched decoder frame retrieval.
+- Optional `[video]` extra for PyAV/Pillow, file FPS/frame-count/clip sampling,
+  checked source metadata and actionable decode/resource failures.
+- Fresh-wheel generated-fixture comparisons and reproducible video benchmarks
+  for both pinned profiles. See [video usage and scope](docs/video-v0.2.md).
+
+The vLLM plugin remains at its v0.1 still-image scope. Public release status and
+architecture-specific validation are reported with the shipping artifacts.
+
 ## 0.1.0 — 2026-09-23 (GitHub release; PyPI pending)
 
 First Python release for CPU text and still-image preprocessing with

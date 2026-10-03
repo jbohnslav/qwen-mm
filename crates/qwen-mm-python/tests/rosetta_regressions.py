@@ -2,36 +2,36 @@
 
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
-from qwen_mm import Processor, UnsupportedMediaError
+from qwen_mm import Processor
 
 CACHE = Path(__file__).resolve().parents[3] / "reference/.cache/huggingface"
 
 
 class RosettaRegressions(unittest.TestCase):
-    def test_original_video_forms_fail_before_any_media_read(self):
+    def test_original_video_frame_list_mixes_with_images(self):
         for profile in ("Qwen3", "Qwen3.5"):
             processor = Processor.from_pretrained(profile, cache_dir=CACHE, local_files_only=True)
-            for source in ("https://example.com/video.mp4", ["frame1.jpg", "frame2.jpg"]):
-                with self.subTest(profile=profile, source=source):
-                    messages = [
+            frame = np.zeros((128, 128, 3), dtype=np.uint8)
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": frame},
                         {
-                            "role": "user",
-                            "content": [
-                                {"type": "image", "image": "must-not-read.jpg"},
-                                {"type": "video", "video": source},
-                            ],
-                        }
-                    ]
-                    with patch(
-                        "qwen_mm._media._load_source", side_effect=AssertionError("media read")
-                    ):
-                        with self.assertRaises(UnsupportedMediaError) as caught:
-                            processor.prepare(messages)
-                    self.assertEqual(caught.exception.category, "unsupported_media")
-                    self.assertIn("video", str(caught.exception).lower())
+                            "type": "video",
+                            "video": [frame, frame],
+                            "resized_height": 128,
+                            "resized_width": 128,
+                        },
+                    ],
+                }
+            ]
+            prepared = processor.prepare(messages)
+            self.assertEqual(prepared["image_grid_thw"].tolist(), [[1, 8, 8]])
+            self.assertEqual(prepared["video_grid_thw"].tolist(), [[1, 8, 8]])
+            self.assertIs(messages[0]["content"][1]["video"][0], frame)
 
     def test_direct_transformers_minimum_is_explicit_and_does_not_mutate_messages(self):
         for profile in ("Qwen3", "Qwen3.5"):

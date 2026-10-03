@@ -294,9 +294,9 @@ pub struct PreparedArrayViews<'a> {
     pub pixel_values: Option<MatrixView<'a, f32>>,
     /// `int64 [image_occurrences, 3]`, only when images are present.
     pub image_grid_thw: Option<MatrixView<'a, i64>>,
-    /// Reserved conditional video output; absent in the image batch path.
+    /// Conditional video patches, absent when videos are not present.
     pub pixel_values_videos: Option<MatrixView<'a, f32>>,
-    /// Reserved conditional video grid; absent in the image batch path.
+    /// Conditional video grids, absent when videos are not present.
     pub video_grid_thw: Option<MatrixView<'a, i64>>,
 }
 

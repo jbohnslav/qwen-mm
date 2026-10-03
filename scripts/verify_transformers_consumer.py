@@ -29,6 +29,7 @@ IDENTICAL_ASSETS = (
     "merges.txt",
     "vocab.json",
     "preprocessor_config.json",
+    "video_preprocessor_config.json",
 )
 
 
@@ -75,12 +76,18 @@ def official_inputs(processor, conversations: list[list[dict]]) -> dict:
         )
         for messages in conversations
     ]
-    images, videos = process_vision_info(conversations, image_patch_size=16)
-    assert videos is None
+    images, videos, video_kwargs = process_vision_info(
+        conversations, image_patch_size=16, return_video_kwargs=True, return_video_metadata=True
+    )
+    metadata = [video[1] for video in videos] if videos else None
+    videos = [video[0] for video in videos] if videos else None
     return dict(
         processor(
             text=text,
             images=images,
+            videos=videos,
+            video_metadata=metadata,
+            **video_kwargs,
             padding=True,
             truncation=False,
             do_resize=False,
@@ -247,6 +254,46 @@ def main() -> None:
             ("left_padded_batch", [single, text]),
             ("resized_image", [conversation("Describe the colors.", patterned, resize=True)]),
         ]
+        video_frames = [Image.new("RGB", (128, 128), color) for color in ("red", "blue", "green")]
+        video_item = {
+            "type": "video",
+            "video": video_frames,
+            "resized_height": 128,
+            "resized_width": 128,
+        }
+        cases.extend(
+            [
+                (
+                    "video_odd_frames",
+                    [
+                        [
+                            {
+                                "role": "user",
+                                "content": [
+                                    video_item,
+                                    {"type": "text", "text": "Describe the colors."},
+                                ],
+                            }
+                        ]
+                    ],
+                ),
+                (
+                    "mixed_image_video",
+                    [
+                        [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "image", "image": str(red)},
+                                    video_item,
+                                    {"type": "text", "text": "Describe the colors."},
+                                ],
+                            }
+                        ]
+                    ],
+                ),
+            ]
+        )
         for name, conversations in cases:
             for messages in conversations:
                 for thinking in (False, True):

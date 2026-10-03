@@ -30,30 +30,36 @@ class ReleaseTests(unittest.TestCase):
 
     def test_wheel_metadata_and_sources(self):
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+            path = (
+                Path(temporary) / f"qwen_mm-{release.VERSION}-cp311-abi3-manylinux_2_34_x86_64.whl"
+            )
             self.write_wheel(path)
             self.assertEqual(release.inspect_wheel(path)["sha256"], release.sha256(path))
-            self.write_wheel(path, version="0.2.0")
+            self.write_wheel(path, version="9.9.9")
             with self.assertRaises(AssertionError):
                 release.inspect_wheel(path)
 
     def test_unpublishable_linux_tag_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "qwen_mm-0.1.0-cp311-abi3-linux_x86_64.whl"
+            path = Path(temporary) / f"qwen_mm-{release.VERSION}-cp311-abi3-linux_x86_64.whl"
             self.write_wheel(path)
             with self.assertRaises(AssertionError):
                 release.inspect_wheel(path)
 
     def test_incompatible_old_numpy_pin_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+            path = (
+                Path(temporary) / f"qwen_mm-{release.VERSION}-cp311-abi3-manylinux_2_34_x86_64.whl"
+            )
             self.write_wheel(path, numpy="numpy==2.4.6")
             with self.assertRaises(AssertionError):
                 release.inspect_wheel(path)
 
     def test_publish_rehearsal_works_without_an_index_server(self):
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "qwen_mm-0.1.0-cp311-abi3-manylinux_2_34_x86_64.whl"
+            path = (
+                Path(temporary) / f"qwen_mm-{release.VERSION}-cp311-abi3-manylinux_2_34_x86_64.whl"
+            )
             self.write_wheel(path)
             result = subprocess.run(
                 release.publish_dry_run_command(path), capture_output=True, text=True
@@ -91,17 +97,20 @@ class ReleaseTests(unittest.TestCase):
                         release.inspect_plugin_wheel(path)
 
     @staticmethod
-    def write_wheel(path, version="0.1.0", numpy="numpy>=2.3.5,<3"):
+    def write_wheel(path, version=release.VERSION, numpy="numpy>=2.3.5,<3"):
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr(
-                "qwen_mm-0.1.0.dist-info/METADATA",
+                f"qwen_mm-{release.VERSION}.dist-info/METADATA",
                 f"Metadata-Version: 2.4\nName: qwen-mm\nVersion: {version}\nRequires-Python: >=3.11, <3.12\n"
                 "License-Expression: Apache-2.0\n"
-                f"Requires-Dist: {numpy}\nRequires-Dist: huggingface-hub==1.26.0\n",
+                f"Requires-Dist: {numpy}\nRequires-Dist: huggingface-hub==1.26.0\n"
+                'Requires-Dist: av>=16,<19; extra == "video"\n'
+                'Requires-Dist: pillow>=11,<13; extra == "video"\n',
             )
             for document in ("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.txt"):
                 archive.write(
-                    release.ROOT / document, f"qwen_mm-0.1.0.dist-info/licenses/{document}"
+                    release.ROOT / document,
+                    f"qwen_mm-{release.VERSION}.dist-info/licenses/{document}",
                 )
             for source in (release.ROOT / "crates/qwen-mm-python/python/qwen_mm").glob("*.py"):
                 archive.write(source, f"qwen_mm/{source.name}")

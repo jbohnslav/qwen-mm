@@ -1,4 +1,4 @@
-"""Normalize convenient Python image sources into native media inputs."""
+"""Normalize convenient Python media sources into native inputs."""
 
 from __future__ import annotations
 
@@ -186,7 +186,13 @@ def _consume_existing_image(value: Any, *, source: str, budget: _ReadBudget) -> 
         budget.consume(buffer.nbytes, source=source)
 
 
-def _load_source(value: Any, *, source: str, budget: _ReadBudget) -> Any:
+def _load_source(
+    value: Any, *, source: str, budget: _ReadBudget, limits: dict[str, int] | None = None
+) -> Any:
+    from ._video import is_pillow, pillow_rgb
+
+    if is_pillow(value):
+        return pillow_rgb(value, limits=limits or {})
     if isinstance(value, os.PathLike):
         path = Path(os.fspath(value))
         return _read_path(path, source=str(path), budget=budget)
@@ -239,28 +245,54 @@ def _normalize_image_url(item: dict[str, Any]) -> Any:
     return value
 
 
-def _normalize_request(request: Any, *, budget: _ReadBudget) -> Any:
+def _video_option_key(value: Any) -> Any:
+    """Snapshot options losslessly; NumPy repr rounds values and is not identity."""
+    if isinstance(value, dict):
+        return (
+            "dict",
+            frozenset(
+                (_video_option_key(key), _video_option_key(item)) for key, item in value.items()
+            ),
+        )
+    if hasattr(value, "tolist"):
+        return _video_option_key(value.tolist())
+    if isinstance(value, (list, tuple)):
+        return ("list", tuple(_video_option_key(item) for item in value))
+    if isinstance(value, float):
+        return ("float", value.hex())
+    if isinstance(value, (str, int, bool)) or value is None:
+        return (type(value).__name__, value)
+    # Let source validation reject unsupported values without hashing them.
+    return ("unsupported", id(value))
+
+
+def _normalize_request(
+    request: Any, *, budget: _ReadBudget, limits: dict[str, int], threads: int
+) -> Any:
+    from ._video import SOURCE_OPTIONS, VIDEO_OPTIONS, normalize_video
+
     if not isinstance(request, dict):
         return request
     existing_images = request.get("images", [])
-    if not isinstance(existing_images, list):
-        return request
-    images = [
-        _load_source(image, source=f"request.images[{index}]", budget=budget)
-        for index, image in enumerate(existing_images)
-    ]
+    existing_videos = request.get("videos", [])
     messages = request.get("messages")
+    if not isinstance(existing_images, list) or not isinstance(existing_videos, list):
+        return request
     if not isinstance(messages, list):
         return request
-
-    changed = any(isinstance(image, (str, os.PathLike)) for image in existing_images)
+    images = [
+        _load_source(image, source=f"request.images[{index}]", budget=budget, limits=limits)
+        for index, image in enumerate(existing_images)
+    ]
+    videos: list[Any] = []
+    video_cache: dict[Any, tuple[int, dict[str, Any]]] = {}
+    referenced_videos: set[int] = set()
     normalized_messages: list[Any] = []
     for message in messages:
         if not isinstance(message, dict) or not isinstance(message.get("content"), list):
             normalized_messages.append(message)
             continue
         normalized_content: list[Any] = []
-        message_changed = False
         for item in message["content"]:
             if not isinstance(item, dict):
                 normalized_content.append(item)
@@ -273,72 +305,105 @@ def _normalize_request(request: Any, *, budget: _ReadBudget) -> Any:
                         source,
                         source=f"message image_url[{len(images)}]",
                         budget=budget,
+                        limits=limits,
                     )
                 )
-                normalized = {
-                    key: value for key, value in item.items() if key not in {"type", "image_url"}
-                }
+                normalized = {k: v for k, v in item.items() if k not in {"type", "image_url"}}
                 normalized.update({"type": "image", "image": len(images) - 1})
                 normalized_content.append(normalized)
-                message_changed = True
             elif kind == "image" and "image" in item and not _is_numeric_reference(item["image"]):
                 images.append(
                     _load_source(
                         item["image"],
                         source=f"message image[{len(images)}]",
                         budget=budget,
+                        limits=limits,
                     )
                 )
-                normalized = dict(item)
-                normalized["image"] = len(images) - 1
-                normalized_content.append(normalized)
-                message_changed = True
+                normalized_content.append({**item, "image": len(images) - 1})
+            elif kind in ("video", "video_url"):
+                aliases = [
+                    key
+                    for key in ("video", "video_url", "input_index", "buffer_index")
+                    if key in item
+                ]
+                if len(aliases) != 1:
+                    raise _error(
+                        InvalidRequestError, "video content requires exactly one source field"
+                    )
+                source = item[aliases[0]]
+                if kind == "video_url" and isinstance(source, dict):
+                    source = source.get("url")
+                inline = {k: v for k, v in item.items() if k not in {"type", *aliases, "options"}}
+                nested = item.get("options", {})
+                if not isinstance(nested, dict):
+                    raise _error(InvalidRequestError, "video options must be a dictionary")
+                if inline.keys() & nested.keys():
+                    raise _error(InvalidRequestError, "video options cannot be specified twice")
+                options = {**inline, **nested}
+                unknown = options.keys() - VIDEO_OPTIONS - SOURCE_OPTIONS
+                if unknown:
+                    raise _error(
+                        InvalidRequestError, "unsupported video options", fields=sorted(unknown)
+                    )
+                cache_key = None
+                if _is_numeric_reference(source):
+                    if not 0 <= source < len(existing_videos):
+                        raise _error(
+                            InvalidRequestError,
+                            "video reference index is out of range",
+                            input_index=source,
+                        )
+                    referenced_videos.add(source)
+                    cache_key = (source, _video_option_key(options))
+                    source = existing_videos[source]
+                if cache_key is not None and cache_key in video_cache:
+                    index, native_options = video_cache[cache_key]
+                else:
+                    video, native_options = normalize_video(
+                        source,
+                        options=options,
+                        limits=limits,
+                        budget=budget,
+                        threads=threads,
+                    )
+                    index = len(videos)
+                    videos.append(video)
+                    if cache_key is not None:
+                        video_cache[cache_key] = (index, native_options)
+                normalized_content.append(
+                    {"type": "video", "input_index": index, "options": native_options}
+                )
             else:
                 normalized_content.append(item)
-        if message_changed:
-            normalized_message = dict(message)
-            normalized_message["content"] = normalized_content
-            normalized_messages.append(normalized_message)
-            changed = True
-        else:
-            normalized_messages.append(message)
-
-    if not changed:
-        return request
-    normalized_request = dict(request)
-    normalized_request["messages"] = normalized_messages
-    normalized_request["images"] = images
+        normalized_messages.append({**message, "content": normalized_content})
+    if len(referenced_videos) != len(existing_videos):
+        missing = next(
+            index for index in range(len(existing_videos)) if index not in referenced_videos
+        )
+        raise _error(
+            InvalidRequestError,
+            "every supplied video input must be referenced",
+            input_index=missing,
+        )
+    normalized_request = {**request, "messages": normalized_messages}
+    if images or "images" in request:
+        normalized_request["images"] = images
+    if videos or "videos" in request:
+        normalized_request["videos"] = videos
     return normalized_request
 
 
 def normalize_requests(
-    requests: Any, *, limits: dict[str, int], image_defaults: dict[str, int] | None = None
+    requests: Any,
+    *,
+    limits: dict[str, int],
+    image_defaults: dict[str, int] | None = None,
+    thread_budget: int = 1,
 ) -> Any:
-    """Return the native request shape, resolving direct image sources."""
+    """Return the native request shape, resolving images and videos once."""
     if not isinstance(requests, list):
         return requests
-    # Reject original video URLs/frame lists before fetching any image in the batch.
-    for request in requests:
-        if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
-            continue
-        for message in request["messages"]:
-            if not isinstance(message, dict) or not isinstance(message.get("content"), list):
-                continue
-            for item in message["content"]:
-                if isinstance(item, dict) and (
-                    item.get("type") == "video_url"
-                    or (
-                        item.get("type") == "video"
-                        and not _is_numeric_reference(
-                            item.get("video", item.get("input_index", item.get("buffer_index")))
-                        )
-                    )
-                ):
-                    raise _error(
-                        UnsupportedMediaError,
-                        "Video preparation is not supported in qwen-mm v0.1",
-                        media_type="video",
-                    )
     if image_defaults:
 
         def with_defaults(item: Any) -> Any:
@@ -367,4 +432,7 @@ def normalize_requests(
         item_limit=limits.get("encoded_bytes_per_item", _DEFAULT_ENCODED_BYTES_PER_ITEM),
         batch_limit=limits.get("encoded_bytes_per_batch", _DEFAULT_ENCODED_BYTES_PER_BATCH),
     )
-    return [_normalize_request(request, budget=budget) for request in requests]
+    return [
+        _normalize_request(request, budget=budget, limits=limits, threads=thread_budget)
+        for request in requests
+    ]

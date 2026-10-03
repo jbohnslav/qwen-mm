@@ -280,7 +280,11 @@ fn preflight_image_resources(
     Ok(())
 }
 
-fn build_image_plan(visual: &VisualProfile, height: u64, width: u64) -> Result<ImageGeometryPlan> {
+pub(crate) fn build_image_plan(
+    visual: &VisualProfile,
+    height: u64,
+    width: u64,
+) -> Result<ImageGeometryPlan> {
     if !height.is_multiple_of(visual.patch_size) || !width.is_multiple_of(visual.patch_size) {
         return Err(invariant(
             "smart_resize result is not divisible by the spatial patch size",

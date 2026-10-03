@@ -1056,7 +1056,7 @@ dependencies = [
 
 [[package]]
 name = "qwen-mm-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fast_image_resize",
  "image",
@@ -1072,7 +1072,7 @@ dependencies = [
 
 [[package]]
 name = "qwen-mm-python"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "numpy",
  "pyo3",

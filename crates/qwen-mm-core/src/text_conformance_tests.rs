@@ -353,6 +353,7 @@ fn fixture_videos<'a>(spec: &RequestSpec) -> &'a [VideoInput<'a>] {
         vec![
             VideoInput {
                 frames: &DUMMY_FRAMES,
+                ..VideoInput::default()
             };
             maximum + 1
         ]

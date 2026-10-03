@@ -74,7 +74,8 @@ def assemble(
             raise ValueError("wheel platform does not match verified host")
         selected.append(wheel)
         plugin = verified_file(path.parent, "plugin-build-1", data["plugin_artifact"])
-        if plugin.name != f"qwen_mm_vllm-{version}-py3-none-any.whl":
+        plugin_version = version if include_plugin else "0.1.0"
+        if plugin.name != f"qwen_mm_vllm-{plugin_version}-py3-none-any.whl":
             raise ValueError("unexpected plugin wheel")
         plugin_hashes.add(data["plugin_artifact"]["sha256"])
         if include_plugin and target == "linux-x86_64":
@@ -109,7 +110,7 @@ def assemble(
     (output / "RELEASE_NOTES.md").write_text(
         f"qwen-mm {version}\n\nSource commit: `{commit}`.\n\n"
         "Apache-2.0. CPython 3.11 on native macOS ARM64 and manylinux x86_64. "
-        "Supports the pinned Qwen3-VL and Qwen3.5 text/still-image profiles. "
+        "Supports the pinned Qwen3-VL and Qwen3.5 text, still-image, and video profiles. "
         "The optional vLLM plugin is deferred pending its dependency security upgrade.\n\n"
         "Includes tokenizers 1.0.0-rc.2 with the documented Qwen3.5 reader patch. "
         "Native release jobs built each wheel twice and verified installed APIs, "

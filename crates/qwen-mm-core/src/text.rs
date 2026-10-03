@@ -2096,7 +2096,10 @@ mod tests {
             width: 1,
             row_stride: 3,
         }];
-        let videos = [VideoInput { frames: &frames }];
+        let videos = [VideoInput {
+            frames: &frames,
+            ..VideoInput::default()
+        }];
         let items = [
             ContentItem::Image(ImageRef {
                 input_index: 0,

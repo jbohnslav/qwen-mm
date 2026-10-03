@@ -59,10 +59,23 @@ pub enum ImageInput<'a> {
 }
 
 /// A caller-owned raw-frame video accepted by the core v1 API.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct VideoInput<'a> {
-    /// Ordered RGB8 frames. All frames must have common dimensions.
+    /// Ordered RGB8 frames. Decoded clips require common dimensions; image
+    /// lists require common dimensions after their initial resize.
     pub frames: &'a [Rgb8<'a>],
+    /// Explicit source timestamp in seconds for each decoded frame.
+    pub timestamps: Option<&'a [f64]>,
+    /// Source or adapter frame rate, defaulting to the occurrence's sampling rate.
+    pub fps: Option<f64>,
+    /// Source frame indices, one per decoded frame.
+    pub frames_indices: Option<&'a [i64]>,
+    /// Total original source frames, before sampling.
+    pub total_num_frames: Option<f64>,
+    /// Apply the composed frame-list Pillow resize before video resize.
+    pub image_frames: bool,
+    /// Spatially prepared pixels from an upstream utility; bypass spatial resizing.
+    pub preprocessed: bool,
 }
 
 /// Per-occurrence still-image resize options.
