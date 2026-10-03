@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/jbohnslav/qwen-mm/actions/workflows/ci.yml/badge.svg)](https://github.com/jbohnslav/qwen-mm/actions/workflows/ci.yml)
 
-**Qwen's image preprocessing pipeline, consolidated and accelerated in Rust.**
+**Qwen's image and video preprocessing pipeline, accelerated in Rust.**
 
 `qwen-mm` puts the preprocessing best practices for pinned Qwen3-VL and Qwen3.5
 model snapshots behind one Python API. It brings together the relevant
-still-image behavior from `qwen-vl-utils` and the downstream processing normally
+image and video behavior from `qwen-vl-utils` and the downstream processing normally
 performed by Transformers: image loading, model-specific sizing, normalization,
 patch layout, chat formatting, tokenization, and batching.
 
@@ -17,7 +17,7 @@ those choices explicit and checks supported flows against the official
 workflows, so callers have fewer details to assemble themselves.
 
 Use a familiar `from_pretrained`, then one `prepare` or `prepare_batch` call
-for paths, URLs, encoded images, or RGB arrays. Get NumPy arrays or optional
+for paths, URLs, encoded images, RGB arrays, video files, or frame lists. Get NumPy arrays or optional
 Torch tensors ready for the model, with native batching that releases Python's
 GIL. The optional [vLLM plugin](integrations/vllm/README.md) handles still-image
 preprocessing inside a prebuilt vLLM server using ordinary image requests.
@@ -25,7 +25,7 @@ Model weights, training, and generation remain with the caller's framework.
 
 ## Correctness and compatibility
 
-qwen-mm reimplements the supported still-image pipeline in Rust; it does not
+qwen-mm reimplements supported image and video preprocessing in Rust; it does not
 require callers to run `qwen-vl-utils` first. An implementation can also be
 correct without that package: what matters is preserving the relevant
 model-specific behavior. The
@@ -38,8 +38,8 @@ are documented explicitly, including their different minimum image budgets.
 
 Correctness has a defined scope. Resizing follows the tested resize-v2 fidelity
 contract rather than bit-for-bit Pillow equality; resized pixels can change
-generated answers. v0.1 supports text and still images, with video and frame
-lists deferred. It is not a complete replacement for every `qwen-vl-utils`
+generated answers. v0.2 adds video files, Pillow frame lists, decoded NumPy/Torch clips, and
+TorchCodec-style decoder/frame-batch inputs; see the [video guide](docs/video-v0.2.md). It is not a complete replacement for every `qwen-vl-utils`
 feature or support for arbitrary Qwen model revisions.
 
 ## What to expect from performance
@@ -72,7 +72,7 @@ The optional vLLM plugin is not part of the initial PyPI publication: its pinned
 vLLM dependency needs a security upgrade. Installing core `qwen-mm` does not install vLLM.
 
 qwen-mm is public on [GitHub](https://github.com/jbohnslav/qwen-mm).
-Version 0.1.0 is available from [GitHub Releases](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.1.0);
+The previous still-image version 0.1.0 is available from [GitHub Releases](https://github.com/jbohnslav/qwen-mm/releases/tag/v0.1.0);
 PyPI publication is pending account setup. It supports CPython 3.11 on native
 macOS ARM64 and Linux x86_64 with glibc. Download and install the matching wheel:
 
@@ -82,7 +82,9 @@ python3.11 -m pip install /path/to/qwen_mm-0.1.0-cp311-abi3-<platform>.whl
 
 Replace `<platform>` with the actual filename. After publication, the equivalent
 index install will be `python3.11 -m pip install qwen-mm==0.1.0`.
-See the [install and support guide](docs/install-v0.1.md),
+Video development wheels use version **0.2.0**. Install the matching wheel with
+its `[video]` extra as shown in the [video guide](docs/video-v0.2.md).
+See the [v0.1 install and support guide](docs/install-v0.1.md),
 [release notes](CHANGELOG.md), and [release procedure](docs/releasing-v0.1.md).
 
 ## Quickstart
@@ -146,7 +148,7 @@ prepared = processor.prepare_batch(
 )
 ```
 
-## v0.1 scope
+## Supported flows
 
 | Flow | Status |
 | --- | --- |
@@ -158,10 +160,11 @@ prepared = processor.prepare_batch(
 | Per-image pixel budgets or explicit resize dimensions | Supported |
 | Qwen3.5 thinking/non-thinking rendering and tool messages | Supported |
 | Filesystem paths, file/HTTP(S) URLs, or image data URIs | Supported directly |
-| PIL images or Torch tensors as image inputs | Caller conversion required |
+| Pillow still images and video frame lists | Supported directly |
+| Torch tensors as still-image inputs | Caller conversion required |
 | Torch model-input outputs and token decoding | Supported; Torch is optional |
 | Still-image preprocessing inside prebuilt vLLM | Optional plugin; see its pinned support and verification scope |
-| Video files, decoded video, frame lists, or video sampling | Deferred |
+| Video files, decoded NumPy/Torch clips, frame lists, and file sampling | Supported in v0.2; [inputs and timing](docs/video-v0.2.md) |
 | Model loading, training, generation, and server orchestration | Owned by the caller's framework |
 
 An image content item may hold a `pathlib.Path`, a plain filesystem path, a
@@ -200,7 +203,8 @@ choice, and each request layout records its left and right padding.
 
 `PreparedBatch.arrays` contains the official model-input keys in stable order:
 `input_ids`, `attention_mask`, `mm_token_type_ids`, and, when the batch has an
-image, `pixel_values` and `image_grid_thw`. Integer arrays are `int64`; pixels
+image, `pixel_values` and `image_grid_thw`. Video rows additionally produce
+`pixel_values_videos` and `video_grid_thw`. Integer arrays are `int64`; pixels
 are `float32`. The prepared result is also a mapping over exactly those arrays,
 so `prepared["input_ids"]` and normal `consumer(**prepared)` keyword expansion
 work directly. NumPy remains the default. With Torch installed, pass

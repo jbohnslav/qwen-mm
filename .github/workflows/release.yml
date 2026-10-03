@@ -103,6 +103,6 @@ jobs:
           uv python install 3.11
           uv venv --python 3.11 /tmp/qwen-mm-published
           uv pip install --python /tmp/qwen-mm-published/bin/python --only-binary=:all: \
-            --index-url https://pypi.org/simple 'qwen-mm==0.1.0'
+            --index-url https://pypi.org/simple "qwen-mm==${GITHUB_REF_NAME#v}"
           /tmp/qwen-mm-published/bin/python crates/qwen-mm-python/tests/smoke.py
           /tmp/qwen-mm-published/bin/python scripts/verify_published.py publication/dist

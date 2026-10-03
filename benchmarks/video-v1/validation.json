@@ -1,0 +1,62 @@
+{
+  "schema_id": "qwen-mm-video-local-verification-v1",
+  "scope": "macOS ARM64 local implementation verification; remote CI/release tracked by GitHub manifests",
+  "baseline_commit": "70112781924f284006cfb41dcc1b7f9f52088ebf",
+  "wheel": {
+    "name": "qwen_mm-0.2.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "sha256": "b5b5893b0ee7cee566b8e2a255adbd5f22c35a585608aa77faeffd9d77a1a0ae",
+    "bytes": 2794998,
+    "native_sha256": "74203730b15b9089a7351c7e86115497274d0560d2090539459efeaa972307a6",
+    "facade_sha256": {
+      "__init__.py": "878b396eec363a22b653b90534ed029326a3dbe54ba50e8460bdc651cb94a2b4",
+      "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+      "_pretrained.py": "24a63896a1e8057858a0a2b5d150f828580e3969dcb33e0db7c87a02c215b726",
+      "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+      "_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025",
+      "_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+      "benchmark.py": "333ad8b2fa5ded6a75e30a9f8890a1874ce467b2181beffd850c2244214b7b22"
+    }
+  },
+  "source_sha256": {
+    "crates/qwen-mm-core/src/error.rs": "95613de6f95faa75b3c667d72196e50f04cc4878f2d44e14bf2e31b0e363f29c",
+    "crates/qwen-mm-core/src/geometry.rs": "2b69724ded24d212e5cb93ca96c0885641bdd05b2f9b426c4ad9abf013b1736f",
+    "crates/qwen-mm-core/src/lib.rs": "5062c0ce8714eec8d1dd272841d8aef61c9d9da6e63698e1daccb6976d8aaf98",
+    "crates/qwen-mm-core/src/limits.rs": "da9e28415b58207edee79f33a011daba0af1d4b9d574462b3f8939b74680b600",
+    "crates/qwen-mm-core/src/media.rs": "2d73e873df11207f496ee80360688ae7a08049b5ea2f3e1140144f9c7b86efb7",
+    "crates/qwen-mm-core/src/media_conformance_tests.rs": "4f54976ff7ce008accc76c0628e297d3f7e9f30701d14170dc308d60507b6985",
+    "crates/qwen-mm-core/src/observability.rs": "9d151b42a2a8ddbfc3a386609db3ae8147c2939df8e69a4e7cd655e2a1146a10",
+    "crates/qwen-mm-core/src/output.rs": "9d8ceeaad793ddaba29616d37339178dfed6c93a4ce07029790db4cddd566238",
+    "crates/qwen-mm-core/src/patchify.rs": "e63e5641362d9c6db988e03ccfe6ea49fd61ed8d2401b0c4e4d073ff10b52ded",
+    "crates/qwen-mm-core/src/patchify_conformance_tests.rs": "ddfcbc76b5168248f23446dbc85d8ab14d29ef9aaadf2b4f02450536a8a83c48",
+    "crates/qwen-mm-core/src/processor.rs": "4063bc45d260263efd22f5e180334f6f3c26af2dd54dd79cc96cc09d0c0b7e14",
+    "crates/qwen-mm-core/src/profile.rs": "8b78b0edd8646c270d7777550063b99cfc350d604e5f4578d13157ae0d7bff46",
+    "crates/qwen-mm-core/src/request.rs": "90e274cb97831bca56f0e511ddd4c9417f320c7273da4909c8f38fdfedeb9870",
+    "crates/qwen-mm-core/src/resize.rs": "536da814fd1bada5df644be2174fd536d41b83414d3c07778cadf9fb151bdf91",
+    "crates/qwen-mm-core/src/text.rs": "a48e512b730cd0a7591d03d96813d38ceafd9e2532f143e0216ff1c678eb09db",
+    "crates/qwen-mm-core/src/text_conformance_tests.rs": "ee05d6d606c69bff3f8ca16d4364c52bbd241dc544402c0214c79c8a38650739",
+    "crates/qwen-mm-core/src/video.rs": "29bc1ddd500646411664fa0ddcf453b9c8d09e0c01b0243be00c07d6e7513a77",
+    "crates/qwen-mm-python/python/qwen_mm/__init__.py": "878b396eec363a22b653b90534ed029326a3dbe54ba50e8460bdc651cb94a2b4",
+    "crates/qwen-mm-python/python/qwen_mm/_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+    "crates/qwen-mm-python/python/qwen_mm/_pretrained.py": "24a63896a1e8057858a0a2b5d150f828580e3969dcb33e0db7c87a02c215b726",
+    "crates/qwen-mm-python/python/qwen_mm/_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+    "crates/qwen-mm-python/python/qwen_mm/_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025",
+    "crates/qwen-mm-python/python/qwen_mm/_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+    "crates/qwen-mm-python/python/qwen_mm/benchmark.py": "333ad8b2fa5ded6a75e30a9f8890a1874ce467b2181beffd850c2244214b7b22",
+    "crates/qwen-mm-python/src/errors.rs": "eb28207958a44b38783c48be9db00c5eb1daa277ca89f74a8a13a06f13380092",
+    "crates/qwen-mm-python/src/input.rs": "84cfe586e4c76e640497578d262dba34ecd84324cb64ccc6aff66c6b8f81342c",
+    "crates/qwen-mm-python/src/lib.rs": "b079dfe7451601791f06331d4b05fbf18361102c56c60dacfffc40bf990e95d3",
+    "crates/qwen-mm-python/src/output.rs": "933bda8d2face7c0ef191805ada76697423d164703101d099e84c45d33732e5c"
+  },
+  "checks": {
+    "make_check": "passed; includes 134 reference tests",
+    "native_core": "135 tests including cached snapshots; doctest passed",
+    "binding_unit": "12 including ownership passed; strict core/binding Clippy passed",
+    "scripts": "122 tests passed",
+    "installed_binding": "fresh test wheel passed all suites; 13 video-source regressions",
+    "standalone_video": "fresh production wheel passed 114 profile/case checks +13 source regressions",
+    "torchcodec": "30 real TorchCodec checks; see torchcodec.json",
+    "consumer": "8 CPU Qwen3.5-0.8B cases; video/mixed exact logits and tokens; see consumer.json",
+    "formatting": "Ruff, Rust fmt, lock validation, git diff --check passed",
+    "wheel_inspection": "source, package metadata, licenses and optional video dependency contract passed"
+  }
+}

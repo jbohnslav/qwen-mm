@@ -25,7 +25,7 @@ from urllib.parse import unquote, urlsplit
 import numpy as np
 import torch
 from PIL import Image
-from qwen_mm import Processor, UnsupportedMediaError
+from qwen_mm import Processor
 from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor, Qwen3_5ForConditionalGeneration
 
@@ -85,7 +85,7 @@ def compare(reference, candidate) -> dict:
         assert np.isfinite(right).all(), key
         error = float(np.max(np.abs(left.astype(np.float64) - right)))
         differences[key] = error
-        if key != "pixel_values":
+        if key not in ("pixel_values", "pixel_values_videos"):
             np.testing.assert_array_equal(left, right, err_msg=key)
         else:
             # This checks the frozen maximum-error bound; the full resize-v2
@@ -213,7 +213,7 @@ def run(cache: Path, *, local_model: bool, live_urls: bool) -> dict:
                         execute(blocks[0], env, replacements)
                     reference = composed(official, env["messages"], thinking=False, generation=True)
                 elif number == 8:
-                    # The official video processor is outside the v0.1 envelope.
+                    # Bind the large public video example to deterministic frames.
                     tree = ast.parse(blocks[0])
                     assignment = next(
                         node
@@ -227,7 +227,13 @@ def run(cache: Path, *, local_model: bool, live_urls: bool) -> dict:
                         compile(ast.Module(body=[assignment], type_ignores=[]), str(DOC), "exec"),
                         env,
                     )
-                    reference = None
+                    from video_oracle import Case, official_inputs, request
+
+                    env["messages"][0]["content"][0]["video"] = [Image.fromarray(rgb)] * 4
+                    reference, _ = official_inputs(
+                        official, Case("rosetta_video", [request(env["messages"])])
+                    )
+                    reference = {key: torch.from_numpy(value) for key, value in reference.items()}
                 else:
                     try:
                         execute(blocks[0], env, replacements)
@@ -245,7 +251,6 @@ def run(cache: Path, *, local_model: bool, live_urls: bool) -> dict:
                         execute(blocks[0], retry, plain_paths)
                         reference = retry["inputs"]
                 env["processor"] = native
-                error = None
                 # Section 6's literal constructor uses the same pinned cache.
                 construct = Processor.from_pretrained
                 with patch.object(
@@ -255,19 +260,15 @@ def run(cache: Path, *, local_model: bool, live_urls: bool) -> dict:
                         name, cache_dir=cache, local_files_only=True
                     ),
                 ):
-                    try:
-                        execute(blocks[1], env, replacements)
-                    except UnsupportedMediaError as caught:
-                        if number != 8:
-                            raise
-                        error = caught.category
+                    execute(blocks[1], env, replacements)
                 if number == 8:
-                    assert error == "unsupported_media"
                     record = {
                         "section": number,
                         "profile": profile["profile"],
                         "passed": True,
-                        "result": "original video message rejected as unsupported_media",
+                        "result": "v0.2 video arrays verified against composed VL Utils on generated frames",
+                        "input_differences": compare(reference, env["inputs"]),
+                        "fixture_adaptation": "public movie replaced with four generated Pillow frames",
                     }
                 else:
                     candidate = env["inputs"]

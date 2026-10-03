@@ -1,4 +1,4 @@
-//! Serial composition of the frozen text and still-image stages.
+//! Bounded composition of frozen text, image, and decoded video stages.
 
 use std::{mem, path::Path};
 
@@ -31,7 +31,7 @@ use crate::{
     },
     output::{
         CoordinateRange, ImageSidecar, IntegrationSidecar, Matrix, MatrixView, PreparedArrayViews,
-        PreparedArrays, PreparedBatch, ReplacementRange,
+        PreparedArrays, PreparedBatch, ReplacementRange, VideoSidecar,
     },
     patchify::{
         ImagePatchifyPlan, execute_image_patchify_plan_into, patchify_image_rgb8,
@@ -42,7 +42,11 @@ use crate::{
         ContentItem, ImageInput, MessageContent, OccurrenceLocation, Request,
         validate_request_structure,
     },
-    text::{BatchTextPlan, PreparedTextRequest, TextProcessor, VisualExpansion},
+    text::{BatchTextPlan, PreparedTextRequest, TextProcessor, VisualExpansion, VisualModality},
+    video::{
+        PreparedRgbVideo, VideoGeometryPlan, VideoPreparationPlan, execute_video_plan,
+        patchify_video_into, plan_video_rgb8, video_cache_key,
+    },
 };
 
 /// One completely processed still-image occurrence in traversal order.
@@ -77,6 +81,73 @@ pub struct ProcessedBatchImageOccurrence {
 
 impl ProcessedBatchImageOccurrence {
     /// Returns the stable cache identity as lowercase hexadecimal SHA-256.
+    #[must_use]
+    pub fn cache_key_hex(self) -> String {
+        hex_digest(self.cache_key)
+    }
+}
+
+/// One processed video occurrence with exact temporal and source metadata.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProcessedBatchVideoOccurrence {
+    /// Request/message/content coordinates of the occurrence.
+    pub location: OccurrenceLocation,
+    /// Row in `video_grid_thw`.
+    pub grid_row: usize,
+    /// Half-open rows in `pixel_values_videos`.
+    pub pixel_rows: CoordinateRange,
+    /// Original source frame height.
+    pub source_height: u64,
+    /// Original source frame width.
+    pub source_width: u64,
+    /// Exact prepared video geometry.
+    pub geometry: VideoGeometryPlan,
+    /// Prompt timestamps, one per temporal patch group.
+    pub timestamps: Vec<f64>,
+    /// Source or adapter frame rate.
+    pub fps: f64,
+    /// Effective sampling frame rate.
+    pub sample_fps: f64,
+    /// Temporally padded source frame indices.
+    pub frames_indices: Vec<i64>,
+    /// Original source frame count.
+    pub total_num_frames: f64,
+    /// Stable prepared-video identity.
+    pub cache_key: [u8; 32],
+}
+
+impl ProcessedBatchVideoOccurrence {
+    /// Returns lowercase SHA-256 identity.
+    #[must_use]
+    pub fn cache_key_hex(&self) -> String {
+        hex_digest(self.cache_key)
+    }
+}
+
+#[derive(Debug)]
+struct BatchPlannedVideoOccurrence {
+    occurrence_index: usize,
+    location: OccurrenceLocation,
+    prepared_rgb: PreparedRgbVideo,
+}
+
+/// Exact planned output coordinates for one video occurrence.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BatchVideoLayout {
+    /// Request/message/content coordinates.
+    pub location: OccurrenceLocation,
+    /// Row in `video_grid_thw`.
+    pub grid_row: usize,
+    /// Half-open video patch rows.
+    pub pixel_rows: BatchOutputRange,
+    /// Exact prepared geometry.
+    pub geometry: VideoGeometryPlan,
+    /// Stable source/profile/options identity.
+    pub cache_key: [u8; 32],
+}
+
+impl BatchVideoLayout {
+    /// Returns the stable source/profile/options SHA-256 identity.
     #[must_use]
     pub fn cache_key_hex(self) -> String {
         hex_digest(self.cache_key)
@@ -157,9 +228,9 @@ pub struct BatchCapacities {
     pub pixel_values: Option<ArrayCapacity>,
     /// Required `int64` still-image grids, absent for text-only batches.
     pub image_grid_thw: Option<ArrayCapacity>,
-    /// Video pixels are outside the Phase C image batch API.
+    /// Required float video patches, absent when there are no videos.
     pub pixel_values_videos: Option<ArrayCapacity>,
-    /// Video grids are outside the Phase C image batch API.
+    /// Required video grids, absent when there are no videos.
     pub video_grid_thw: Option<ArrayCapacity>,
 }
 
@@ -187,6 +258,10 @@ pub struct BatchRequestLayout {
     pub image_grid_rows: BatchOutputRange,
     /// Rows in `pixel_values` belonging to this request.
     pub pixel_rows: BatchOutputRange,
+    /// Rows in `video_grid_thw` belonging to this request.
+    pub video_grid_rows: BatchOutputRange,
+    /// Rows in `pixel_values_videos` belonging to this request.
+    pub video_pixel_rows: BatchOutputRange,
 }
 
 /// Exact planned output coordinates for one still-image occurrence.
@@ -210,6 +285,9 @@ pub struct BatchPlan {
     text: BatchTextPlan,
     images: Vec<BatchPlannedImageOccurrence>,
     processed_images: Vec<ProcessedBatchImageOccurrence>,
+    videos: Vec<BatchPlannedVideoOccurrence>,
+    processed_videos: Vec<ProcessedBatchVideoOccurrence>,
+    video_layouts: Vec<BatchVideoLayout>,
     sidecar: IntegrationSidecar,
     capacities: BatchCapacities,
     request_layouts: Vec<BatchRequestLayout>,
@@ -244,6 +322,18 @@ impl BatchPlan {
         &self.processed_images
     }
 
+    /// Returns video layouts in traversal order.
+    #[must_use]
+    pub fn video_layouts(&self) -> &[BatchVideoLayout] {
+        &self.video_layouts
+    }
+
+    /// Returns processed video metadata in traversal order.
+    #[must_use]
+    pub fn processed_videos(&self) -> &[ProcessedBatchVideoOccurrence] {
+        &self.processed_videos
+    }
+
     /// Returns the validated adapter sidecar retained by the plan.
     #[must_use]
     pub const fn sidecar(&self) -> &IntegrationSidecar {
@@ -272,6 +362,13 @@ impl BatchPlan {
                 u8_vector_capacity_bytes(&image.prepared_rgb.rgb),
             );
         }
+        for video in &self.videos {
+            recorder.release_transient(
+                "prepared_video_rgb",
+                media_observation_scope(video.location, video.occurrence_index),
+                video.prepared_rgb.geometry.rgb_capacity_bytes,
+            );
+        }
         drop(self);
     }
 }
@@ -284,7 +381,7 @@ impl BatchImageLayout {
     }
 }
 
-/// Caller-owned storage for every official output of an image batch plan.
+/// Caller-owned storage for every official output of a multimodal batch plan.
 pub struct BatchDestinations<'a> {
     /// `int64 [batch, sequence]` storage.
     pub input_ids: &'a mut [i64],
@@ -296,9 +393,9 @@ pub struct BatchDestinations<'a> {
     pub pixel_values: Option<&'a mut [f32]>,
     /// `int64 [image_occurrences, 3]`, required exactly when planned.
     pub image_grid_thw: Option<&'a mut [i64]>,
-    /// Reserved video pixels; must match the plan's conditional presence.
+    /// Video pixels; must match the plan's conditional presence.
     pub pixel_values_videos: Option<&'a mut [f32]>,
-    /// Reserved video grid; must match the plan's conditional presence.
+    /// Video grid; must match the plan's conditional presence.
     pub video_grid_thw: Option<&'a mut [i64]>,
 }
 
@@ -315,6 +412,8 @@ pub struct PreparedBatchView<'plan, 'destination> {
     sidecar: &'plan IntegrationSidecar,
     /// Every image occurrence in deterministic batch traversal order.
     pub images: &'plan [ProcessedBatchImageOccurrence],
+    /// Video occurrences in deterministic traversal order.
+    pub videos: &'plan [ProcessedBatchVideoOccurrence],
 }
 
 impl PreparedBatchView<'_, '_> {
@@ -337,6 +436,9 @@ impl PreparedBatchView<'_, '_> {
         if self.arrays.pixel_values.is_some() {
             keys.extend(["pixel_values", "image_grid_thw"]);
         }
+        if self.arrays.pixel_values_videos.is_some() {
+            keys.extend(["pixel_values_videos", "video_grid_thw"]);
+        }
         keys
     }
 }
@@ -354,6 +456,8 @@ pub struct PreparedImageBatch {
     pub batch: PreparedBatch,
     /// Every image occurrence in deterministic batch traversal order.
     pub images: Vec<ProcessedBatchImageOccurrence>,
+    /// Video occurrences in deterministic traversal order.
+    pub videos: Vec<ProcessedBatchVideoOccurrence>,
 }
 
 /// Default processor-wide worker budget.
@@ -391,7 +495,7 @@ impl ProcessorConfig {
     }
 }
 
-/// Profile-bound native Rust processor for one text/image request.
+/// Profile-bound native Rust processor for text, images, and decoded videos.
 pub struct QwenImageProcessor {
     text: TextProcessor,
     limits: ResourceLimits,
@@ -579,7 +683,7 @@ impl QwenImageProcessor {
         })
     }
 
-    /// Runs the complete serial text and still-image path for one request.
+    /// Runs the complete text, image, and decoded video path for one request.
     ///
     /// Media occurrences are deliberately not deduplicated. The function
     /// returns either one complete owned result or an error; intermediate RGB,
@@ -588,9 +692,25 @@ impl QwenImageProcessor {
     /// # Errors
     ///
     /// Returns the first stable compatibility-v1 category in request,
-    /// profile, option, resource, decode, then geometry/stage order. Raw-frame
-    /// and encoded video remain outside the Phase B processor.
+    /// profile, option, resource, decode, then geometry/stage order. Video
+    /// requests use the same checked multimodal batch implementation.
     pub fn prepare(&self, request: Request<'_>) -> Result<PreparedImageRequest> {
+        if !request.videos.is_empty() {
+            let output = self.prepare_batch(&[request])?;
+            return Ok(PreparedImageRequest {
+                text: output
+                    .text
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| invariant("single-request batch omitted text"))?,
+                batch: output.batch,
+                images: output
+                    .images
+                    .into_iter()
+                    .map(|image| image.occurrence)
+                    .collect(),
+            });
+        }
         self.run_in_pool(move || {
             self.prepare_internal(request, false)
                 .map(|(output, _)| output)
@@ -604,7 +724,8 @@ impl QwenImageProcessor {
     ///
     /// # Errors
     ///
-    /// Returns the same stable errors and precedence as [`Self::prepare`].
+    /// Returns the same image errors and precedence as [`Self::prepare`], or
+    /// `unsupported_media` for videos on this image-only conformance surface.
     pub fn prepare_with_media_trace(&self, request: Request<'_>) -> Result<PreparedImageTrace> {
         self.run_in_pool(move || {
             let (output, prepared_images) = self.prepare_internal(request, true)?;
@@ -615,7 +736,7 @@ impl QwenImageProcessor {
         })
     }
 
-    /// Plans a heterogeneous text/still-image batch and completes all media
+    /// Plans a heterogeneous text/image/video batch and completes all media
     /// decode, geometry, resize, token, and capacity validation without
     /// touching caller-owned output memory.
     ///
@@ -722,8 +843,12 @@ impl QwenImageProcessor {
             .collect::<Vec<_>>();
         preflight_batch_after_structure_through_resources(&registry, &profiled, self.limits)?;
         let mut pending_images = Vec::new();
+        let mut pending_videos: Vec<(usize, OccurrenceLocation, VideoPreparationPlan<'_>)> =
+            Vec::new();
+        let mut video_layouts = Vec::new();
+        let mut next_video_pixel_row = 0_u64;
+        let mut ordered_visuals = vec![Vec::new(); requests.len()];
         let mut media_errors = Vec::new();
-        let mut visuals = vec![Vec::new(); requests.len()];
         let mut image_layouts = Vec::new();
         let mut request_layouts = Vec::with_capacity(requests.len());
         let mut additional_output_bytes = 0_u64;
@@ -733,6 +858,8 @@ impl QwenImageProcessor {
         for (request_index, request) in requests.iter().enumerate() {
             let request_grid_start = image_layouts.len();
             let request_pixel_start = next_pixel_row;
+            let request_video_grid_start = video_layouts.len();
+            let request_video_pixel_start = next_video_pixel_row;
             for (message_index, message) in request.messages.iter().enumerate() {
                 let MessageContent::Items(items) = message.content else {
                     continue;
@@ -746,14 +873,65 @@ impl QwenImageProcessor {
                     }
                     let reference = match item {
                         ContentItem::Image(reference) => reference,
-                        ContentItem::Video(_) => {
-                            media_errors.push((
-                                occurrence_index,
-                                unsupported_batch_video()
-                                    .with_context("request_index", request_index)
-                                    .with_context("message_index", message_index)
-                                    .with_context("content_item_index", content_item_index),
-                            ));
+                        ContentItem::Video(reference) => {
+                            let location = OccurrenceLocation {
+                                request_index,
+                                message_index,
+                                content_item_index,
+                                input_index: reference.input_index,
+                            };
+                            let planned = (|| {
+                                let plan = plan_video_rgb8(
+                                    request.videos[reference.input_index],
+                                    &self.profile().visual,
+                                    reference.options,
+                                    self.limits,
+                                )?;
+                                let geometry = plan.geometry;
+                                let next_bytes = checked_add(
+                                    "composed video output bytes",
+                                    additional_output_bytes,
+                                    checked_add(
+                                        "video materialized bytes",
+                                        geometry.pixel_values_capacity_bytes,
+                                        24,
+                                    )?,
+                                )?;
+                                let pixel_end = checked_add(
+                                    "composed video patch rows",
+                                    next_video_pixel_row,
+                                    geometry.patch_rows,
+                                )?;
+                                let pixel_rows = BatchOutputRange {
+                                    start: to_usize(next_video_pixel_row, "video pixel start")?,
+                                    end: to_usize(pixel_end, "video pixel end")?,
+                                };
+                                Result::Ok((plan, next_bytes, pixel_end, pixel_rows))
+                            })();
+                            match planned {
+                                Ok((plan, next_bytes, pixel_end, pixel_rows)) => {
+                                    additional_output_bytes = next_bytes;
+                                    next_video_pixel_row = pixel_end;
+                                    let grid_row = video_layouts.len();
+                                    video_layouts.push(BatchVideoLayout {
+                                        location,
+                                        grid_row,
+                                        pixel_rows,
+                                        geometry: plan.geometry,
+                                        cache_key: [0; 32],
+                                    });
+                                    ordered_visuals[request_index]
+                                        .push((VisualModality::Video, grid_row));
+                                    pending_videos.push((occurrence_index, location, plan));
+                                }
+                                Err(error) => media_errors.push((
+                                    occurrence_index,
+                                    error
+                                        .with_context("request_index", request_index)
+                                        .with_context("message_index", message_index)
+                                        .with_context("content_item_index", content_item_index),
+                                )),
+                            }
                             occurrence_index += 1;
                             continue;
                         }
@@ -836,10 +1014,7 @@ impl QwenImageProcessor {
                                 geometry,
                                 cache_key: [0; 32],
                             });
-                            visuals[request_index].push(VisualExpansion::Image {
-                                input_index: reference.input_index,
-                                grid_thw: geometry.image_grid_thw,
-                            });
+                            ordered_visuals[request_index].push((VisualModality::Image, grid_row));
                             pending_images.push((
                                 PlannedImageOccurrence {
                                     occurrence_index,
@@ -885,6 +1060,14 @@ impl QwenImageProcessor {
                 pixel_rows: BatchOutputRange {
                     start: to_usize(request_pixel_start, "request pixel row start")?,
                     end: to_usize(next_pixel_row, "request pixel row end")?,
+                },
+                video_grid_rows: BatchOutputRange {
+                    start: request_video_grid_start,
+                    end: video_layouts.len(),
+                },
+                video_pixel_rows: BatchOutputRange {
+                    start: to_usize(request_video_pixel_start, "request video pixel start")?,
+                    end: to_usize(next_video_pixel_row, "request video pixel end")?,
                 },
             });
         }
@@ -936,6 +1119,25 @@ impl QwenImageProcessor {
             return Err(select_preferred_error(media_errors));
         }
 
+        let visuals = ordered_visuals
+            .iter()
+            .map(|entries| {
+                entries
+                    .iter()
+                    .map(|&(modality, index)| match modality {
+                        VisualModality::Image => VisualExpansion::Image {
+                            input_index: image_layouts[index].location.input_index,
+                            grid_thw: image_layouts[index].geometry.image_grid_thw,
+                        },
+                        VisualModality::Video => VisualExpansion::Video {
+                            input_index: video_layouts[index].location.input_index,
+                            grid_thw: video_layouts[index].geometry.video_grid_thw,
+                            timestamps: &pending_videos[index].2.metadata.timestamps,
+                        },
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
         let text = if let Some(recorder) = recorder.as_deref_mut() {
             self.text.plan_batch_from_rendered_observed(
                 requests,
@@ -969,6 +1171,24 @@ impl QwenImageProcessor {
             )
             .with_context("expected", expected_placeholders)
             .with_context("actual", actual_placeholders));
+        }
+
+        let expected_video_placeholders =
+            video_layouts.iter().try_fold(0_u64, |total, video| {
+                checked_add(
+                    "video placeholder count",
+                    total,
+                    video.geometry.placeholder_count,
+                )
+            })?;
+        let actual_video_placeholders =
+            text.count_token(self.profile().tokenizer.video_token_id) as u64;
+        if expected_video_placeholders != actual_video_placeholders {
+            return Err(
+                invariant("video placeholder tokens do not equal summed merged grids")
+                    .with_context("expected", expected_video_placeholders)
+                    .with_context("actual", actual_video_placeholders),
+            );
         }
 
         let text_elements = text.rows().checked_mul(text.columns()).ok_or_else(|| {
@@ -1010,14 +1230,30 @@ impl QwenImageProcessor {
                 )?),
             )
         };
+        let (pixel_values_videos, video_grid_thw) = if video_layouts.is_empty() {
+            (None, None)
+        } else {
+            (
+                Some(array_capacity(
+                    to_usize(next_video_pixel_row, "video pixel rows")?,
+                    to_usize(self.profile().visual.patch_width, "patch width")?,
+                    mem::size_of::<f32>(),
+                )?),
+                Some(array_capacity(
+                    video_layouts.len(),
+                    3,
+                    mem::size_of::<i64>(),
+                )?),
+            )
+        };
         let capacities = BatchCapacities {
             input_ids: text_capacity,
             attention_mask: text_capacity,
             mm_token_type_ids: text_capacity,
             pixel_values,
             image_grid_thw,
-            pixel_values_videos: None,
-            video_grid_thw: None,
+            pixel_values_videos,
+            video_grid_thw,
         };
 
         let pending_image_count = pending_images.len();
@@ -1083,32 +1319,132 @@ impl QwenImageProcessor {
             layout.cache_key = image.cache_key;
         }
 
-        let mut sidecar = IntegrationSidecar::default();
-        let mut replacement_index = 0_usize;
-        for (request_index, text_request) in text.requests().iter().enumerate() {
-            for replacement in &text_request.replacements {
-                let image = image_layouts.get(replacement_index).ok_or_else(|| {
-                    invariant("text replacements and planned image occurrences disagree")
-                })?;
-                if image.location.request_index != request_index {
-                    return Err(invariant(
-                        "text replacement request and image plan request disagree",
-                    ));
+        let executed_videos = pending_videos
+            .into_iter()
+            .map(|(occurrence_index, location, mut plan)| {
+                let request = &requests[location.request_index];
+                let MessageContent::Items(items) = request.messages[location.message_index].content
+                else {
+                    unreachable!("validated video content")
+                };
+                let ContentItem::Video(reference) = items[location.content_item_index] else {
+                    unreachable!("validated video occurrence")
+                };
+                plan.cache_key = video_cache_key(
+                    request.videos[reference.input_index],
+                    reference.options,
+                    &self.profile().fingerprint,
+                );
+                let scope = media_observation_scope(location, occurrence_index);
+                let span = recorder
+                    .as_deref_mut()
+                    .map(|recorder| recorder.begin("native.media.video_resize", scope, 0));
+                let result = execute_video_plan(plan, self.thread_budget > 1 && recorder.is_none());
+                if let Some(recorder) = recorder.as_deref_mut()
+                    && let Some(span) = span
+                {
+                    match &result {
+                        Ok(video) => {
+                            recorder.record_allocation(
+                                "prepared_video_rgb",
+                                BufferClass::Transient,
+                                scope,
+                                video.geometry.rgb_capacity_bytes,
+                            );
+                            recorder.finish_success(
+                                span,
+                                video.geometry.rgb_capacity_bytes,
+                                &[
+                                    video.frames.len() as u64,
+                                    video.geometry.height,
+                                    video.geometry.width,
+                                    3,
+                                ],
+                            );
+                        }
+                        Err(error) => {
+                            recorder.finish_error(span, error);
+                        }
+                    }
                 }
-                sidecar.images.push(ImageSidecar {
-                    request_index: usize_to_i64(request_index, "sidecar request index")?,
-                    grid_row: usize_to_i64(image.grid_row, "image grid row")?,
-                    replacement: ReplacementRange {
-                        code_points: replacement.rendered_code_points,
-                        tokens: replacement.expanded_tokens,
-                    },
-                });
-                replacement_index += 1;
+                result.map(|prepared_rgb| BatchPlannedVideoOccurrence {
+                    occurrence_index,
+                    location,
+                    prepared_rgb,
+                })
+            })
+            .collect::<Vec<_>>();
+        let mut videos = Vec::with_capacity(executed_videos.len());
+        for result in executed_videos {
+            match result {
+                Ok(video) => videos.push(video),
+                Err(error) => {
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        release_planned_images(&images, recorder);
+                        for video in &videos {
+                            recorder.release_transient(
+                                "prepared_video_rgb",
+                                media_observation_scope(video.location, video.occurrence_index),
+                                video.prepared_rgb.geometry.rgb_capacity_bytes,
+                            );
+                        }
+                    }
+                    return Err(error);
+                }
             }
         }
-        if replacement_index != images.len() {
+        for (layout, video) in video_layouts.iter_mut().zip(&videos) {
+            layout.cache_key = video.prepared_rgb.cache_key;
+        }
+        let mut sidecar = IntegrationSidecar::default();
+        let mut image_index = 0;
+        let mut video_index = 0;
+        for (request_index, text_request) in text.requests().iter().enumerate() {
+            for replacement in &text_request.replacements {
+                let range = ReplacementRange {
+                    code_points: replacement.rendered_code_points,
+                    tokens: replacement.expanded_tokens,
+                };
+                match replacement.modality {
+                    VisualModality::Image => {
+                        let image = &image_layouts[image_index];
+                        if image.location.request_index != request_index {
+                            return Err(invariant(
+                                "text replacement request and image plan disagree",
+                            ));
+                        }
+                        sidecar.images.push(ImageSidecar {
+                            request_index: usize_to_i64(request_index, "sidecar request index")?,
+                            grid_row: usize_to_i64(image.grid_row, "image grid row")?,
+                            replacement: range,
+                        });
+                        image_index += 1;
+                    }
+                    VisualModality::Video => {
+                        let video = &videos[video_index];
+                        let layout = &video_layouts[video_index];
+                        if layout.location.request_index != request_index {
+                            return Err(invariant(
+                                "text replacement request and video plan disagree",
+                            ));
+                        }
+                        sidecar.videos.push(VideoSidecar {
+                            request_index: usize_to_i64(request_index, "sidecar request index")?,
+                            grid_row: usize_to_i64(layout.grid_row, "video grid row")?,
+                            fps: video.prepared_rgb.metadata.fps,
+                            sample_fps: video.prepared_rgb.metadata.sample_fps,
+                            frames_indices: video.prepared_rgb.metadata.frames_indices.clone(),
+                            total_num_frames: video.prepared_rgb.metadata.total_num_frames,
+                            replacement: range,
+                        });
+                        video_index += 1;
+                    }
+                }
+            }
+        }
+        if image_index != images.len() || video_index != videos.len() {
             return Err(invariant(
-                "text replacements and planned image occurrences disagree",
+                "text replacements and media occurrence counts disagree",
             ));
         }
 
@@ -1137,8 +1473,34 @@ impl QwenImageProcessor {
             });
         }
 
+        let processed_videos = videos
+            .iter()
+            .zip(&video_layouts)
+            .map(|(video, layout)| {
+                Result::Ok(ProcessedBatchVideoOccurrence {
+                    location: layout.location,
+                    grid_row: layout.grid_row,
+                    pixel_rows: CoordinateRange {
+                        start: usize_to_i64(layout.pixel_rows.start, "video pixel start")?,
+                        end: usize_to_i64(layout.pixel_rows.end, "video pixel end")?,
+                    },
+                    source_height: video.prepared_rgb.source_height,
+                    source_width: video.prepared_rgb.source_width,
+                    geometry: layout.geometry,
+                    timestamps: video.prepared_rgb.metadata.timestamps.clone(),
+                    fps: video.prepared_rgb.metadata.fps,
+                    sample_fps: video.prepared_rgb.metadata.sample_fps,
+                    frames_indices: video.prepared_rgb.metadata.frames_indices.clone(),
+                    total_num_frames: video.prepared_rgb.metadata.total_num_frames,
+                    cache_key: layout.cache_key,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
         Ok(BatchPlan {
             text,
+            videos,
+            processed_videos,
+            video_layouts,
             images,
             processed_images,
             sidecar,
@@ -1204,11 +1566,12 @@ impl QwenImageProcessor {
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn execute_plan_into_internal<'plan, 'destination>(
         &self,
         plan: &'plan BatchPlan,
         destinations: BatchDestinations<'destination>,
-        recorder: Option<&mut ObservationRecorder>,
+        mut recorder: Option<&mut ObservationRecorder>,
     ) -> Result<PreparedBatchView<'plan, 'destination>> {
         validate_plan_identity(self, plan)?;
         validate_destinations(&plan.capacities, &destinations)?;
@@ -1218,8 +1581,8 @@ impl QwenImageProcessor {
             mm_token_type_ids,
             mut pixel_values,
             mut image_grid_thw,
-            pixel_values_videos: _,
-            video_grid_thw: _,
+            mut pixel_values_videos,
+            mut video_grid_thw,
         } = destinations;
 
         self.text
@@ -1227,7 +1590,43 @@ impl QwenImageProcessor {
         if let (Some(pixels), Some(grids)) =
             (pixel_values.as_deref_mut(), image_grid_thw.as_deref_mut())
         {
-            self.write_planned_images(plan, pixels, grids, recorder);
+            self.write_planned_images(plan, pixels, grids, recorder.as_deref_mut());
+        }
+
+        if let (Some(pixels), Some(grids)) = (
+            pixel_values_videos.as_deref_mut(),
+            video_grid_thw.as_deref_mut(),
+        ) {
+            let patch_width =
+                usize::try_from(self.profile().visual.patch_width).expect("validated patch width");
+            for (video, layout) in plan.videos.iter().zip(&plan.video_layouts) {
+                let scope = media_observation_scope(video.location, video.occurrence_index);
+                let span = recorder.as_deref_mut().map(|recorder| {
+                    recorder.begin(
+                        "native.media.normalize_patchify_layout",
+                        scope,
+                        video.prepared_rgb.geometry.rgb_capacity_bytes,
+                    )
+                });
+                patchify_video_into(
+                    &video.prepared_rgb,
+                    &self.profile().visual,
+                    &mut pixels[layout.pixel_rows.start * patch_width
+                        ..layout.pixel_rows.end * patch_width],
+                    &mut grids[layout.grid_row * 3..layout.grid_row * 3 + 3],
+                    self.thread_budget > 1 && recorder.is_none(),
+                );
+                if let (Some(recorder), Some(span)) = (recorder.as_deref_mut(), span) {
+                    recorder.finish_success(
+                        span,
+                        video.prepared_rgb.geometry.pixel_values_capacity_bytes + 24,
+                        &[
+                            video.prepared_rgb.geometry.patch_rows,
+                            self.profile().visual.patch_width,
+                        ],
+                    );
+                }
+            }
         }
 
         let text_elements = plan.capacities.input_ids.elements;
@@ -1262,8 +1661,20 @@ impl QwenImageProcessor {
                         [..capacity.elements],
                 )
             }),
-            pixel_values_videos: None,
-            video_grid_thw: None,
+            pixel_values_videos: plan.capacities.pixel_values_videos.map(|capacity| {
+                MatrixView::from_validated(
+                    capacity.shape[0],
+                    capacity.shape[1],
+                    &pixel_values_videos.expect("validated video pixels")[..capacity.elements],
+                )
+            }),
+            video_grid_thw: plan.capacities.video_grid_thw.map(|capacity| {
+                MatrixView::from_validated(
+                    capacity.shape[0],
+                    capacity.shape[1],
+                    &video_grid_thw.expect("validated video grids")[..capacity.elements],
+                )
+            }),
         };
         Ok(PreparedBatchView {
             contract_id: &plan.contract_id,
@@ -1272,6 +1683,7 @@ impl QwenImageProcessor {
             arrays,
             sidecar: &plan.sidecar,
             images: &plan.processed_images,
+            videos: &plan.processed_videos,
         })
     }
 
@@ -1478,12 +1890,40 @@ impl QwenImageProcessor {
             } else {
                 None
             };
+            let pixel_values_videos = if let Some(capacity) = capacities.pixel_values_videos {
+                let values = allocate_output_with_failure::<f32>(
+                    "pixel_values_videos",
+                    capacity.elements,
+                    allocation_failure_before,
+                )?;
+                record_output_allocation(
+                    recorder.as_deref_mut(),
+                    "pixel_values_videos",
+                    capacity.bytes,
+                );
+                Some(values)
+            } else {
+                None
+            };
+            let video_grid_thw = if let Some(capacity) = capacities.video_grid_thw {
+                let values = allocate_output_with_failure::<i64>(
+                    "video_grid_thw",
+                    capacity.elements,
+                    allocation_failure_before,
+                )?;
+                record_output_allocation(recorder.as_deref_mut(), "video_grid_thw", capacity.bytes);
+                Some(values)
+            } else {
+                None
+            };
             Result::Ok((
                 input_ids,
                 attention_mask,
                 mm_token_type_ids,
                 pixel_values,
                 image_grid_thw,
+                pixel_values_videos,
+                video_grid_thw,
             ))
         })();
         let (
@@ -1492,6 +1932,8 @@ impl QwenImageProcessor {
             mut mm_token_type_ids,
             mut pixel_values,
             mut image_grid_thw,
+            mut pixel_values_videos,
+            mut video_grid_thw,
         ) = match allocated {
             Ok(allocated) => {
                 if let Some(recorder) = recorder.as_deref_mut()
@@ -1525,8 +1967,8 @@ impl QwenImageProcessor {
                 mm_token_type_ids: &mut mm_token_type_ids,
                 pixel_values: pixel_values.as_deref_mut(),
                 image_grid_thw: image_grid_thw.as_deref_mut(),
-                pixel_values_videos: None,
-                video_grid_thw: None,
+                pixel_values_videos: pixel_values_videos.as_deref_mut(),
+                video_grid_thw: video_grid_thw.as_deref_mut(),
             };
             let view = if let Some(recorder) = recorder.as_deref_mut() {
                 self.execute_plan_into_observed(&plan, destinations, recorder)?
@@ -1540,12 +1982,14 @@ impl QwenImageProcessor {
                 arrays: _,
                 sidecar,
                 images,
+                videos,
             } = view;
             let contract_id = contract_id.to_owned();
             let profile_fingerprint = profile_fingerprint.to_owned();
             let text = text.to_vec();
             let sidecar = sidecar.clone();
             let images = images.to_vec();
+            let videos = videos.to_vec();
             let arrays = PreparedArrays {
                 input_ids: Matrix::new(
                     capacities.input_ids.shape[0],
@@ -1574,8 +2018,18 @@ impl QwenImageProcessor {
                         Matrix::new(capacity.shape[0], capacity.shape[1], values)
                     })
                     .transpose()?,
-                pixel_values_videos: None,
-                video_grid_thw: None,
+                pixel_values_videos: pixel_values_videos
+                    .zip(capacities.pixel_values_videos)
+                    .map(|(values, capacity)| {
+                        Matrix::new(capacity.shape[0], capacity.shape[1], values)
+                    })
+                    .transpose()?,
+                video_grid_thw: video_grid_thw
+                    .zip(capacities.video_grid_thw)
+                    .map(|(values, capacity)| {
+                        Matrix::new(capacity.shape[0], capacity.shape[1], values)
+                    })
+                    .transpose()?,
             };
             Ok(PreparedImageBatch {
                 contract_id,
@@ -1583,6 +2037,7 @@ impl QwenImageProcessor {
                 text,
                 batch: PreparedBatch::new(arrays, sidecar)?,
                 images,
+                videos,
             })
         })();
         if let Some(recorder) = recorder {
@@ -2286,13 +2741,6 @@ fn destination_error(message: impl Into<String>) -> QwenError {
     QwenError::new(ErrorCategory::DestinationTooSmall, message)
 }
 
-fn unsupported_batch_video() -> QwenError {
-    QwenError::new(
-        ErrorCategory::UnsupportedMedia,
-        "video processing is outside the Phase C image batch path",
-    )
-}
-
 fn reject_videos(request: &Request<'_>) -> Result<()> {
     if request.videos.is_empty()
         && !request.messages.iter().any(|message| {
@@ -2391,10 +2839,10 @@ mod tests {
         QwenImageProcessor, hex_digest, image_cache_key, prepared_batch_output_bytes,
     };
     use crate::{
-        BufferClass, ContentItem, CoordinateRange, ErrorCategory, ImageFormat, ImageInput,
-        ImageOptions, ImageRef, LimitOverrides, Message, MessageContent, ObservationRecorder,
-        ObservationReport, ProfileAlias, ProfileRegistry, Request, RequestOptions, ResourceLimits,
-        Rgb8, Role, StageOutcome, VideoInput, VideoRef,
+        BatchOutputRange, BufferClass, ContentItem, CoordinateRange, ErrorCategory, ImageFormat,
+        ImageInput, ImageOptions, ImageRef, LimitOverrides, Message, MessageContent,
+        ObservationRecorder, ObservationReport, ProfileAlias, ProfileRegistry, Request,
+        RequestOptions, ResourceLimits, Rgb8, Role, StageOutcome, VideoInput, VideoRef,
     };
 
     fn asset_directory(alias: ProfileAlias) -> PathBuf {
@@ -3775,7 +4223,10 @@ mod tests {
             width: 64,
             row_stride: 64 * 3,
         }];
-        let video_inputs = [VideoInput { frames: &frames }];
+        let video_inputs = [VideoInput {
+            frames: &frames,
+            ..VideoInput::default()
+        }];
         let video_items = [ContentItem::Video(VideoRef::default())];
         let video_messages = [message(Role::User, MessageContent::Items(&video_items))];
         let video_request = Request {
@@ -3796,9 +4247,9 @@ mod tests {
         assert_eq!(
             processor
                 .plan_batch(&[video_request, image_request])
-                .expect_err("earlier unsupported video wins the same media stage")
+                .expect_err("valid video does not mask image decode failure")
                 .category(),
-            ErrorCategory::UnsupportedMedia
+            ErrorCategory::MediaDecode
         );
 
         let large_corrupt_png = png_header(96, 96);
@@ -4881,5 +5332,223 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    #[allow(clippy::too_many_lines)]
+    fn mixed_video_image_references_have_exact_global_ranges_and_parallel_bits() {
+        let image_data = vec![129; 64 * 64 * 3];
+        let images = [ImageInput::Rgb8(Rgb8 {
+            data: &image_data,
+            height: 64,
+            width: 64,
+            row_stride: 192,
+        })];
+        let frame_data = [
+            vec![37; 64 * 64 * 3],
+            vec![123; 64 * 64 * 3],
+            vec![240; 64 * 64 * 3],
+        ];
+        let frames = frame_data
+            .iter()
+            .map(|data| Rgb8 {
+                data,
+                height: 64,
+                width: 64,
+                row_stride: 192,
+            })
+            .collect::<Vec<_>>();
+        let times = [0.0, 0.4, 1.8];
+        let indices = [0, 4, 18];
+        let videos = [VideoInput {
+            frames: &frames,
+            timestamps: Some(&times),
+            frames_indices: Some(&indices),
+            fps: Some(10.0),
+            total_num_frames: Some(20.0),
+            preprocessed: true,
+            ..VideoInput::default()
+        }];
+        let items = [
+            ContentItem::Video(VideoRef::default()),
+            ContentItem::Text("compare"),
+            ContentItem::Image(ImageRef::default()),
+            ContentItem::Video(VideoRef::default()),
+        ];
+        let messages = [message(Role::User, MessageContent::Items(&items))];
+        let text_messages = [message(Role::User, MessageContent::Text("short"))];
+        let requests = [
+            Request {
+                messages: &messages,
+                images: &images,
+                videos: &videos,
+                options: RequestOptions::default(),
+            },
+            Request {
+                messages: &text_messages,
+                images: &[],
+                videos: &[],
+                options: RequestOptions::default(),
+            },
+        ];
+        for alias in [ProfileAlias::Qwen3Vl8b, ProfileAlias::Qwen35_9b] {
+            let serial_processor = processor_with_threads(alias, ResourceLimits::default(), 1);
+            let plan = serial_processor.plan_batch(&requests).expect("mixed plan");
+            assert_eq!(
+                plan.capacities().pixel_values.expect("images").shape,
+                [16, 1536]
+            );
+            assert_eq!(
+                plan.capacities().pixel_values_videos.expect("videos").shape,
+                [64, 1536]
+            );
+            assert_eq!(
+                plan.request_layouts()[0].video_grid_rows,
+                BatchOutputRange { start: 0, end: 2 }
+            );
+            assert_eq!(
+                plan.request_layouts()[0].video_pixel_rows,
+                BatchOutputRange { start: 0, end: 64 }
+            );
+            assert_eq!(
+                plan.request_layouts()[1].video_pixel_rows,
+                BatchOutputRange { start: 64, end: 64 }
+            );
+            assert_eq!(plan.processed_videos()[0].timestamps, [0.2, 1.8]);
+            assert_eq!(plan.processed_videos()[0].frames_indices, [0, 4, 18, 18]);
+            assert_eq!(
+                plan.processed_videos()[0].pixel_rows,
+                CoordinateRange { start: 0, end: 32 }
+            );
+            assert_eq!(
+                plan.processed_videos()[1].pixel_rows,
+                CoordinateRange { start: 32, end: 64 }
+            );
+            assert_eq!(
+                plan.processed_videos()[0].cache_key,
+                plan.processed_videos()[1].cache_key
+            );
+            let serial = serial_processor
+                .prepare_batch(&requests)
+                .expect("serial batch");
+            assert_eq!(
+                serial.batch.official_keys(),
+                [
+                    "input_ids",
+                    "attention_mask",
+                    "mm_token_type_ids",
+                    "pixel_values",
+                    "image_grid_thw",
+                    "pixel_values_videos",
+                    "video_grid_thw"
+                ]
+            );
+            assert_eq!(serial.batch.sidecar().videos.len(), 2);
+            assert_eq!(
+                serial
+                    .batch
+                    .arrays()
+                    .video_grid_thw
+                    .as_ref()
+                    .expect("grids")
+                    .as_slice(),
+                [2, 4, 4, 2, 4, 4]
+            );
+            let types = serial.batch.arrays().mm_token_type_ids.as_slice();
+            assert_eq!(types.iter().filter(|&&id| id == 1).count(), 4);
+            assert_eq!(types.iter().filter(|&&id| id == 2).count(), 16);
+            let parallel = processor_with_threads(alias, ResourceLimits::default(), 3)
+                .prepare_batch(&requests)
+                .expect("parallel batch");
+            assert_eq!(serial, parallel);
+            let observed = serial_processor.prepare_batch_observed(&requests);
+            assert_eq!(observed.result.expect("observed batch"), serial);
+            assert!(
+                observed
+                    .report
+                    .buffers
+                    .iter()
+                    .all(|buffer| buffer.class != BufferClass::Transient
+                        || buffer.released_at_ns.is_some())
+            );
+            let single = serial_processor
+                .prepare(requests[0])
+                .expect("single video API");
+            assert_eq!(
+                single.batch,
+                serial_processor
+                    .prepare_batch(&requests[..1])
+                    .expect("one-row batch")
+                    .batch
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "requires hash-pinned local model snapshots under reference/.cache"]
+    fn short_video_grid_destination_keeps_all_text_and_media_sentinels() {
+        let data = vec![19; 32 * 32 * 3];
+        let frames = [Rgb8 {
+            data: &data,
+            height: 32,
+            width: 32,
+            row_stride: 96,
+        }];
+        let videos = [VideoInput {
+            frames: &frames,
+            preprocessed: true,
+            ..VideoInput::default()
+        }];
+        let items = [ContentItem::Video(VideoRef::default())];
+        let messages = [message(Role::User, MessageContent::Items(&items))];
+        let request = Request {
+            messages: &messages,
+            images: &[],
+            videos: &videos,
+            options: RequestOptions::default(),
+        };
+        let processor = processor(ProfileAlias::Qwen3Vl8b, ResourceLimits::default());
+        let plan = processor.plan_batch(&[request]).expect("plan");
+        let capacities = plan.capacities();
+        let mut ids = vec![9; capacities.input_ids.elements];
+        let mut mask = ids.clone();
+        let mut types = ids.clone();
+        let mut pixels = vec![
+            9.0;
+            capacities
+                .pixel_values_videos
+                .expect("video pixels")
+                .elements
+        ];
+        let mut grids = [9; 2];
+        let error = processor
+            .execute_plan_into(
+                &plan,
+                BatchDestinations {
+                    input_ids: &mut ids,
+                    attention_mask: &mut mask,
+                    mm_token_type_ids: &mut types,
+                    pixel_values: None,
+                    image_grid_thw: None,
+                    pixel_values_videos: Some(&mut pixels),
+                    video_grid_thw: Some(&mut grids),
+                },
+            )
+            .expect_err("short video grid");
+        assert_eq!(error.category(), ErrorCategory::DestinationTooSmall);
+        assert_eq!(error.context()["output"].to_string(), "video_grid_thw");
+        assert!(
+            ids.iter()
+                .chain(&mask)
+                .chain(&types)
+                .all(|&value| value == 9)
+        );
+        assert!(
+            pixels
+                .iter()
+                .all(|value| value.to_bits() == 9.0_f32.to_bits())
+        );
+        assert_eq!(grids, [9; 2]);
     }
 }

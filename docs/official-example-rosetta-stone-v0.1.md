@@ -409,7 +409,7 @@ remain the training framework's responsibility. ModelScope SWIFT's separate
 image columns and Qwen-MM-Plugins' explicit image lists map to the same
 preloaded-media form.
 
-## 8. Video remains an explicit boundary
+## 8. Video in v0.2
 
 Source: [Qwen3-VL video example](https://github.com/QwenLM/Qwen3-VL/blob/96588727e44c78b25ba03ea03b8e12f7e64fd0da/README.md#video-inference).
 
@@ -438,17 +438,18 @@ inputs = processor.apply_chat_template(
 )
 ```
 
-qwen-mm v0.1 rejects the original video message explicitly, without reading
-media. The same applies to local video paths and frame lists:
+Video was deferred in v0.1 and is supported in v0.2. The original message now
+passes directly to qwen-mm (install its optional video dependencies first):
 
 ```python
-from qwen_mm import UnsupportedMediaError
-
-processor.prepare(messages)  # raises UnsupportedMediaError: video is not supported
+inputs = processor.prepare(messages, add_generation_prompt=True, return_tensors="pt")
 ```
 
-Video decoding, frame sampling, and temporal metadata are deferred. Extracted
-still frames may be submitted as images, but are not treated as video.
+The generated-fixture suite binds the movie to a small deterministic frame
+list and compares composed VL Utils preprocessing. The dedicated
+[video suite and guide](video-v0.2.md) also cover actual MP4 decoding, sampling,
+prepared tuples, TorchCodec inputs, and mixed prompts. Historical v0.1 reports
+retain their original deferred-video result.
 
 ## 9. vLLM, SGLang, and Qwen-MM-Plugins boundaries
 
@@ -607,5 +608,5 @@ which model IDs `Processor.from_pretrained` accepts.
 | `processor.batch_decode(...)` | `processor.batch_decode(...)` |
 | `chat_template_kwargs={"enable_thinking": ...}` | `prepare(..., enable_thinking=...)` |
 | Preloaded ordered media lists | `prepare(messages, images=...)` or per-request batch lists |
-| Video URL/path/frames | `UnsupportedMediaError`; deferred beyond v0.1 |
+| Video URL/path/frames | Supported in v0.2; dedicated generated-fixture video oracle |
 | vLLM/SGLang generation or agent calls | Out of scope; qwen-mm stops at local model inputs |

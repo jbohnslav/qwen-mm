@@ -1,0 +1,308 @@
+{
+  "schema_id": "qwen-mm-video-benchmark-v1",
+  "runtime": {
+    "captured_at": "2026-10-03T05:01:46.101567+00:00",
+    "package": "/private/tmp/qwen-mm-video-verify/lib/python3.11/site-packages/qwen_mm/__init__.py",
+    "native_module": "/private/tmp/qwen-mm-video-verify/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+    "native_sha256": "74203730b15b9089a7351c7e86115497274d0560d2090539459efeaa972307a6",
+    "facade_sha256": {
+      "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+      "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+      "_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+      "_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025"
+    },
+    "versions": {
+      "qwen-mm": "0.2.0",
+      "transformers": "5.14.1",
+      "qwen-vl-utils": "0.0.14",
+      "numpy": "2.4.6",
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "pillow": "12.3.0"
+    },
+    "optional_versions": {
+      "av": "18.0.0",
+      "torchcodec": null
+    },
+    "host": {
+      "system": "Darwin",
+      "machine": "arm64",
+      "python": "3.11.15",
+      "logical_cpus": 10
+    }
+  },
+  "protocol": {
+    "frames": 8,
+    "height": 192,
+    "width": 256,
+    "repetitions": 5,
+    "warmup": 2,
+    "thread_budget": 2,
+    "torch_threads": 2,
+    "timing": "perf_counter_ns; alternating lane order; all outputs materialized",
+    "scope": "whole prepare_batch including media adaptation, prompt rendering and tokenization",
+    "file_reference": "independent PyAV full RGB decode with its default FFmpeg threading, pinned Qwen sampling/sizing, then official TorchVision/Transformers; TorchCodec performance is unmeasured",
+    "file_native": "PyAV sampled-frame RGB conversion and native preprocessing with the configured processor thread budget",
+    "claims": "diagnostic timings for these generated CPU workloads on this host; no inference or general video speed guarantee"
+  },
+  "results": [
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "decoded_no_resize",
+      "reference_routes": [
+        "decoded+pinned-qwen-resize"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724328,
+      "samples_ms": {
+        "official": [
+          2.724042,
+          2.5705,
+          2.4605,
+          2.319958,
+          2.372459
+        ],
+        "qwen_mm": [
+          1.076375,
+          0.980709,
+          1.059333,
+          0.98925,
+          1.054208
+        ]
+      },
+      "median_ms": {
+        "official": 2.4605,
+        "qwen_mm": 1.054208
+      },
+      "speedup": 2.3339796321029627
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "decoded_resize",
+      "reference_routes": [
+        "decoded+pinned-qwen-resize"
+      ],
+      "parity_passed": true,
+      "output_bytes": 6889128,
+      "samples_ms": {
+        "official": [
+          6.5725,
+          6.397791,
+          6.238416,
+          6.32875,
+          6.371625
+        ],
+        "qwen_mm": [
+          3.292125,
+          3.02425,
+          3.155917,
+          3.033167,
+          3.217959
+        ]
+      },
+      "median_ms": {
+        "official": 6.371625,
+        "qwen_mm": 3.155917
+      },
+      "speedup": 2.0189456820315614
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "pillow_frame_list",
+      "reference_routes": [
+        "qwen-vl-utils-list"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724328,
+      "samples_ms": {
+        "official": [
+          2.269542,
+          2.11575,
+          2.14975,
+          2.144666,
+          2.114042
+        ],
+        "qwen_mm": [
+          1.436625,
+          1.16825,
+          1.249916,
+          1.155459,
+          1.301542
+        ]
+      },
+      "median_ms": {
+        "official": 2.144666,
+        "qwen_mm": 1.249916
+      },
+      "speedup": 1.7158481049926555
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "mp4_prepare_including_decode",
+      "reference_routes": [
+        "pyav+pinned-qwen-sampling"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724328,
+      "samples_ms": {
+        "official": [
+          19.947791,
+          19.744583,
+          19.744416,
+          20.611125,
+          20.264292
+        ],
+        "qwen_mm": [
+          12.290625,
+          11.905959,
+          12.28225,
+          12.014208,
+          12.354375
+        ]
+      },
+      "median_ms": {
+        "official": 19.947791,
+        "qwen_mm": 12.28225
+      },
+      "speedup": 1.624115369740886
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "decoded_no_resize",
+      "reference_routes": [
+        "decoded+pinned-qwen-resize"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724376,
+      "samples_ms": {
+        "official": [
+          2.44575,
+          2.443709,
+          2.462792,
+          2.555792,
+          2.388417
+        ],
+        "qwen_mm": [
+          1.055792,
+          1.008416,
+          1.054833,
+          1.017584,
+          1.090167
+        ]
+      },
+      "median_ms": {
+        "official": 2.44575,
+        "qwen_mm": 1.054833
+      },
+      "speedup": 2.318613467724275
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "decoded_resize",
+      "reference_routes": [
+        "decoded+pinned-qwen-resize"
+      ],
+      "parity_passed": true,
+      "output_bytes": 6889176,
+      "samples_ms": {
+        "official": [
+          6.57125,
+          6.65025,
+          6.650084,
+          6.259542,
+          6.812041
+        ],
+        "qwen_mm": [
+          3.217459,
+          3.120625,
+          3.196042,
+          3.040916,
+          3.249834
+        ]
+      },
+      "median_ms": {
+        "official": 6.650084,
+        "qwen_mm": 3.196042
+      },
+      "speedup": 2.08072484654457
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "pillow_frame_list",
+      "reference_routes": [
+        "qwen-vl-utils-list"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724376,
+      "samples_ms": {
+        "official": [
+          2.176333,
+          2.221541,
+          2.158917,
+          2.197958,
+          2.247541
+        ],
+        "qwen_mm": [
+          1.262959,
+          1.223291,
+          1.262834,
+          1.2285,
+          1.277083
+        ]
+      },
+      "median_ms": {
+        "official": 2.197958,
+        "qwen_mm": 1.262834
+      },
+      "speedup": 1.740496375612313
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "mp4_prepare_including_decode",
+      "reference_routes": [
+        "pyav+pinned-qwen-sampling"
+      ],
+      "parity_passed": true,
+      "output_bytes": 4724376,
+      "samples_ms": {
+        "official": [
+          20.08675,
+          19.746167,
+          20.09425,
+          20.087958,
+          20.140083
+        ],
+        "qwen_mm": [
+          12.367459,
+          12.0695,
+          12.2175,
+          12.071708,
+          12.277042
+        ]
+      },
+      "median_ms": {
+        "official": 20.087958,
+        "qwen_mm": 12.2175
+      },
+      "speedup": 1.6441954573357889
+    }
+  ],
+  "fixture": {
+    "codec": "libx264rgb lossless",
+    "fps": 12,
+    "frames": 36,
+    "bytes": 3072032,
+    "rgb_sha256": "6bcdcdb8c6c3daf9f376dbab0c9e3a35a55477303874978bf471f89f2439bebb"
+  },
+  "pyav_full_decode_only": {
+    "samples_ms": [
+      17.135291,
+      17.065625,
+      17.142583,
+      16.968375,
+      16.497166
+    ],
+    "median_ms": 17.065625,
+    "scope": "full RGB decode; reference diagnostic, no resizing or tokenization"
+  }
+}

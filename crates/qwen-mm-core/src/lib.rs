@@ -6,7 +6,7 @@
 //! execution.
 //!
 //! ```
-//! assert_eq!(qwen_mm_core::version(), "0.1.0");
+//! assert!(!qwen_mm_core::version().is_empty());
 //! ```
 
 #![forbid(unsafe_code)]
@@ -23,6 +23,7 @@ pub mod profile;
 pub mod request;
 pub mod resize;
 pub mod text;
+pub mod video;
 
 #[cfg(test)]
 mod media_conformance_tests;
@@ -50,10 +51,10 @@ pub use output::{
 pub use patchify::{ImagePatchifyPlan, PreparedImage, patchify_image_rgb8, plan_image_patchify};
 pub use processor::{
     ArrayCapacity, BatchCapacities, BatchDestinations, BatchImageLayout, BatchOutputRange,
-    BatchPlan, BatchRequestLayout, DEFAULT_PROCESSOR_THREAD_BUDGET, MAX_PROCESSOR_THREAD_BUDGET,
-    PreparedBatchView, PreparedImageBatch, PreparedImageRequest, PreparedImageTrace,
-    ProcessedBatchImageOccurrence, ProcessedImageOccurrence, ProcessorConfig, QwenImageProcessor,
-    TracedPreparedImage,
+    BatchPlan, BatchRequestLayout, BatchVideoLayout, DEFAULT_PROCESSOR_THREAD_BUDGET,
+    MAX_PROCESSOR_THREAD_BUDGET, PreparedBatchView, PreparedImageBatch, PreparedImageRequest,
+    PreparedImageTrace, ProcessedBatchImageOccurrence, ProcessedBatchVideoOccurrence,
+    ProcessedImageOccurrence, ProcessorConfig, QwenImageProcessor, TracedPreparedImage,
 };
 pub use profile::{
     ProcessorClasses, Profile, ProfileAlias, ProfileRegistry, TokenizerProfile, VisualProfile,
@@ -68,6 +69,7 @@ pub use text::{
     PlannedTextRequest, PreparedTextBatch, PreparedTextRequest, TextProcessor, TextReplacement,
     VisualExpansion, VisualModality,
 };
+pub use video::VideoGeometryPlan;
 
 /// Returns the core crate version embedded at compile time.
 #[must_use]

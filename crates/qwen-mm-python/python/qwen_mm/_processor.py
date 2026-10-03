@@ -173,7 +173,12 @@ class Processor:
                 normalized.append(request)
             requests = normalized
         prepared = self._native.prepare_batch(
-            normalize_requests(requests, limits=self._limits, image_defaults=defaults),
+            normalize_requests(
+                requests,
+                limits=self._limits,
+                image_defaults=defaults,
+                thread_budget=self.thread_budget,
+            ),
             padding_side=padding_side,
         )
         return prepared if torch is None else TorchBatch(prepared, torch)
@@ -221,7 +226,7 @@ class Processor:
         padding_side: str = "right",
     ) -> tuple[_native.PreparedBatch, dict[str, Any]]:
         return self._native.prepare_batch_observed(
-            normalize_requests(requests, limits=self._limits),
+            normalize_requests(requests, limits=self._limits, thread_budget=self.thread_budget),
             event_capacity=event_capacity,
             padding_side=padding_side,
         )

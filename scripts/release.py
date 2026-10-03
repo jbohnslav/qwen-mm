@@ -1,4 +1,4 @@
-"""Build and verify native v0.1 wheels; never publish or tag a release."""
+"""Build and verify native release wheels; never publish or tag a release."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+import tomllib
 import zipfile
 from email.parser import BytesParser
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 from packaging.requirements import Requirement
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
 UV = [str(ROOT / "scripts/with-cargo.sh"), "uv"]
 
 
@@ -48,7 +50,7 @@ def inspect_wheel(wheel: Path) -> dict:
             archive.read(next(name for name in names if name.endswith(".dist-info/METADATA")))
         )
         assert metadata["Name"] == "qwen-mm"
-        assert metadata["Version"] == "0.1.0"
+        assert metadata["Version"] == VERSION
         assert {part.strip() for part in metadata["Requires-Python"].split(",")} == {
             ">=3.11",
             "<3.12",
@@ -57,10 +59,12 @@ def inspect_wheel(wheel: Path) -> dict:
         assert {str(Requirement(item)) for item in metadata.get_all("Requires-Dist", [])} == {
             str(Requirement("numpy>=2.3.5,<3")),
             str(Requirement("huggingface-hub==1.26.0")),
+            str(Requirement('av>=16,<19; extra == "video"')),
+            str(Requirement('pillow>=11,<13; extra == "video"')),
         }
         for document in ("LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.txt"):
             assert (
-                archive.read(f"qwen_mm-0.1.0.dist-info/licenses/{document}")
+                archive.read(f"qwen_mm-{VERSION}.dist-info/licenses/{document}")
                 == (ROOT / document).read_bytes()
             )
         assert not any(".cache/" in name or ".kd/" in name for name in names)
@@ -153,7 +157,7 @@ def main() -> None:
 
     report = {
         "schema": "qwen-mm-release-v1",
-        "version": "0.1.0",
+        "version": VERSION,
         "source": source,
         "host": {
             "system": platform.system(),
@@ -268,6 +272,7 @@ def main() -> None:
                 "media_sources",
                 "usability",
                 "rosetta_regressions",
+                "video_sources",
             ):
                 # Minimal declared runtime dependencies only; Torch remains optional.
                 run(name, [python, str(tests / f"{name}.py")])
@@ -313,6 +318,10 @@ def main() -> None:
                     "-r",
                     str(output / "oracle-requirements.txt"),
                 ],
+            )
+            run(
+                "video-oracle",
+                [python, "scripts/video_oracle.py", "--output", str(output / "video-oracle.json")],
             )
             run("rosetta-ergonomics", [python, str(tests / "rosetta_ergonomics.py")])
             run(

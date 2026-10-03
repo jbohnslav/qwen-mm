@@ -1,4 +1,4 @@
-.PHONY: benchmark-v2-self-test benchmark-v2-smoke chat-conformance check conformance-full \
+.PHONY: video-test benchmark-v2-self-test benchmark-v2-smoke chat-conformance check conformance-full \
 	conformance-smoke core-check format hooks lint pre-commit-check reference-smoke \
 	media-conformance media-conformance-regenerate media-report-macos resize-conformance \
 	resize-conformance-regenerate resize-report-macos rust-check sync wheel-smoke \
@@ -223,3 +223,6 @@ phase-c-v2-validate:
 		python -m qwen_mm_reference.phase_c_overlay_v2 validate
 
 phase-c-release-check: phase-c-binding-check phase-c-conformance
+
+video-test:
+	./scripts/test-video.sh

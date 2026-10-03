@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from qwen_mm import Processor, UnsupportedMediaError
+from qwen_mm import Processor
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 ASSETS_ROOT = REPOSITORY_ROOT / "reference" / ".cache" / "huggingface"
@@ -175,24 +175,22 @@ def main() -> None:
     llama_factory = processor.prepare(llama_messages, images=[first, first])
     assert llama_factory["image_grid_thw"].shape == (2, 3)
 
-    # Rosetta 8: video remains a stable, explicit v0.1 boundary.
-    try:
-        processor.prepare(
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "video", "video": 0},
-                        {"type": "text", "text": "Describe this video."},
-                    ],
-                }
-            ],
-            videos=[b"not decoded because video is rejected structurally"],
-        )
-    except UnsupportedMediaError as error:
-        assert error.category == "unsupported_media"
-    else:
-        raise AssertionError("the documented v0.1 video boundary was not enforced")
+    # Video sources now flow through the same processor in v0.2.
+    clip = np.zeros((3, 64, 96, 3), dtype=np.uint8)
+    video = processor.prepare(
+        [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": 0, "resized_height": 64, "resized_width": 96},
+                    {"type": "text", "text": "Describe this video."},
+                ],
+            }
+        ],
+        videos=[clip],
+    )
+    assert video["video_grid_thw"].tolist() == [[2, 4, 6]]
+    assert video["pixel_values_videos"].shape == (48, 1536)
 
     print("qwen-mm installed documentation examples passed")
 

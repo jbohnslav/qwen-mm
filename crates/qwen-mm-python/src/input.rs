@@ -9,7 +9,7 @@ use pyo3::{
 use qwen_mm_core::{
     BufferClass, DEFAULT_PROCESSOR_THREAD_BUDGET, ErrorCategory, ExcludedOptions, ImageFormat,
     ImageOptions, LimitOverrides, ObservationRecorder, ObservationScope, QwenError, RequestOptions,
-    ResourceLimits, Role, checked_add, checked_mul,
+    ResourceLimits, Role, VideoOptions, checked_add, checked_mul,
 };
 
 use crate::errors::{input_allocation_error, invalid_request, py_detail, type_name};
@@ -20,6 +20,7 @@ pub(crate) type BindingResult<T> = Result<T, QwenError>;
 pub(crate) struct OwnedRequest {
     pub(crate) messages: Vec<OwnedMessage>,
     pub(crate) images: Vec<OwnedImage>,
+    pub(crate) videos: Vec<OwnedVideo>,
     pub(crate) options: OwnedRequestOptions,
 }
 
@@ -38,14 +39,33 @@ pub(crate) fn drop_owned_media(requests: Vec<OwnedRequest>, recorder: &mut Obser
                             data.len()
                         }
                     };
-                    (request_index, input_index, bytes)
+                    (
+                        "binding.owned_media",
+                        request_index,
+                        input_index,
+                        bytes as u64,
+                    )
                 })
+                .chain(
+                    request
+                        .videos
+                        .iter()
+                        .enumerate()
+                        .map(move |(input_index, video)| {
+                            (
+                                "binding.owned_video",
+                                request_index,
+                                input_index,
+                                owned_video_bytes(video),
+                            )
+                        }),
+                )
         })
         .collect::<Vec<_>>();
     drop(requests);
-    for (request_index, input_index, bytes) in releases {
+    for (name, request_index, input_index, bytes) in releases {
         recorder.release_transient(
-            "binding.owned_media",
+            name,
             ObservationScope {
                 request_index: Some(request_index),
                 message_index: None,
@@ -53,7 +73,7 @@ pub(crate) fn drop_owned_media(requests: Vec<OwnedRequest>, recorder: &mut Obser
                 media_index: None,
                 input_index: Some(input_index),
             },
-            u64::try_from(bytes).unwrap_or(u64::MAX),
+            bytes,
         );
     }
 }
@@ -81,6 +101,7 @@ pub(crate) enum OwnedContentItem {
     },
     Video {
         input_index: usize,
+        options: VideoOptions,
     },
 }
 
@@ -96,6 +117,25 @@ pub(crate) enum OwnedImage {
         width: usize,
         row_stride: usize,
     },
+}
+
+#[derive(Debug)]
+pub(crate) struct OwnedVideoFrame {
+    pub(crate) data: Vec<u8>,
+    pub(crate) height: usize,
+    pub(crate) width: usize,
+    pub(crate) row_stride: usize,
+}
+
+#[derive(Debug)]
+pub(crate) struct OwnedVideo {
+    pub(crate) frames: Vec<OwnedVideoFrame>,
+    pub(crate) timestamps: Option<Vec<f64>>,
+    pub(crate) fps: Option<f64>,
+    pub(crate) frames_indices: Option<Vec<i64>>,
+    pub(crate) total_num_frames: Option<f64>,
+    pub(crate) image_frames: bool,
+    pub(crate) preprocessed: bool,
 }
 
 #[derive(Debug)]
@@ -221,16 +261,6 @@ fn parse_requests_internal(
     }
     validate_options(&requests, supports_thinking, profile_alias)?;
     preflight_python_resources(py, &values, &requests, limits)?;
-    for (request_index, value) in values.iter().enumerate() {
-        if has_key(as_dict(value, "request")?, "videos")? {
-            return Err(QwenError::new(
-                ErrorCategory::UnsupportedMedia,
-                "video inputs are outside the Phase C Python binding",
-            )
-            .with_context("request_index", request_index));
-        }
-    }
-    reject_video_items(&requests)?;
     for (request_index, (request, value)) in requests.iter_mut().zip(&values).enumerate() {
         let dict = as_dict(value, "request")?;
         let mut parsed = Vec::new();
@@ -244,6 +274,15 @@ fn parse_requests_internal(
             }
         }
         request.images = parsed;
+        if let Some(videos) = optional(dict, "videos")? {
+            for (video_index, video) in as_list(&videos, "request.videos")?.iter().enumerate() {
+                let video = parse_video(&video, request_index, video_index)?;
+                if let Some(recorder) = recorder.as_deref_mut() {
+                    record_owned_video(&video, request_index, video_index, recorder);
+                }
+                request.videos.push(video);
+            }
+        }
     }
     Ok(requests)
 }
@@ -269,6 +308,41 @@ fn record_owned_image(
     recorder.record_copy("binding.owned_media", scope, bytes);
 }
 
+fn owned_video_bytes(video: &OwnedVideo) -> u64 {
+    video
+        .frames
+        .iter()
+        .fold(0_u64, |bytes, frame| {
+            bytes.saturating_add(u64::try_from(frame.data.len()).unwrap_or(u64::MAX))
+        })
+        .saturating_add(video.timestamps.as_ref().map_or(0, |values| {
+            u64::try_from(values.len())
+                .unwrap_or(u64::MAX)
+                .saturating_mul(8)
+        }))
+        .saturating_add(video.frames_indices.as_ref().map_or(0, |values| {
+            u64::try_from(values.len())
+                .unwrap_or(u64::MAX)
+                .saturating_mul(8)
+        }))
+}
+
+fn record_owned_video(
+    video: &OwnedVideo,
+    request_index: usize,
+    input_index: usize,
+    recorder: &mut ObservationRecorder,
+) {
+    let scope = ObservationScope {
+        request_index: Some(request_index),
+        input_index: Some(input_index),
+        ..ObservationScope::default()
+    };
+    let bytes = owned_video_bytes(video);
+    recorder.record_allocation("binding.owned_video", BufferClass::Transient, scope, bytes);
+    recorder.record_copy("binding.owned_video", scope, bytes);
+}
+
 fn parse_request_structure(
     py: Python<'_>,
     value: &Bound<'_, PyAny>,
@@ -291,11 +365,14 @@ fn parse_request_structure(
         }
     }
     if let Some(videos) = optional(dict, "videos")? {
-        let _ = as_list(&videos, "request.videos")?;
+        for (video_index, video) in as_list(&videos, "request.videos")?.iter().enumerate() {
+            validate_video_schema(&video, request_index, video_index)?;
+        }
     }
     Ok(OwnedRequest {
         messages,
         images: Vec::new(),
+        videos: Vec::new(),
         options: OwnedRequestOptions::default(),
     })
 }
@@ -372,7 +449,7 @@ fn validate_binding_structure(
                         };
                         *slot = true;
                     }
-                    OwnedContentItem::Video { input_index } => {
+                    OwnedContentItem::Video { input_index, .. } => {
                         if message.role == Role::System {
                             return Err(invalid_request("system messages cannot contain visuals")
                                 .with_context("request_index", request_index)
@@ -481,28 +558,6 @@ fn validate_options(
             .with_context("option", "reasoning_content")
             .with_context("profile", profile_alias)
             .with_context("request_index", request_index));
-        }
-    }
-    Ok(())
-}
-
-fn reject_video_items(requests: &[OwnedRequest]) -> BindingResult<()> {
-    for (request_index, request) in requests.iter().enumerate() {
-        for (message_index, message) in request.messages.iter().enumerate() {
-            let OwnedMessageContent::Items(items) = &message.content else {
-                continue;
-            };
-            for (content_item_index, item) in items.iter().enumerate() {
-                if matches!(item, OwnedContentItem::Video { .. }) {
-                    return Err(QwenError::new(
-                        ErrorCategory::UnsupportedMedia,
-                        "video is outside the Phase C Python binding",
-                    )
-                    .with_context("request_index", request_index)
-                    .with_context("message_index", message_index)
-                    .with_context("content_item_index", content_item_index));
-                }
-            }
         }
     }
     Ok(())
@@ -646,6 +701,48 @@ fn preflight_python_resources(
                         )?;
                     }
                     ImageResource::UnsupportedObject => {}
+                }
+            }
+        }
+        if let Some(videos) = optional(dict, "videos")? {
+            for (video_index, video) in as_list(&videos, "request.videos")?.iter().enumerate() {
+                let dict = as_dict(&video, "video")?;
+                let frames_value = required(dict, "frames", "video")?;
+                let frames = as_list(&frames_value, "video.frames")?;
+                check_resource(
+                    "raw_frames_per_video",
+                    to_u64("raw frame count", frames.len())?,
+                    limits.raw_frames_per_video(),
+                    Some(request_index),
+                )
+                .map_err(|error| error.with_context("video_index", video_index))?;
+                for (frame_index, frame) in frames.iter().enumerate() {
+                    let array = frame.cast::<PyUntypedArray>().map_err(|_| {
+                        invalid_request("video frames must contain NumPy arrays")
+                            .with_context("request_index", request_index)
+                            .with_context("video_index", video_index)
+                            .with_context("frame_index", frame_index)
+                    })?;
+                    let shape = array.shape();
+                    let height = shape.first().copied().unwrap_or(0) as u64;
+                    let width = shape.get(1).copied().unwrap_or(0) as u64;
+                    for (name, actual, limit) in [
+                        (
+                            "decoded_source_pixels",
+                            checked_mul("decoded source pixels", height, width)?,
+                            limits.decoded_pixels_per_image_or_frame(),
+                        ),
+                        ("decoded_edge_length", height, limits.decoded_edge_length()),
+                        ("decoded_edge_length", width, limits.decoded_edge_length()),
+                    ] {
+                        check_resource(name, actual, limit, Some(request_index)).map_err(
+                            |error| {
+                                error
+                                    .with_context("video_index", video_index)
+                                    .with_context("frame_index", frame_index)
+                            },
+                        )?;
+                    }
                 }
             }
         }
@@ -801,6 +898,7 @@ fn parse_message(
     })
 }
 
+#[allow(clippy::too_many_lines)]
 fn parse_content_item(
     value: &Bound<'_, PyAny>,
     request_index: usize,
@@ -874,7 +972,20 @@ fn parse_content_item(
         "video" => {
             reject_unknown_keys(
                 dict,
-                &["type", "input_index", "video", "buffer_index", "options"],
+                &[
+                    "type",
+                    "input_index",
+                    "video",
+                    "buffer_index",
+                    "options",
+                    "sample_fps",
+                    "raw_fps",
+                    "min_pixels",
+                    "max_pixels",
+                    "total_pixels",
+                    "resized_height",
+                    "resized_width",
+                ],
                 "video content item",
             )?;
             let aliases = present_keys(dict, &["input_index", "video", "buffer_index"])?;
@@ -883,11 +994,27 @@ fn parse_content_item(
                     "video content item requires exactly one input reference field",
                 ));
             }
+            let option_dict = optional(dict, "options")?;
+            let inline_options = present_keys(dict, VIDEO_OPTION_KEYS)?;
+            if option_dict.is_some() && !inline_options.is_empty() {
+                return Err(invalid_request(
+                    "video options cannot be supplied both inline and in options",
+                ));
+            }
+            let options = match option_dict.as_ref() {
+                Some(options) => {
+                    let options = as_dict(options, "video options")?;
+                    reject_unknown_keys(options, VIDEO_OPTION_KEYS, "video options")?;
+                    extract_video_options(options)?
+                }
+                None => extract_video_options(dict)?,
+            };
             Ok(OwnedContentItem::Video {
                 input_index: extract_usize(
                     &required(dict, aliases[0], "video content item")?,
                     "content item.input_index",
                 )?,
+                options,
             })
         }
         _ => Err(invalid_request("content item type is not supported")
@@ -896,6 +1023,28 @@ fn parse_content_item(
             .with_context("message_index", message_index)
             .with_context("content_item_index", content_index)),
     }
+}
+
+const VIDEO_OPTION_KEYS: &[&str] = &[
+    "sample_fps",
+    "raw_fps",
+    "min_pixels",
+    "max_pixels",
+    "total_pixels",
+    "resized_height",
+    "resized_width",
+];
+
+fn extract_video_options(dict: &Bound<'_, PyDict>) -> BindingResult<VideoOptions> {
+    Ok(VideoOptions {
+        sample_fps: optional_f64(dict, "sample_fps", "video.sample_fps")?,
+        raw_fps: optional_f64(dict, "raw_fps", "video.raw_fps")?,
+        min_pixels: optional_u64(dict, "min_pixels", "video.min_pixels")?,
+        max_pixels: optional_u64(dict, "max_pixels", "video.max_pixels")?,
+        total_pixels: optional_u64(dict, "total_pixels", "video.total_pixels")?,
+        resized_height: optional_u64(dict, "resized_height", "video.resized_height")?,
+        resized_width: optional_u64(dict, "resized_width", "video.resized_width")?,
+    })
 }
 
 fn parse_image_options(dict: &Bound<'_, PyDict>) -> BindingResult<ImageOptions> {
@@ -918,6 +1067,140 @@ fn extract_image_options(dict: &Bound<'_, PyDict>) -> BindingResult<ImageOptions
         max_pixels: optional_u64(dict, "max_pixels", "image options")?,
         resized_height: optional_u64(dict, "resized_height", "image options")?,
         resized_width: optional_u64(dict, "resized_width", "image options")?,
+    })
+}
+
+fn validate_video_schema(
+    value: &Bound<'_, PyAny>,
+    request_index: usize,
+    video_index: usize,
+) -> BindingResult<()> {
+    validate_video_schema_inner(value).map_err(|error| {
+        error
+            .with_context("request_index", request_index)
+            .with_context("video_index", video_index)
+    })
+}
+
+fn validate_video_schema_inner(value: &Bound<'_, PyAny>) -> BindingResult<()> {
+    let dict = as_dict(value, "video")?;
+    reject_unknown_keys(
+        dict,
+        &[
+            "frames",
+            "timestamps",
+            "fps",
+            "frames_indices",
+            "total_num_frames",
+            "image_frames",
+            "preprocessed",
+        ],
+        "video",
+    )?;
+    let frames_value = required(dict, "frames", "video")?;
+    let frames = as_list(&frames_value, "video.frames")?;
+    if frames.is_empty() {
+        return Err(QwenError::new(
+            ErrorCategory::MediaGeometry,
+            "raw-frame video must contain at least one frame",
+        ));
+    }
+    for (frame_index, frame) in frames.iter().enumerate() {
+        if frame.cast::<PyUntypedArray>().is_err() {
+            return Err(invalid_request("video frames must contain NumPy arrays")
+                .with_context("frame_index", frame_index));
+        }
+    }
+    for key in ["timestamps", "frames_indices"] {
+        if let Some(value) = optional(dict, key)? {
+            let values = as_list(&value, "video metadata")?;
+            if values.len() != frames.len() {
+                return Err(QwenError::new(
+                    ErrorCategory::MediaGeometry,
+                    "video metadata must have one entry per decoded frame",
+                )
+                .with_context("field", key)
+                .with_context("frames", frames.len())
+                .with_context("entries", values.len()));
+            }
+            for value in values.iter() {
+                if key == "timestamps" {
+                    extract_f64(&value, "video.timestamps")?;
+                } else {
+                    extract_u64(&value, "video.frames_indices")?;
+                }
+            }
+        }
+    }
+    optional_f64(dict, "fps", "video.fps")?;
+    optional_f64(dict, "total_num_frames", "video.total_num_frames")?;
+    optional_bool(dict, "image_frames", "video.image_frames")?;
+    optional_bool(dict, "preprocessed", "video.preprocessed")?;
+    Ok(())
+}
+
+fn parse_video(
+    value: &Bound<'_, PyAny>,
+    request_index: usize,
+    video_index: usize,
+) -> BindingResult<OwnedVideo> {
+    let dict = as_dict(value, "video")?;
+    let frames_value = required(dict, "frames", "video")?;
+    let source_frames = as_list(&frames_value, "video.frames")?;
+    let mut frames = Vec::new();
+    frames
+        .try_reserve_exact(source_frames.len())
+        .map_err(|_| input_allocation_error("raw video frames", source_frames.len()))?;
+    for (frame_index, frame) in source_frames.iter().enumerate() {
+        let image = parse_rgb_array(&frame, request_index, video_index).map_err(|error| {
+            error
+                .with_context("video_index", video_index)
+                .with_context("frame_index", frame_index)
+        })?;
+        let OwnedImage::Rgb8 {
+            data,
+            height,
+            width,
+            row_stride,
+        } = image
+        else {
+            unreachable!("raw RGB parser always returns RGB8 storage");
+        };
+        frames.push(OwnedVideoFrame {
+            data,
+            height,
+            width,
+            row_stride,
+        });
+    }
+    let timestamps = optional(dict, "timestamps")?
+        .map(|value| {
+            as_list(&value, "video.timestamps")?
+                .iter()
+                .map(|value| extract_f64(&value, "video.timestamps"))
+                .collect::<BindingResult<Vec<_>>>()
+        })
+        .transpose()?;
+    let frames_indices = optional(dict, "frames_indices")?
+        .map(|value| {
+            as_list(&value, "video.frames_indices")?
+                .iter()
+                .map(|value| {
+                    let index = extract_u64(&value, "video.frames_indices")?;
+                    i64::try_from(index)
+                        .map_err(|_| invalid_request("video frame index exceeds int64"))
+                })
+                .collect::<BindingResult<Vec<_>>>()
+        })
+        .transpose()?;
+    Ok(OwnedVideo {
+        frames,
+        timestamps,
+        fps: optional_f64(dict, "fps", "video.fps")?,
+        frames_indices,
+        total_num_frames: optional_f64(dict, "total_num_frames", "video.total_num_frames")?,
+        image_frames: optional_bool(dict, "image_frames", "video.image_frames")?.unwrap_or(false),
+        preprocessed: optional_bool(dict, "preprocessed", "video.preprocessed")?.unwrap_or(false),
     })
 }
 
@@ -1022,6 +1305,7 @@ fn parse_image(
     Ok(OwnedImage::Encoded { data, format })
 }
 
+#[allow(clippy::too_many_lines)]
 fn parse_rgb_array(
     value: &Bound<'_, PyAny>,
     request_index: usize,
@@ -1109,16 +1393,20 @@ fn parse_rgb_array(
     let mut data = Vec::new();
     data.try_reserve_exact(data_len)
         .map_err(|_| input_allocation_error("raw RGB input", data_len))?;
-    for row in readonly.as_array().outer_iter() {
-        let source = row.as_slice().ok_or_else(|| {
-            QwenError::new(
-                ErrorCategory::MediaGeometry,
-                "raw RGB array does not expose packed logical rows",
-            )
-            .with_context("request_index", request_index)
-            .with_context("image_index", image_index)
-        })?;
+    if let Ok(source) = readonly.as_slice() {
         data.extend_from_slice(source);
+    } else {
+        for row in readonly.as_array().outer_iter() {
+            let source = row.as_slice().ok_or_else(|| {
+                QwenError::new(
+                    ErrorCategory::MediaGeometry,
+                    "raw RGB array does not expose packed logical rows",
+                )
+                .with_context("request_index", request_index)
+                .with_context("image_index", image_index)
+            })?;
+            data.extend_from_slice(source);
+        }
     }
     debug_assert_eq!(data.len(), data_len);
     Ok(OwnedImage::Rgb8 {
@@ -1602,6 +1890,31 @@ fn extract_u64(value: &Bound<'_, PyAny>, label: &'static str) -> BindingResult<u
     })
 }
 
+fn extract_f64(value: &Bound<'_, PyAny>, label: &'static str) -> BindingResult<f64> {
+    if value.is_instance_of::<PyBool>() {
+        return Err(
+            invalid_request("Python bool is not accepted as a floating-point number")
+                .with_context("field", label),
+        );
+    }
+    value.extract::<f64>().map_err(|error| {
+        invalid_request("Python binding schema expected a floating-point number")
+            .with_context("field", label)
+            .with_context("actual_type", type_name(value))
+            .with_context("detail", py_detail(&error))
+    })
+}
+
+fn optional_f64(
+    dict: &Bound<'_, PyDict>,
+    key: &'static str,
+    label: &'static str,
+) -> BindingResult<Option<f64>> {
+    optional(dict, key)?
+        .map(|value| extract_f64(&value, label))
+        .transpose()
+}
+
 fn extract_usize(value: &Bound<'_, PyAny>, label: &'static str) -> BindingResult<usize> {
     if value.is_instance_of::<PyBool>() {
         return Err(invalid_request("Python bool is not accepted as an integer")
@@ -1672,9 +1985,153 @@ mod tests {
         prelude::*,
         types::{PyDict, PyList, PyModule},
     };
-    use qwen_mm_core::{ErrorCategory, ResourceLimits};
+    use qwen_mm_core::{ErrorCategory, LimitOverrides, ObservationRecorder, ResourceLimits};
 
-    use super::{OwnedImage, parse_requests};
+    use super::{
+        OwnedImage, OwnedRequest, drop_owned_media, parse_content_item, parse_requests,
+        parse_requests_observed, parse_video, record_owned_video, validate_video_schema,
+    };
+
+    #[test]
+    fn video_option_schema_rejects_bool_and_conflicting_fields() {
+        Python::initialize();
+        Python::attach(|py| {
+            let item = PyDict::new(py);
+            item.set_item("type", "video").expect("type");
+            item.set_item("input_index", 0).expect("index");
+            item.set_item("raw_fps", true).expect("rate");
+            assert_eq!(
+                parse_content_item(item.as_any(), 0, 0, 0)
+                    .expect_err("bool rate")
+                    .category(),
+                ErrorCategory::InvalidRequest
+            );
+            item.set_item("raw_fps", 24.0).expect("rate");
+            item.set_item("options", PyDict::new(py)).expect("options");
+            assert_eq!(
+                parse_content_item(item.as_any(), 0, 0, 0)
+                    .expect_err("conflicting options")
+                    .category(),
+                ErrorCategory::InvalidRequest
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires NumPy importable by embedded CPython"]
+    fn video_buffers_and_metadata_are_owned_before_gil_release() {
+        Python::initialize();
+        Python::attach(|py| {
+            let numpy = PyModule::import(py, "numpy").expect("numpy");
+            let frame = numpy
+                .getattr("arange")
+                .expect("arange")
+                .call1((12,))
+                .expect("array")
+                .call_method1("reshape", ((2, 2, 3),))
+                .expect("shape")
+                .call_method1("astype", ("uint8",))
+                .expect("uint8");
+            let video = PyDict::new(py);
+            video
+                .set_item("frames", PyList::new(py, [&frame, &frame]).expect("frames"))
+                .expect("frames");
+            video
+                .set_item("timestamps", [1.25, 1.75])
+                .expect("timestamps");
+            video.set_item("fps", 24.0).expect("fps");
+            video.set_item("frames_indices", [30, 42]).expect("indices");
+            video.set_item("total_num_frames", 100.0).expect("total");
+            video.set_item("image_frames", true).expect("images");
+            video.set_item("preprocessed", true).expect("preprocessed");
+            validate_video_schema(video.as_any(), 0, 0).expect("schema");
+            let parsed = parse_video(video.as_any(), 0, 0).expect("parsed");
+            frame.call_method1("fill", (255,)).expect("mutate original");
+            assert_eq!(parsed.frames[0].data, (0_u8..12).collect::<Vec<_>>());
+            assert_eq!(parsed.frames[1].data, parsed.frames[0].data);
+            assert_eq!(parsed.timestamps, Some(vec![1.25, 1.75]));
+            assert_eq!(parsed.frames_indices, Some(vec![30, 42]));
+            assert!(parsed.image_frames);
+            assert!(parsed.preprocessed);
+            video
+                .set_item("timestamps", [1.25])
+                .expect("malformed timestamps");
+            assert_eq!(
+                validate_video_schema(video.as_any(), 0, 0)
+                    .expect_err("metadata length")
+                    .category(),
+                ErrorCategory::MediaGeometry
+            );
+            let mut recorder = ObservationRecorder::default();
+            record_owned_video(&parsed, 0, 0, &mut recorder);
+            assert_eq!(recorder.report().allocations.copied_bytes, 56);
+            drop_owned_media(
+                vec![OwnedRequest {
+                    messages: Vec::new(),
+                    images: Vec::new(),
+                    videos: vec![parsed],
+                    options: super::OwnedRequestOptions::default(),
+                }],
+                &mut recorder,
+            );
+            assert_eq!(recorder.report().allocations.transient_live_bytes, 0);
+        });
+    }
+
+    #[test]
+    #[ignore = "requires NumPy importable by embedded CPython"]
+    fn video_frame_ceiling_fails_before_copying_inputs() {
+        Python::initialize();
+        Python::attach(|py| {
+            let numpy = PyModule::import(py, "numpy").expect("numpy");
+            let frame = numpy
+                .getattr("zeros")
+                .expect("zeros")
+                .call1(((32, 32, 3),))
+                .expect("frame")
+                .call_method1("astype", ("uint8",))
+                .expect("dtype");
+            let video = PyDict::new(py);
+            video
+                .set_item("frames", PyList::new(py, [&frame, &frame]).expect("frames"))
+                .expect("frames");
+            let item = PyDict::new(py);
+            item.set_item("type", "video").expect("type");
+            item.set_item("input_index", 0).expect("index");
+            let message = PyDict::new(py);
+            message.set_item("role", "user").expect("role");
+            message
+                .set_item("content", PyList::new(py, [item]).expect("items"))
+                .expect("content");
+            let request = PyDict::new(py);
+            request
+                .set_item("messages", PyList::new(py, [message]).expect("messages"))
+                .expect("messages");
+            request
+                .set_item("videos", PyList::new(py, [video]).expect("videos"))
+                .expect("videos");
+            let requests = PyList::new(py, [request]).expect("batch");
+            let limits = ResourceLimits::default()
+                .lowered(LimitOverrides {
+                    raw_frames_per_video: Some(1),
+                    ..LimitOverrides::default()
+                })
+                .expect("lower ceiling");
+            let mut recorder = ObservationRecorder::default();
+            let error = parse_requests_observed(
+                py,
+                requests.as_any(),
+                limits,
+                false,
+                "qwen3-vl-8b",
+                &mut recorder,
+            )
+            .expect_err("frame ceiling");
+            assert_eq!(error.category(), ErrorCategory::ResourceLimit);
+            assert_eq!(recorder.report().allocations.copied_bytes, 0);
+            assert_eq!(recorder.report().allocations.transient_live_bytes, 0);
+        });
+    }
 
     fn parse_raw_image(
         py: Python<'_>,

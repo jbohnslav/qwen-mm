@@ -721,11 +721,17 @@ wheels = [
 
 [[package]]
 name = "qwen-mm"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },
     { name = "numpy" },
+]
+
+[package.optional-dependencies]
+video = [
+    { name = "av" },
+    { name = "pillow" },
 ]
 
 [package.dev-dependencies]
@@ -738,9 +744,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av", marker = "extra == 'video'", specifier = ">=16,<19" },
     { name = "huggingface-hub", specifier = "==1.26.0" },
     { name = "numpy", specifier = ">=2.3.5,<3" },
+    { name = "pillow", marker = "extra == 'video'", specifier = ">=11,<13" },
 ]
+provides-extras = ["video"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -755,6 +764,7 @@ name = "qwen-mm-reference"
 version = "0.1.0"
 source = { editable = "reference" }
 dependencies = [
+    { name = "av" },
     { name = "jsonschema" },
     { name = "numpy" },
     { name = "pillow" },
@@ -766,6 +776,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av", specifier = ">=16,<19" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pillow", specifier = ">=11.0" },

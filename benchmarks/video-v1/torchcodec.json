@@ -1,0 +1,1897 @@
+{
+  "schema_id": "qwen-mm-video-torchcodec-v1",
+  "passed": true,
+  "runtime": {
+    "captured_at": "2026-10-03T05:05:01.551989+00:00",
+    "package": "/private/tmp/qwen-mm-torchcodec-verify/lib/python3.11/site-packages/qwen_mm/__init__.py",
+    "native_module": "/private/tmp/qwen-mm-torchcodec-verify/lib/python3.11/site-packages/qwen_mm/_native.abi3.so",
+    "native_sha256": "74203730b15b9089a7351c7e86115497274d0560d2090539459efeaa972307a6",
+    "facade_sha256": {
+      "_processor.py": "3ae49ae5e934304d0fa7e46f6404e9a9163b11290c5af6d558e9798be33fa703",
+      "_media.py": "4103b431fb570c2212d149c731adc3a84e43d36ad3d289cb37dcbf893f8c51bc",
+      "_video.py": "0e505a57bbf41a20c830aec4195942618a9aae72b00049ae6b41ea13de7ec89b",
+      "_tensors.py": "04e066e873c3b459463cebea04cabbe8f2b957dd6e8a2d17b4824b33b370b025"
+    },
+    "versions": {
+      "qwen-mm": "0.2.0",
+      "transformers": "5.14.1",
+      "qwen-vl-utils": "0.0.14",
+      "numpy": "2.4.6",
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "pillow": "12.3.0",
+      "torchcodec": "0.17.0",
+      "av": "18.0.0"
+    },
+    "optional_versions": {
+      "av": "18.0.0",
+      "torchcodec": "0.17.0"
+    },
+    "host": {
+      "system": "Darwin",
+      "machine": "arm64",
+      "python": "3.11.15",
+      "logical_cpus": 10
+    }
+  },
+  "protocol": {
+    "source_frames": 36,
+    "source_height": 128,
+    "source_width": 192,
+    "source_fps": 12,
+    "source_rgb_sha256": "efc3a56f20e6265a1805ad79c1bfa9a2e50e1ad8a8c8fa09d334bfd564906a46",
+    "fixture_mp4_sha256": "74a6e1e5402cbb4bd5f5c0ae123570d2d62028d9090250919a6ac8343238602c",
+    "sampling": {
+      "nframes": 6,
+      "video_start": 0.5,
+      "video_end": 2.0
+    },
+    "sizing": {
+      "resized_height": 128,
+      "resized_width": 192
+    },
+    "sampled_absolute_indices": [
+      6,
+      10,
+      13,
+      17,
+      20,
+      24
+    ],
+    "clip_total_num_frames": 19,
+    "native_thread_budget": 2,
+    "ffmpeg_threads_per_decoder": 2,
+    "torch_threads": 2,
+    "timestamp_atol": 1e-12,
+    "ambiguous_layout_sources": "6 RGB frames of size 3x32 and 3x3; resized to 64x64",
+    "scope": "real CPU TorchCodec decoder, FrameBatch and file backend; both profiles"
+  },
+  "cases": [
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "d57f8c60f7dbfae1ef437d9afb6ecfc99b1156891f2a097518792756b32192f3"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "odd_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          192
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            8,
+            12
+          ],
+          "patch_rows": 192,
+          "placeholder_count": 48,
+          "rgb_capacity_bytes": 884736,
+          "pixel_values_capacity_bytes": 1179648
+        },
+        "timestamps": [
+          0.4583333333333333,
+          2.9166666666666665
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "1aa04cdc5b73c834373dfcbe656927fabf88e4da26fe5b8d9621e9d6f0ac5fe7"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "d57f8c60f7dbfae1ef437d9afb6ecfc99b1156891f2a097518792756b32192f3"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "odd_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          192
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            8,
+            12
+          ],
+          "patch_rows": 192,
+          "placeholder_count": 48,
+          "rgb_capacity_bytes": 884736,
+          "pixel_values_capacity_bytes": 1179648
+        },
+        "timestamps": [
+          0.4583333333333333,
+          2.9166666666666665
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "1aa04cdc5b73c834373dfcbe656927fabf88e4da26fe5b8d9621e9d6f0ac5fe7"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "explicit_torchcodec_file",
+      "passed": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "d57f8c60f7dbfae1ef437d9afb6ecfc99b1156891f2a097518792756b32192f3"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width32_decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "5c140aa9ecd28f84fa62d6c4742b639e70a6839e74f49eff009a6fd1f3746807"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width32_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "0d123c83d8042d5eed5a6a5c4009d926a135d55f5e79ab3935f2c737dcb3b9ea"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width32_decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "5c140aa9ecd28f84fa62d6c4742b639e70a6839e74f49eff009a6fd1f3746807"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width32_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "0d123c83d8042d5eed5a6a5c4009d926a135d55f5e79ab3935f2c737dcb3b9ea"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width32_explicit_torchcodec_file",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "5c140aa9ecd28f84fa62d6c4742b639e70a6839e74f49eff009a6fd1f3746807"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width3_decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "b6bc55913bf8eaadd2f8b2b24923d8005964eb9dd7d5da744fbb574f4488cca6"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width3_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "53c51c95eed1fe44973fea94c6c36806f0693319dd6fc20f0d5c2244b607e002"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width3_decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "b6bc55913bf8eaadd2f8b2b24923d8005964eb9dd7d5da744fbb574f4488cca6"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width3_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "53c51c95eed1fe44973fea94c6c36806f0693319dd6fc20f0d5c2244b607e002"
+      }
+    },
+    {
+      "profile": "qwen3-vl-8b",
+      "case": "height3_width3_explicit_torchcodec_file",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "b6bc55913bf8eaadd2f8b2b24923d8005964eb9dd7d5da744fbb574f4488cca6"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "7a30ff6bd443c094d2b399e1b47ca1efbff8163a25981690ecbe35751252c8ff"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "odd_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          192
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            8,
+            12
+          ],
+          "patch_rows": 192,
+          "placeholder_count": 48,
+          "rgb_capacity_bytes": 884736,
+          "pixel_values_capacity_bytes": 1179648
+        },
+        "timestamps": [
+          0.4583333333333333,
+          2.9166666666666665
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "595d2d9e05fe6dc32aad3514ee04a08b164c6866f27ed87c09fae3c328b1d915"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "7a30ff6bd443c094d2b399e1b47ca1efbff8163a25981690ecbe35751252c8ff"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "odd_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          192
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            8,
+            12
+          ],
+          "patch_rows": 192,
+          "placeholder_count": 48,
+          "rgb_capacity_bytes": 884736,
+          "pixel_values_capacity_bytes": 1179648
+        },
+        "timestamps": [
+          0.4583333333333333,
+          2.9166666666666665
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "595d2d9e05fe6dc32aad3514ee04a08b164c6866f27ed87c09fae3c328b1d915"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "explicit_torchcodec_file",
+      "passed": true,
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          288
+        ],
+        "source_height": 128,
+        "source_width": 192,
+        "geometry": {
+          "height": 128,
+          "width": 192,
+          "padded_frames": 6,
+          "video_grid_thw": [
+            3,
+            8,
+            12
+          ],
+          "patch_rows": 288,
+          "placeholder_count": 72,
+          "rgb_capacity_bytes": 1769472,
+          "pixel_values_capacity_bytes": 1769472
+        },
+        "timestamps": [
+          0.6666666666666667,
+          1.25,
+          1.8333333333333335
+        ],
+        "fps": 12.0,
+        "sample_fps": 3.789473684210526,
+        "frames_indices": [
+          6,
+          10,
+          13,
+          17,
+          20,
+          24
+        ],
+        "total_num_frames": 19.0,
+        "cache_key": "7a30ff6bd443c094d2b399e1b47ca1efbff8163a25981690ecbe35751252c8ff"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width32_decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "1a4a6406f5ca202c63c51faa7450e478b41cae265d2328df0260c619648f2fa7"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width32_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "497f61d7d3ed06027052800801c8932cd1aa632e28cf6c2ae0643aefd49bfc6c"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width32_decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "1a4a6406f5ca202c63c51faa7450e478b41cae265d2328df0260c619648f2fa7"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width32_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "497f61d7d3ed06027052800801c8932cd1aa632e28cf6c2ae0643aefd49bfc6c"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width32_explicit_torchcodec_file",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        32,
+        3
+      ],
+      "source_rgb_sha256": "7beb8785280568dd26583549605d235cb39cedb33aa35171bbb45f3c41b0ea44",
+      "fixture_mp4_sha256": "ebd8fc2ecd61f3a8b45cf27f2d540168516e99bc3dfd5576af626fad926ca4f3",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 32,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "1a4a6406f5ca202c63c51faa7450e478b41cae265d2328df0260c619648f2fa7"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width3_decoder_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "ded18937c54b343588f22f721b5bfae9f5257cae79857f5eb4eae6e0c2614af2"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width3_framebatch_NCHW",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "4b14bb7361c21ded79eabf3e5234100f2ed1ac50f6aa799cf5a7f8fc61d56704"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width3_decoder_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "ded18937c54b343588f22f721b5bfae9f5257cae79857f5eb4eae6e0c2614af2"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width3_framebatch_NHWC",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 147456,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.4166666666666667
+        ],
+        "fps": 2.0,
+        "sample_fps": 2.0,
+        "frames_indices": [
+          0,
+          1,
+          2,
+          2
+        ],
+        "total_num_frames": 3.0,
+        "cache_key": "4b14bb7361c21ded79eabf3e5234100f2ed1ac50f6aa799cf5a7f8fc61d56704"
+      }
+    },
+    {
+      "profile": "qwen3.5-9b",
+      "case": "height3_width3_explicit_torchcodec_file",
+      "passed": true,
+      "source_rgb_exact": true,
+      "source_shape": [
+        6,
+        3,
+        3,
+        3
+      ],
+      "source_rgb_sha256": "6e2ca63cf30b1040db4399d3bc6c92b879997f676ac6d02839b3f7678a64c471",
+      "fixture_mp4_sha256": "86218f01ce0a7b4f6fc695106d977e6d0e213dc899a56494648d49d18145d6c5",
+      "max_absolute_difference": {
+        "input_ids": 0.0,
+        "attention_mask": 0.0,
+        "mm_token_type_ids": 0.0,
+        "pixel_values_videos": 0.0,
+        "video_grid_thw": 0.0
+      },
+      "resize_v2_witnesses": [],
+      "metadata": {
+        "request_index": 0,
+        "message_index": 0,
+        "content_item_index": 0,
+        "input_index": 0,
+        "grid_row": 0,
+        "pixel_rows": [
+          0,
+          32
+        ],
+        "source_height": 3,
+        "source_width": 3,
+        "geometry": {
+          "height": 64,
+          "width": 64,
+          "padded_frames": 4,
+          "video_grid_thw": [
+            2,
+            4,
+            4
+          ],
+          "patch_rows": 32,
+          "placeholder_count": 8,
+          "rgb_capacity_bytes": 196608,
+          "pixel_values_capacity_bytes": 196608
+        },
+        "timestamps": [
+          0.08333333333333333,
+          0.33333333333333337
+        ],
+        "fps": 12.0,
+        "sample_fps": 8.0,
+        "frames_indices": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "total_num_frames": 6.0,
+        "cache_key": "ded18937c54b343588f22f721b5bfae9f5257cae79857f5eb4eae6e0c2614af2"
+      }
+    }
+  ]
+}

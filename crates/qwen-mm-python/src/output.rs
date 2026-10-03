@@ -10,11 +10,11 @@ use pyo3::{
 };
 use qwen_mm_core::{
     ArrayCapacity, BatchCapacities, BatchDestinations, BatchImageLayout, BatchPlan,
-    BatchRequestLayout, BufferClass, ContentItem, CoordinateRange, FunctionCall, ImageInput,
-    ImageSidecar, IntegrationSidecar, Message, MessageContent, ObservationRecorder,
+    BatchRequestLayout, BatchVideoLayout, BufferClass, ContentItem, CoordinateRange, FunctionCall,
+    ImageInput, ImageSidecar, IntegrationSidecar, Message, MessageContent, ObservationRecorder,
     ObservationReport, ObservationScope, PreparedTextRequest, ProcessedBatchImageOccurrence,
-    QwenError, QwenImageProcessor, Request, Rgb8, StageOutcome, TextReplacement, ToolCall,
-    ToolDefinition, VisualModality,
+    ProcessedBatchVideoOccurrence, QwenError, QwenImageProcessor, Request, Rgb8, StageOutcome,
+    TextReplacement, ToolCall, ToolDefinition, VideoInput, VisualModality,
 };
 
 use crate::{
@@ -64,14 +64,18 @@ pub(crate) struct NativeBatch {
     pub(crate) text: Vec<PreparedTextRequest>,
     pub(crate) sidecar: IntegrationSidecar,
     pub(crate) images: Vec<ProcessedBatchImageOccurrence>,
+    pub(crate) videos: Vec<ProcessedBatchVideoOccurrence>,
     pub(crate) request_layouts: Vec<BatchRequestLayout>,
     pub(crate) image_layouts: Vec<BatchImageLayout>,
+    pub(crate) video_layouts: Vec<BatchVideoLayout>,
     pub(crate) padding_side: PaddingSide,
     pub(crate) input_ids: NativeMatrix<i64>,
     pub(crate) attention_mask: NativeMatrix<i64>,
     pub(crate) mm_token_type_ids: NativeMatrix<i64>,
     pub(crate) pixel_values: Option<NativeMatrix<f32>>,
     pub(crate) image_grid_thw: Option<NativeMatrix<i64>>,
+    pub(crate) pixel_values_videos: Option<NativeMatrix<f32>>,
+    pub(crate) video_grid_thw: Option<NativeMatrix<i64>>,
 }
 
 struct AllocatedBatchDestinations {
@@ -80,6 +84,8 @@ struct AllocatedBatchDestinations {
     mm_token_type_ids: Vec<i64>,
     pixel_values: Option<Vec<f32>>,
     image_grid_thw: Option<Vec<i64>>,
+    pixel_values_videos: Option<Vec<f32>>,
+    video_grid_thw: Option<Vec<i64>>,
 }
 
 struct ExecutedBatchMetadata {
@@ -88,6 +94,7 @@ struct ExecutedBatchMetadata {
     text: Vec<PreparedTextRequest>,
     sidecar: IntegrationSidecar,
     images: Vec<ProcessedBatchImageOccurrence>,
+    videos: Vec<ProcessedBatchVideoOccurrence>,
 }
 
 impl AllocatedBatchDestinations {
@@ -97,6 +104,7 @@ impl AllocatedBatchDestinations {
         metadata: ExecutedBatchMetadata,
         request_layouts: Vec<BatchRequestLayout>,
         image_layouts: Vec<BatchImageLayout>,
+        video_layouts: Vec<BatchVideoLayout>,
         padding_side: PaddingSide,
     ) -> NativeBatch {
         let Self {
@@ -105,6 +113,8 @@ impl AllocatedBatchDestinations {
             mm_token_type_ids,
             pixel_values,
             image_grid_thw,
+            pixel_values_videos,
+            video_grid_thw,
         } = self;
         let mut batch = NativeBatch {
             contract_id: metadata.contract_id,
@@ -112,8 +122,10 @@ impl AllocatedBatchDestinations {
             text: metadata.text,
             sidecar: metadata.sidecar,
             images: metadata.images,
+            videos: metadata.videos,
             request_layouts,
             image_layouts,
+            video_layouts,
             padding_side,
             input_ids: native_matrix(input_ids, capacities.input_ids),
             attention_mask: native_matrix(attention_mask, capacities.attention_mask),
@@ -123,6 +135,12 @@ impl AllocatedBatchDestinations {
                 .map(|(values, capacity)| native_matrix(values, capacity)),
             image_grid_thw: image_grid_thw
                 .zip(capacities.image_grid_thw)
+                .map(|(values, capacity)| native_matrix(values, capacity)),
+            pixel_values_videos: pixel_values_videos
+                .zip(capacities.pixel_values_videos)
+                .map(|(values, capacity)| native_matrix(values, capacity)),
+            video_grid_thw: video_grid_thw
+                .zip(capacities.video_grid_thw)
                 .map(|(values, capacity)| native_matrix(values, capacity)),
         };
         batch.apply_padding_side();
@@ -168,6 +186,12 @@ pub(crate) fn native_batch_bytes(batch: &NativeBatch) -> u64 {
         total = total.saturating_add(matrix_bytes(values));
     }
     if let Some(values) = &batch.image_grid_thw {
+        total = total.saturating_add(matrix_bytes(values));
+    }
+    if let Some(values) = &batch.pixel_values_videos {
+        total = total.saturating_add(matrix_bytes(values));
+    }
+    if let Some(values) = &batch.video_grid_thw {
         total = total.saturating_add(matrix_bytes(values));
     }
     total
@@ -409,6 +433,22 @@ impl PyPreparedBatch {
             )?;
             official_keys.push("image_grid_thw".to_owned());
         }
+        if let Some(pixel_values_videos) = native.pixel_values_videos {
+            arrays.set_item(
+                "pixel_values_videos",
+                matrix_f32(py, pixel_values_videos)
+                    .map_err(|error| crate::errors::to_python_error(py, &error))?,
+            )?;
+            official_keys.push("pixel_values_videos".to_owned());
+        }
+        if let Some(video_grid_thw) = native.video_grid_thw {
+            arrays.set_item(
+                "video_grid_thw",
+                matrix_i64(py, video_grid_thw)
+                    .map_err(|error| crate::errors::to_python_error(py, &error))?,
+            )?;
+            official_keys.push("video_grid_thw".to_owned());
+        }
         let metadata = build_metadata(
             py,
             &native.contract_id,
@@ -416,8 +456,10 @@ impl PyPreparedBatch {
             &native.text,
             &native.sidecar,
             &native.images,
+            &native.videos,
             &native.request_layouts,
             &native.image_layouts,
+            &native.video_layouts,
             padding_side,
         )?;
         Ok(Self {
@@ -496,6 +538,7 @@ fn run_batch_internal(
         };
     let request_layouts = plan.request_layouts().to_vec();
     let image_layouts = plan.image_layouts().to_vec();
+    let video_layouts = plan.video_layouts().to_vec();
     match recorder {
         Some(recorder) => plan.drop_observed(recorder),
         None => drop(plan),
@@ -505,10 +548,12 @@ fn run_batch_internal(
         metadata,
         request_layouts,
         image_layouts,
+        video_layouts,
         padding_side,
     ))
 }
 
+#[allow(clippy::too_many_lines)]
 fn plan_owned_requests(
     processor: &QwenImageProcessor,
     owned: &[OwnedRequest],
@@ -517,6 +562,47 @@ fn plan_owned_requests(
     let image_inputs = owned
         .iter()
         .map(|request| request.images.iter().map(borrow_image).collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let video_frames = owned
+        .iter()
+        .map(|request| {
+            request
+                .videos
+                .iter()
+                .map(|video| {
+                    video
+                        .frames
+                        .iter()
+                        .map(|frame| Rgb8 {
+                            data: &frame.data,
+                            height: frame.height,
+                            width: frame.width,
+                            row_stride: frame.row_stride,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let video_inputs = owned
+        .iter()
+        .enumerate()
+        .map(|(request_index, request)| {
+            request
+                .videos
+                .iter()
+                .enumerate()
+                .map(|(video_index, video)| VideoInput {
+                    frames: &video_frames[request_index][video_index],
+                    timestamps: video.timestamps.as_deref(),
+                    fps: video.fps,
+                    frames_indices: video.frames_indices.as_deref(),
+                    total_num_frames: video.total_num_frames,
+                    image_frames: video.image_frames,
+                    preprocessed: video.preprocessed,
+                })
+                .collect::<Vec<_>>()
+        })
         .collect::<Vec<_>>();
     let content_items = owned
         .iter()
@@ -582,7 +668,7 @@ fn plan_owned_requests(
         .map(|(request_index, request)| Request {
             messages: &messages[request_index],
             images: &image_inputs[request_index],
-            videos: &[],
+            videos: &video_inputs[request_index],
             options: request.options.borrowed(&tool_definitions[request_index]),
         })
         .collect::<Vec<_>>();
@@ -632,7 +718,29 @@ fn allocate_batch_destinations(
     let image_grid_thw = capacities
         .image_grid_thw
         .map(|capacity| {
-            allocate_destination("image_grid_thw", capacity, recorder, &mut allocated_bytes)
+            allocate_destination(
+                "image_grid_thw",
+                capacity,
+                recorder.as_deref_mut(),
+                &mut allocated_bytes,
+            )
+        })
+        .transpose()?;
+    let pixel_values_videos = capacities
+        .pixel_values_videos
+        .map(|capacity| {
+            allocate_destination(
+                "pixel_values_videos",
+                capacity,
+                recorder.as_deref_mut(),
+                &mut allocated_bytes,
+            )
+        })
+        .transpose()?;
+    let video_grid_thw = capacities
+        .video_grid_thw
+        .map(|capacity| {
+            allocate_destination("video_grid_thw", capacity, recorder, &mut allocated_bytes)
         })
         .transpose()?;
     Ok((
@@ -642,6 +750,8 @@ fn allocate_batch_destinations(
             mm_token_type_ids,
             pixel_values,
             image_grid_thw,
+            pixel_values_videos,
+            video_grid_thw,
         },
         allocated_bytes,
     ))
@@ -671,8 +781,8 @@ fn execute_batch_plan(
         mm_token_type_ids: &mut destinations.mm_token_type_ids,
         pixel_values: destinations.pixel_values.as_deref_mut(),
         image_grid_thw: destinations.image_grid_thw.as_deref_mut(),
-        pixel_values_videos: None,
-        video_grid_thw: None,
+        pixel_values_videos: destinations.pixel_values_videos.as_deref_mut(),
+        video_grid_thw: destinations.video_grid_thw.as_deref_mut(),
     };
     let view = if let Some(recorder) = recorder {
         processor.execute_plan_into_observed(plan, native_destinations, recorder)?
@@ -685,6 +795,7 @@ fn execute_batch_plan(
         text: view.text.to_vec(),
         sidecar: view.sidecar().clone(),
         images: view.images.to_vec(),
+        videos: plan.processed_videos().to_vec(),
     })
 }
 
@@ -733,9 +844,12 @@ fn borrow_content_item(item: &OwnedContentItem) -> ContentItem<'_> {
             input_index: *input_index,
             options: *options,
         }),
-        OwnedContentItem::Video { input_index } => ContentItem::Video(qwen_mm_core::VideoRef {
+        OwnedContentItem::Video {
+            input_index,
+            options,
+        } => ContentItem::Video(qwen_mm_core::VideoRef {
             input_index: *input_index,
-            options: qwen_mm_core::VideoOptions::default(),
+            options: *options,
         }),
     }
 }
@@ -817,8 +931,10 @@ fn build_metadata<'py>(
     text: &[PreparedTextRequest],
     sidecar: &IntegrationSidecar,
     images: &[ProcessedBatchImageOccurrence],
+    videos: &[ProcessedBatchVideoOccurrence],
     request_layouts: &[BatchRequestLayout],
     image_layouts: &[BatchImageLayout],
+    video_layouts: &[BatchVideoLayout],
     padding_side: PaddingSide,
 ) -> PyResult<Bound<'py, PyDict>> {
     let metadata = PyDict::new(py);
@@ -845,7 +961,11 @@ fn build_metadata<'py>(
         sidecar_images.append(sidecar_image_dict(py, image)?)?;
     }
     sidecar_dict.set_item("images", sidecar_images)?;
-    sidecar_dict.set_item("videos", PyList::empty(py))?;
+    let sidecar_videos = PyList::empty(py);
+    for video in &sidecar.videos {
+        sidecar_videos.append(sidecar_video_dict(py, video)?)?;
+    }
+    sidecar_dict.set_item("videos", sidecar_videos)?;
     metadata.set_item("sidecar", sidecar_dict)?;
 
     let processed_images = PyList::empty(py);
@@ -868,6 +988,27 @@ fn build_metadata<'py>(
         processed_images.append(item)?;
     }
     metadata.set_item("images", processed_images)?;
+    let processed_videos = PyList::empty(py);
+    for video in videos {
+        let item = PyDict::new(py);
+        item.set_item("request_index", video.location.request_index)?;
+        item.set_item("message_index", video.location.message_index)?;
+        item.set_item("content_item_index", video.location.content_item_index)?;
+        item.set_item("input_index", video.location.input_index)?;
+        item.set_item("grid_row", video.grid_row)?;
+        item.set_item("pixel_rows", coordinate(video.pixel_rows))?;
+        item.set_item("source_height", video.source_height)?;
+        item.set_item("source_width", video.source_width)?;
+        item.set_item("geometry", video_geometry_dict(py, video.geometry)?)?;
+        item.set_item("timestamps", &video.timestamps)?;
+        item.set_item("fps", video.fps)?;
+        item.set_item("sample_fps", video.sample_fps)?;
+        item.set_item("frames_indices", &video.frames_indices)?;
+        item.set_item("total_num_frames", video.total_num_frames)?;
+        item.set_item("cache_key", video.cache_key_hex())?;
+        processed_videos.append(item)?;
+    }
+    metadata.set_item("videos", processed_videos)?;
 
     let requests = PyList::empty(py);
     for layout in request_layouts {
@@ -892,6 +1033,14 @@ fn build_metadata<'py>(
             "pixel_rows",
             [layout.pixel_rows.start, layout.pixel_rows.end],
         )?;
+        item.set_item(
+            "video_grid_rows",
+            [layout.video_grid_rows.start, layout.video_grid_rows.end],
+        )?;
+        item.set_item(
+            "video_pixel_rows",
+            [layout.video_pixel_rows.start, layout.video_pixel_rows.end],
+        )?;
         requests.append(item)?;
     }
     metadata.set_item("request_layouts", requests)?;
@@ -913,6 +1062,23 @@ fn build_metadata<'py>(
         layouts.append(item)?;
     }
     metadata.set_item("image_layouts", layouts)?;
+    let layouts = PyList::empty(py);
+    for layout in video_layouts {
+        let item = PyDict::new(py);
+        item.set_item("request_index", layout.location.request_index)?;
+        item.set_item("message_index", layout.location.message_index)?;
+        item.set_item("content_item_index", layout.location.content_item_index)?;
+        item.set_item("input_index", layout.location.input_index)?;
+        item.set_item("grid_row", layout.grid_row)?;
+        item.set_item(
+            "pixel_rows",
+            [layout.pixel_rows.start, layout.pixel_rows.end],
+        )?;
+        item.set_item("geometry", video_geometry_dict(py, layout.geometry)?)?;
+        item.set_item("cache_key", layout.cache_key_hex())?;
+        layouts.append(item)?;
+    }
+    metadata.set_item("video_layouts", layouts)?;
     Ok(metadata)
 }
 
@@ -948,6 +1114,24 @@ fn sidecar_image_dict<'py>(py: Python<'py>, image: &ImageSidecar) -> PyResult<Bo
     Ok(item)
 }
 
+fn sidecar_video_dict<'py>(
+    py: Python<'py>,
+    video: &qwen_mm_core::VideoSidecar,
+) -> PyResult<Bound<'py, PyDict>> {
+    let item = PyDict::new(py);
+    item.set_item("request_index", video.request_index)?;
+    item.set_item("grid_row", video.grid_row)?;
+    item.set_item("fps", video.fps)?;
+    item.set_item("frames_indices", &video.frames_indices)?;
+    item.set_item("total_num_frames", video.total_num_frames)?;
+    item.set_item("sample_fps", video.sample_fps)?;
+    let replacement = PyDict::new(py);
+    replacement.set_item("code_points", coordinate(video.replacement.code_points))?;
+    replacement.set_item("tokens", coordinate(video.replacement.tokens))?;
+    item.set_item("replacement", replacement)?;
+    Ok(item)
+}
+
 fn geometry_dict(
     py: Python<'_>,
     geometry: qwen_mm_core::ImageGeometryPlan,
@@ -975,6 +1159,25 @@ fn geometry_dict(
     item.set_item(
         "image_grid_capacity_bytes",
         geometry.image_grid_capacity_bytes,
+    )?;
+    Ok(item)
+}
+
+fn video_geometry_dict(
+    py: Python<'_>,
+    geometry: qwen_mm_core::VideoGeometryPlan,
+) -> PyResult<Bound<'_, PyDict>> {
+    let item = PyDict::new(py);
+    item.set_item("height", geometry.height)?;
+    item.set_item("width", geometry.width)?;
+    item.set_item("padded_frames", geometry.padded_frames)?;
+    item.set_item("video_grid_thw", geometry.video_grid_thw)?;
+    item.set_item("patch_rows", geometry.patch_rows)?;
+    item.set_item("placeholder_count", geometry.placeholder_count)?;
+    item.set_item("rgb_capacity_bytes", geometry.rgb_capacity_bytes)?;
+    item.set_item(
+        "pixel_values_capacity_bytes",
+        geometry.pixel_values_capacity_bytes,
     )?;
     Ok(item)
 }

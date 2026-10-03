@@ -15,7 +15,7 @@ from qwen_mm import (
 
 
 def main() -> None:
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.2.0"
     assert native_version() == __version__
     assert np.__version__ == "2.4.6"
     assert not hasattr(qwen_mm_native, "_test_native_batch_active")

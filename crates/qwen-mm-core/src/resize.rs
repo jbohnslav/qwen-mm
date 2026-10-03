@@ -102,22 +102,97 @@ pub fn resize_video_rgb8_to_f32(
     source_stride_bytes: u64,
     plan: &ImageGeometryPlan,
 ) -> Result<Vec<f32>> {
-    let (destination_height, destination_width) = validate_resize_plan(plan)?;
-    let source = packed_source(
-        source,
-        source_height,
-        source_width,
-        source_stride_bytes,
-        None,
-        ObservationScope::default(),
-    )?;
-    resize_torchvision_f32(
-        &source,
-        usize_capacity(source_height, "source height")?,
-        usize_capacity(source_width, "source width")?,
-        destination_height,
-        destination_width,
-    )
+    VideoFrameResizer::new(source_height, source_width, plan)?.resize(source, source_stride_bytes)
+}
+
+/// A shared immutable pair of video interpolation tables reused across a clip.
+#[derive(Debug)]
+pub(crate) struct VideoFrameResizer {
+    source_height: u64,
+    source_width: u64,
+    destination_height: usize,
+    destination_width: usize,
+    horizontal: Option<FloatWeights>,
+    vertical: Option<FloatWeights>,
+}
+
+impl VideoFrameResizer {
+    pub(crate) fn new(
+        source_height: u64,
+        source_width: u64,
+        plan: &ImageGeometryPlan,
+    ) -> Result<Self> {
+        let (destination_height, destination_width) = validate_resize_plan(plan)?;
+        let height = usize_capacity(source_height, "source height")?;
+        let width = usize_capacity(source_width, "source width")?;
+        if height == 0 || width == 0 {
+            return Err(geometry("source dimensions must be non-zero"));
+        }
+        Ok(Self {
+            source_height,
+            source_width,
+            destination_height,
+            destination_width,
+            horizontal: if width == destination_width {
+                None
+            } else {
+                Some(float_cubic_weights(width, destination_width)?)
+            },
+            vertical: if height == destination_height {
+                None
+            } else {
+                Some(float_cubic_weights(height, destination_height)?)
+            },
+        })
+    }
+
+    pub(crate) fn resize(&self, data: &[u8], stride: u64) -> Result<Vec<f32>> {
+        let view = validate_source(data, self.source_height, self.source_width, stride)?;
+        let mut source = Vec::new();
+        source
+            .try_reserve_exact(view.packed_capacity)
+            .map_err(|error| {
+                resource("unable to reserve video source float pixels")
+                    .with_context("detail", error.to_string())
+            })?;
+        for row in 0..view.height {
+            let start = row * view.stride;
+            source.extend(
+                view.data[start..start + view.row_bytes]
+                    .iter()
+                    .copied()
+                    .map(f32::from),
+            );
+        }
+        let horizontal = if let Some(weights) = &self.horizontal {
+            convolve_horizontal_f32(
+                &source,
+                view.height,
+                view.width,
+                self.destination_width,
+                weights,
+            )?
+        } else {
+            source
+        };
+        let mut resized = if let Some(weights) = &self.vertical {
+            convolve_vertical_f32(
+                &horizontal,
+                view.height,
+                self.destination_height,
+                self.destination_width,
+                weights,
+            )?
+        } else {
+            horizontal
+        };
+        if self.horizontal.is_some() || self.vertical.is_some() {
+            for value in &mut resized {
+                *value = quantize_torchvision_u8_to_f32(*value);
+            }
+        }
+        Ok(resized)
+    }
 }
 
 #[derive(Debug)]
@@ -125,47 +200,6 @@ struct FloatWeights {
     bounds: Vec<(usize, usize)>,
     coefficients: Vec<f32>,
     kernel_size: usize,
-}
-
-/// Ports the exact `TorchVision` tensor wrapper semantics: cast RGB8 to
-/// `float32`, perform `PyTorch`'s separable Keys bicubic-antialias convolution,
-/// clamp, round ties to even, cast back to uint8, then expose `float32`.
-fn resize_torchvision_f32(
-    source: &[u8],
-    source_height: usize,
-    source_width: usize,
-    destination_height: usize,
-    destination_width: usize,
-) -> Result<Vec<f32>> {
-    let source = source.iter().copied().map(f32::from).collect::<Vec<_>>();
-    let horizontal = if source_width == destination_width {
-        source
-    } else {
-        let weights = float_cubic_weights(source_width, destination_width)?;
-        convolve_horizontal_f32(
-            &source,
-            source_height,
-            source_width,
-            destination_width,
-            &weights,
-        )?
-    };
-    let resized = if source_height == destination_height {
-        horizontal
-    } else {
-        let weights = float_cubic_weights(source_height, destination_height)?;
-        convolve_vertical_f32(
-            &horizontal,
-            source_height,
-            destination_height,
-            destination_width,
-            &weights,
-        )?
-    };
-    Ok(resized
-        .into_iter()
-        .map(quantize_torchvision_u8_to_f32)
-        .collect())
 }
 
 fn quantize_torchvision_u8_to_f32(value: f32) -> f32 {
@@ -886,67 +920,6 @@ mod legacy_pillow_image_kernel {
         }
         Ok(destination)
     }
-}
-
-fn packed_source(
-    source: &[u8],
-    source_height: u64,
-    source_width: u64,
-    source_stride_bytes: u64,
-    recorder: Option<&mut ObservationRecorder>,
-    scope: ObservationScope,
-) -> Result<Vec<u8>> {
-    if source_height == 0 || source_width == 0 {
-        return Err(geometry("source dimensions must be non-zero"));
-    }
-    let packed_stride = checked_mul("packed source RGB stride", source_width, RGB_CHANNELS)?;
-    if source_stride_bytes < packed_stride {
-        return Err(geometry("source RGB stride is smaller than packed width")
-            .with_context("stride", source_stride_bytes)
-            .with_context("packed_stride", packed_stride));
-    }
-    let preceding_rows = source_height - 1;
-    let required = checked_add(
-        "source RGB buffer length",
-        checked_mul(
-            "source RGB preceding rows",
-            preceding_rows,
-            source_stride_bytes,
-        )?,
-        packed_stride,
-    )?;
-    let required_usize = usize_capacity(required, "source RGB buffer length")?;
-    if source.len() < required_usize {
-        return Err(
-            geometry("source RGB buffer is shorter than its dimensions and stride")
-                .with_context("actual_bytes", source.len())
-                .with_context("required_bytes", required),
-        );
-    }
-
-    let packed_capacity = checked_mul("packed source RGB capacity", source_height, packed_stride)?;
-    let mut packed = Vec::with_capacity(usize_capacity(
-        packed_capacity,
-        "packed source RGB capacity",
-    )?);
-    let stride = usize_capacity(source_stride_bytes, "source RGB stride")?;
-    let row_bytes = usize_capacity(packed_stride, "packed source RGB stride")?;
-    for row in 0..usize_capacity(source_height, "source RGB height")? {
-        let start = row
-            .checked_mul(stride)
-            .ok_or_else(|| overflow("source RGB row offset"))?;
-        packed.extend_from_slice(&source[start..start + row_bytes]);
-    }
-    if let Some(recorder) = recorder {
-        recorder.record_allocation(
-            "resize.packed_source",
-            BufferClass::Transient,
-            scope,
-            vec_capacity_bytes(&packed),
-        );
-        recorder.record_copy("resize.packed_source", scope, packed_capacity);
-    }
-    Ok(packed)
 }
 
 fn validate_source(
