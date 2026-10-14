@@ -20,7 +20,7 @@ pyo3 = { version = "=0.29.0", features = ["abi3-py311"] }
 qwen-mm-core = { path = "crates/qwen-mm-core" }
 rayon = "=1.12.0"
 serde = { version = "=1.0.229", features = ["derive"] }
-serde_json = "=1.0.151"
+serde_json = "=1.0.154"
 sha2 = { version = "=0.10.9", features = ["asm"] }
 tk-serialize = { version = "=0.1.0-rc.2", default-features = false, features = ["fancy-regex"] }
 tokenizers = { version = "=1.0.0-rc.2", default-features = false, features = ["regex"] }
